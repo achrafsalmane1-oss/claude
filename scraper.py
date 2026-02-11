@@ -383,10 +383,20 @@ class BusinessListScraper:
         if not record or not record["first_name"]:
             return None
 
-        # Filter: employee range must be 10-500 (if available)
-        if record["employee_range"]:
-            if not employee_range_matches(record["employee_range"]):
-                return None
+        # Extra name validation: reject names that look like company names
+        name = f"{record['first_name']} {record['last_name']}".strip()
+        if name.isupper() and len(name) > 10:
+            return None  # ALL-CAPS long text is likely a company name
+
+        emp = record.get("employee_range", "")
+        emp_status = ""
+        if emp:
+            if employee_range_matches(emp):
+                emp_status = emp
+            else:
+                emp_status = emp  # keep the data, user can filter
+        else:
+            emp_status = "Unknown"
 
         return {
             "first_name": record["first_name"],
@@ -394,10 +404,11 @@ class BusinessListScraper:
             "company": record["company"],
             "email": record["email"],
             "title": record["title"],
+            "employee_range": emp_status,
         }
 
     def scrape(self, target: int = 5000, resume_state: dict | None = None,
-               workers: int = 3) -> list[dict]:
+               workers: int = 3, max_pages_per_city: int = 100) -> list[dict]:
         """Main scrape loop with concurrent workers for detail pages."""
         results = []
         seen_companies = set()
@@ -427,7 +438,7 @@ class BusinessListScraper:
 
             print(f"\n--- {location} ---")
 
-            while len(results) < target:
+            while len(results) < target and page <= max_pages_per_city:
                 print(f"  pg {page} | {len(results)}/{target} collected | {total_scraped} scraped")
 
                 company_urls = self.get_listing_urls(location, page)
@@ -468,8 +479,10 @@ class BusinessListScraper:
                         if len(results) >= target:
                             break
 
-                # Checkpoint every page
+                # Checkpoint + incremental CSV every few pages
                 if len(results) % 20 == 0 or page % 5 == 0:
+                    # Write partial CSV so user can see results early
+                    write_csv(results, OUTPUT_DIR / "ph_founders.csv")
                     save_checkpoint({
                         "results": results,
                         "seen_companies": list(seen_companies),
@@ -517,9 +530,9 @@ def load_checkpoint() -> dict | None:
 def write_csv(records: list[dict], filepath: Path) -> None:
     """Write records to CSV."""
     filepath.parent.mkdir(parents=True, exist_ok=True)
-    fieldnames = ["first_name", "last_name", "company", "email", "title"]
+    fieldnames = ["first_name", "last_name", "company", "email", "title", "employee_range"]
     with open(filepath, "w", newline="", encoding="utf-8") as f:
-        writer = csv.DictWriter(f, fieldnames=fieldnames)
+        writer = csv.DictWriter(f, fieldnames=fieldnames, extrasaction="ignore")
         writer.writeheader()
         writer.writerows(records)
     print(f"\nWrote {len(records)} records to {filepath}")
@@ -562,6 +575,10 @@ def main():
         "--workers", type=int, default=3,
         help="Number of concurrent scrapers (default: 3, max: 5)",
     )
+    parser.add_argument(
+        "--max-pages", type=int, default=100,
+        help="Max listing pages per city before moving to next city (default: 100)",
+    )
     args = parser.parse_args()
     args.workers = min(args.workers, 5)
 
@@ -585,7 +602,8 @@ def main():
     print("\n[Scraping] BusinessList.ph company profiles...")
     scraper = BusinessListScraper()
     records = scraper.scrape(target=args.target, resume_state=resume_state,
-                             workers=args.workers)
+                             workers=args.workers,
+                             max_pages_per_city=args.max_pages)
 
     # Output
     print_summary(records)
