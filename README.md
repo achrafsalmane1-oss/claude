@@ -1,13 +1,14 @@
 # Philippines Founders Scraper
 
-Scrapes founders/CEOs of Philippines-based companies (10–500 employees) and outputs a CSV with **first name, last name, company name, and email**.
+Scrapes founders/owners/managers of Philippines-based companies (10–500 employees) and outputs a CSV with **first name, last name, company name, and email**.
 
-## Data Sources
+**No API keys required** — uses free public business directories.
 
-| Source | What it provides | Free tier |
+## Data Source
+
+| Source | Companies | Data Available |
 |---|---|---|
-| **Apollo.io** (primary) | People search filtered by location, title, company size. Returns name, email, company, title. | 10,000 credits/month |
-| **Hunter.io** (optional) | Email enrichment for records missing an email address. | 25 searches/month (free), 500/month (starter) |
+| **BusinessList.ph** | 214,000+ | Contact person, email, employee count, company name, phone |
 
 ## Quick Start
 
@@ -15,27 +16,11 @@ Scrapes founders/CEOs of Philippines-based companies (10–500 employees) and ou
 # 1. Install dependencies
 pip install -r requirements.txt
 
-# 2. Configure API keys
-cp .env.example .env
-# Edit .env and add your Apollo.io API key (required)
-
-# 3. Run the scraper (default target: 5,000 records)
+# 2. Run the scraper (default target: 5,000 records)
 python3 scraper.py
 
-# 4. Output is saved to output/ph_founders.csv
+# 3. Output is saved to output/ph_founders.csv
 ```
-
-## Getting API Keys
-
-### Apollo.io (required)
-1. Sign up at [apollo.io](https://www.apollo.io/) (free plan available)
-2. Go to **Settings > Integrations > API**
-3. Copy your API key into `.env`
-
-### Hunter.io (optional — email enrichment)
-1. Sign up at [hunter.io](https://hunter.io/)
-2. Go to **Dashboard > API**
-3. Copy your API key into `.env`
 
 ## Usage
 
@@ -43,14 +28,17 @@ python3 scraper.py
 # Default: collect 5,000 founders
 python3 scraper.py
 
-# Custom target and output
+# Custom target and output path
 python3 scraper.py --target 7000 --output output/my_list.csv
 
-# With Hunter.io email enrichment for missing emails
-python3 scraper.py --enrich
+# Speed up with more concurrent workers (default: 3, max: 5)
+python3 scraper.py --workers 5
 
-# Limit Hunter enrichment to first 200 missing-email records
-python3 scraper.py --enrich --enrich-limit 200
+# Resume from where you left off (uses checkpoint file)
+python3 scraper.py --resume
+
+# Combine options
+python3 scraper.py --target 10000 --workers 4 --resume
 ```
 
 ## Output Format
@@ -59,15 +47,34 @@ CSV file with columns:
 
 | Column | Description |
 |---|---|
-| `first_name` | Founder's first name |
-| `last_name` | Founder's last name |
+| `first_name` | Contact person's first name |
+| `last_name` | Contact person's last name |
 | `company` | Company name |
 | `email` | Email address (if available) |
-| `title` | Job title (e.g., Founder, CEO) |
+| `title` | Role (e.g., Manager, Owner, Founder, CEO) |
 
-## Tips for Reaching 5,000+
+## Features
 
-- **Apollo.io free tier** gives 10,000 credits/month — each page of 100 results costs ~1 credit, so you can search through ~1M records per month.
-- The scraper automatically cycles through multiple founder-related titles (founder, CEO, owner, managing director, president) to maximize unique results.
-- If you need more than the free tier provides, Apollo's paid plans unlock deeper search access.
-- Run with `--enrich` to fill in missing emails via Hunter.io.
+- **No API keys needed** — scrapes public business directory pages
+- **Checkpoint/resume** — saves progress every page; resume with `--resume` if interrupted
+- **Concurrent scraping** — 3 workers by default (configurable up to 5)
+- **Employee filter** — only includes companies with 10–500 employees
+- **Name validation** — filters out invalid/junk contact names
+- **60+ Philippine cities** — covers Manila, Quezon City, Makati, Cebu, Davao, and more
+- **Polite scraping** — random delays between requests to respect the server
+
+## How It Works
+
+1. Iterates through listing pages for each Philippine city (`/location/{city}/{page}`)
+2. Extracts company detail page URLs from each listing page
+3. Scrapes each company detail page for: contact person name, email, employee count, company name
+4. Filters for companies with 10–500 employees (companies without employee data are included)
+5. Saves results to CSV with periodic checkpoints
+
+## Estimated Runtime
+
+| Target | Workers | Approx. Time |
+|---|---|---|
+| 1,000 | 3 | ~30 min |
+| 5,000 | 3 | ~2.5 hrs |
+| 5,000 | 5 | ~1.5 hrs |
