@@ -386,17 +386,10 @@ class BusinessListScraper:
         # Extra name validation: reject names that look like company names
         name = f"{record['first_name']} {record['last_name']}".strip()
         if name.isupper() and len(name) > 10:
-            return None  # ALL-CAPS long text is likely a company name
+            return None
 
         emp = record.get("employee_range", "")
-        emp_status = ""
-        if emp:
-            if employee_range_matches(emp):
-                emp_status = emp
-            else:
-                emp_status = emp  # keep the data, user can filter
-        else:
-            emp_status = "Unknown"
+        emp_status = emp if emp else "Unknown"
 
         return {
             "first_name": record["first_name"],
@@ -408,7 +401,7 @@ class BusinessListScraper:
         }
 
     def scrape(self, target: int = 5000, resume_state: dict | None = None,
-               workers: int = 3, max_pages_per_city: int = 100) -> list[dict]:
+               workers: int = 3, max_pages_per_city: int = 50) -> list[dict]:
         """Main scrape loop with concurrent workers for detail pages."""
         results = []
         seen_companies = set()
@@ -481,7 +474,6 @@ class BusinessListScraper:
 
                 # Checkpoint + incremental CSV every few pages
                 if len(results) % 20 == 0 or page % 5 == 0:
-                    # Write partial CSV so user can see results early
                     write_csv(results, OUTPUT_DIR / "ph_founders.csv")
                     save_checkpoint({
                         "results": results,
@@ -575,10 +567,6 @@ def main():
         "--workers", type=int, default=3,
         help="Number of concurrent scrapers (default: 3, max: 5)",
     )
-    parser.add_argument(
-        "--max-pages", type=int, default=100,
-        help="Max listing pages per city before moving to next city (default: 100)",
-    )
     args = parser.parse_args()
     args.workers = min(args.workers, 5)
 
@@ -602,8 +590,7 @@ def main():
     print("\n[Scraping] BusinessList.ph company profiles...")
     scraper = BusinessListScraper()
     records = scraper.scrape(target=args.target, resume_state=resume_state,
-                             workers=args.workers,
-                             max_pages_per_city=args.max_pages)
+                             workers=args.workers)
 
     # Output
     print_summary(records)
