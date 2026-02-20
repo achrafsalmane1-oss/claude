@@ -31,6 +31,7 @@ load_dotenv()
 # ---------------------------------------------------------------------------
 APOLLO_API_KEY = os.getenv("APOLLO_API_KEY", "")
 HUNTER_API_KEY = os.getenv("HUNTER_API_KEY", "")
+BISON_API_KEY = os.getenv("BISON_API_KEY", "")
 
 APOLLO_SEARCH_URL = "https://api.apollo.io/v1/mixed_people/search"
 
@@ -287,6 +288,14 @@ def main():
         "--enrich-limit", type=int, default=None,
         help="Max records to attempt Hunter enrichment on",
     )
+    parser.add_argument(
+        "--bison", action="store_true",
+        help="Upload collected leads to EmailBison (requires BISON_API_KEY)",
+    )
+    parser.add_argument(
+        "--bison-list", type=str, default="PH Founders",
+        help="EmailBison list name for bulk upload (default: 'PH Founders')",
+    )
     args = parser.parse_args()
 
     # Validate API keys
@@ -313,6 +322,19 @@ def main():
         print(f"Hunter found {found} additional emails.")
     elif args.enrich and not HUNTER_API_KEY:
         print("\nSkipping Hunter enrichment (HUNTER_API_KEY not set).")
+
+    # Phase 3: EmailBison upload (optional)
+    if args.bison:
+        if BISON_API_KEY:
+            print("\n[Phase 3] Uploading leads to EmailBison...")
+            from bison_client import BisonClient
+            bison = BisonClient(BISON_API_KEY)
+            if bison.test_connection():
+                bison.bulk_upload_leads(records, list_name=args.bison_list)
+            else:
+                print("Skipping EmailBison upload (connection failed).")
+        else:
+            print("\nSkipping EmailBison upload (BISON_API_KEY not set).")
 
     # Output
     print_summary(records)
