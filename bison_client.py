@@ -23,7 +23,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-BISON_BASE_URL = "https://dedi.emailbison.com/api"
+BISON_BASE_URL = "https://send.breakoutcreatives.com/api"
 
 
 class BisonClient:

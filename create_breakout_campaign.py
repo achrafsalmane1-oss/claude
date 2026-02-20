@@ -14,7 +14,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 API_KEY = os.getenv("BISON_API_KEY", "")
-BASE_URL = "https://dedi.emailbison.com/api"
+BASE_URL = "https://send.breakoutcreatives.com/api"
 
 HEADERS = {
     "Authorization": f"Bearer {API_KEY}",
@@ -224,26 +224,24 @@ def main():
     print(f"  Campaign created. ID: {campaign_id}\n")
 
     # --- 4. Build sequence_steps payload ---
-    # Primary step (variant 1 = no variant flag)
+    # Primary step (variant 1 = no variant flag, no order field for variants)
     steps = [
         {
             "email_subject": SUBJECT,
             "email_body": VARIANTS[0],
-            "wait_in_days": 0,
+            "wait_in_days": 1,
             "thread_reply": False,
-            "order": 1,
         }
     ]
 
-    # Variants 2-11 are A/B variants of step 1
+    # Variants 2-11 are A/B variants of step 1 — no 'order' field on variants
     for body in VARIANTS[1:]:
         steps.append(
             {
                 "email_subject": SUBJECT,
                 "email_body": body,
-                "wait_in_days": 0,
+                "wait_in_days": 1,
                 "thread_reply": False,
-                "order": 1,
                 "variant": True,
                 "variant_from_step": 1,
             }
