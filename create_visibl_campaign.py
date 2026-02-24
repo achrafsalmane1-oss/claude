@@ -36,126 +36,133 @@ CAMPAIGN_NAME = "Visibl - YC Outreach Sequence"
 SIGNATURE = "Bryce Neil | Founder @ Visibl Semiconductors"
 
 # ---------------------------------------------------------------------------
-# Step 1 — Email 1 variants (5 A/B copies)
+# Step 1 — Email 1 variants (5 A/B copies)  — spintax throughout
 # ---------------------------------------------------------------------------
 
 # Variant 1A (primary) — Subject: "Quick intro <> YC + semiconductors"
 SUBJECT_1A = "Quick intro <> YC + semiconductors"
-BODY_1A = f"""Hi {{{{first_name}}}},
+BODY_1A = """\
+Hi {first_name},
 
 I'm Bryce Neil, founder of Visibl Semiconductors.
 
-We were accepted into Y Combinator last week, and through YC we've been spending time with semiconductor teams around one problem.
+We {were accepted into|got into} Y Combinator {last week|recently}, and through YC we've been {spending time with|talking to} semiconductor teams around one problem.
 
-As teams scale, specs, RTL, and verification slowly drift and it usually shows up late, when it's most painful.
+As teams scale, specs, RTL, and verification {slowly drift|start to drift} — and it {usually|tends to} show up late, when it's most painful.
 
-We're building Visibl to help teams catch those issues earlier and reduce the coordination work that pulls senior engineers into constant triage.
+We're building Visibl to {help teams catch|surface} those issues earlier and {reduce|cut down} the coordination work that pulls senior engineers into constant triage.
 
-Curious how {{{{company_name}}}} handles this today and whether it's even a problem on your side.
+{Curious|Wondering} how {company_name} handles this today and whether it's even a problem on your side.
 
-Worth a quick conversation?
+{Worth|Open to} a quick {conversation|chat}?
 
-{SIGNATURE}"""
+""" + SIGNATURE
 
 # Variant 1A-alt (A/B subject test) — Subject: "spec ↔ RTL ↔ DV question"
 SUBJECT_1A_ALT = "spec ↔ RTL ↔ DV question"
-BODY_1A_ALT = f"""Hi {{{{first_name}}}},
+BODY_1A_ALT = """\
+Hi {first_name},
 
-I'm Bryce, co-founder & CEO of Visibl Semiconductors.
+I'm Bryce, {co-founder & CEO|founder} of Visibl Semiconductors.
 
-We've been talking to silicon teams about a common scaling issue: as orgs grow, specs, RTL, and verification drift and problems shows up late, around integration and freeze windows.
+We've been {talking to|speaking with} silicon teams about a {common|recurring} scaling issue: as orgs grow, specs, RTL, and verification {drift|fall out of sync} and problems {show|surface} up late, around {integration and freeze windows|tapeout}.
 
-We're building a low-lift, always-on way to automatically flag that drift early.
+We're building a {low-lift|lightweight}, always-on way to {automatically flag|catch} that drift early.
 
-Is that something {{{{company_name}}}} runs into, or mostly under control?
+Is that something {company_name} {runs into|deals with}, or mostly under control?
 
-If it's relevant, happy to share what we're learning. We're YC-backed, and the team is ex-Microsoft/Intel/Arm (silicon) and Deloitte OmniaAI.
+If it's relevant, {happy|glad} to share what we're learning. We're YC-backed, and the team is ex-Microsoft/Intel/Arm (silicon) and Deloitte OmniaAI.
 
-I'm Bay Area–based as well, 15 min Zoom or in-person works.
+I'm Bay Area–based as well, {15 min Zoom|a quick Zoom} or in-person works.
 
-{SIGNATURE}"""
+""" + SIGNATURE
 
 # Variant 1B — YC + Team Credibility
 SUBJECT_1B = "Quick intro <> YC + semiconductors"
-BODY_1B = f"""Hi {{{{first_name}}}},
+BODY_1B = """\
+Hi {first_name},
 
 I'm Bryce Neil, founder of Visibl.
 
-We were accepted into Y Combinator last week, and our team (ex-Microsoft, long-time silicon & infra folks) has been spending time with semiconductor teams on a pattern we keep seeing.
+We {were accepted into|got into} Y Combinator {last week|recently}, and our team ({ex-Microsoft|former Microsoft}, long-time silicon & infra folks) has been {spending time with|talking to} semiconductor teams on a pattern we keep seeing.
 
-As teams scale, coordination quietly becomes the bottleneck, specs, RTL, and verification drift, and senior engineers get pulled into late triage.
+As teams scale, coordination quietly {becomes|is} the bottleneck — specs, RTL, and verification drift, and senior engineers {get pulled into|end up in} late triage.
 
-We're building Visibl to help teams surface those issues earlier and keep things aligned as complexity grows.
+We're building Visibl to {help teams surface|flag} those issues earlier and {keep things aligned|stay ahead} as complexity grows.
 
-Curious how {{{{company_name}}}} approaches this today.
+{Curious|Wondering} how {company_name} {approaches|handles} this today.
 
-Worth a short conversation?
+{Worth|Open to} a short {conversation|chat}?
 
-{SIGNATURE}"""
+""" + SIGNATURE
 
 # Variant 1C — YC + "What we're learning" Angle
 SUBJECT_1C = "Quick intro <> YC + semiconductors"
-BODY_1C = f"""Hi {{{{first_name}}}},
+BODY_1C = """\
+Hi {first_name},
 
 I'm Bryce, founder of Visibl.
 
-We just got into Y Combinator last week, and we've been speaking with a number of semiconductor teams about how coordination breaks down as orgs scale.
+We {just got into|were just accepted into} Y Combinator {last week|recently}, and we've been {speaking with|talking to} a number of semiconductor teams about how coordination breaks down as orgs scale.
 
-The common theme: tools scale well, humans don't. Specs change, decisions get buried, and issues show up late when they're hardest to fix.
+The {common|recurring} theme: tools scale well, humans don't. Specs change, decisions {get buried|pile up}, and issues {show up|surface} late when they're hardest to fix.
 
-Our team (ex-Microsoft, deep infra + silicon background) is building Visibl to tackle that gap for teams like yours.
+Our team ({ex-Microsoft|former Microsoft}, deep infra + silicon background) is building Visibl to {tackle|close} that gap for teams like yours.
 
-Would be great to hear how {{{{company_name}}}} handles this today, even just as a sanity check.
+{Would love|Love} to hear how {company_name} handles this today, even just as a sanity check.
 
-Open to a quick chat?
+{Open to|Worth} a quick {chat|call}?
 
-{SIGNATURE}"""
+""" + SIGNATURE
 
 # Variant 1D — Stronger Flex, Still Clean
 SUBJECT_1D = "Quick intro <> YC + semiconductors"
-BODY_1D = f"""Hi {{{{first_name}}}},
+BODY_1D = """\
+Hi {first_name},
 
 I'm Bryce Neil, founder of Visibl.
 
-We were accepted into Y Combinator recently. Our team includes folks who've built large-scale systems at Microsoft and worked closely with silicon orgs as they grew.
+We {were accepted into|got into} Y Combinator {recently|last week}. Our team includes folks who've {built|shipped} large-scale systems at Microsoft and worked closely with silicon orgs as they grew.
 
-One issue we keep seeing: as semiconductor teams add people and artifacts, coordination becomes fragile, specs, RTL, and verification fall out of sync, and senior engineers end up firefighting.
+One issue we keep seeing: as semiconductor teams add people and artifacts, coordination {becomes fragile|breaks down} — specs, RTL, and verification {fall out of sync|drift}, and senior engineers {end up firefighting|get pulled into constant triage}.
 
-Visibl is built around solving that coordination layer.
+Visibl is built {around solving|to fix} that coordination layer.
 
-Curious whether this is something {{{{company_name}}}} has felt as the team has grown.
+{Curious|Wondering} whether this is something {company_name} has {felt|run into} as the team has grown.
 
-Worth a short conversation?
+{Worth|Open to} a short {conversation|chat}?
 
-{SIGNATURE}"""
+""" + SIGNATURE
 
 # ---------------------------------------------------------------------------
-# Step 2 — Soft Follow-Up
+# Step 2 — Soft Follow-Up  — spintax throughout
 # ---------------------------------------------------------------------------
 SUBJECT_2 = "Following up"
-BODY_2 = f"""{{{{first_name}}}},
+BODY_2 = """\
+{first_name},
 
-Quick follow-up.
+{Quick follow-up.|Following up.}
 
-One thing we keep hearing from teams we're talking to through YC is that most schedule risk doesn't come from tools, it comes from keeping humans aligned as artifacts and decisions multiply.
+One thing we keep hearing from teams we're talking to through YC is that most {schedule risk|timeline slippage} doesn't come from tools — it comes from keeping humans aligned as artifacts and decisions multiply.
 
-Totally possible this isn't an issue for {{{{company_name}}}}, but figured it was worth asking.
+{Totally possible|Possible} this isn't an issue for {company_name}, but {figured it was worth asking|wanted to check}.
 
-Happy to share what we're learning either way.
+{Happy|Glad} to share what we're learning either way.
 
-{SIGNATURE}"""
+""" + SIGNATURE
 
 # ---------------------------------------------------------------------------
-# Step 3 — Redirect / Close
+# Step 3 — Redirect / Close  — spintax throughout
 # ---------------------------------------------------------------------------
 SUBJECT_3 = "Right person?"
-BODY_3 = f"""Hi {{{{first_name}}}},
+BODY_3 = """\
+Hi {first_name},
 
-If this isn't really your area, no worries at all — is there someone else on the silicon or verification side who thinks about this kind of thing?
+If this isn't {really your area|the right fit}, no worries at all — is there someone else on the {silicon or verification|engineering or verification} side who {thinks about this kind of thing|owns this}?
 
-Appreciate it.
+{Appreciate it.|Thanks.}
 
-{SIGNATURE}"""
+""" + SIGNATURE
 
 
 # ---------------------------------------------------------------------------
