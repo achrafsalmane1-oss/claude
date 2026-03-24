@@ -1,0 +1,14 @@
+{
+  "campaign_name": "Ask Before Pitch",
+  "client": "demandzen",
+  "link": "https://send.revsyncnow.com/",
+  "api_key": "71|IjIHJVZ3ku0pij8CZUlsT5A1ZfRsBI9dukVgYdkz81fe0f8c",
+  "emails": [
+    {
+      "id": "EM1",
+      "thread": "new",
+      "subject": "{{first_name}}, has this ever happened at {{company_name}}?",
+      "body": "{{first_name}}, has {{company_name}} ever had an SDR go on leave and had to scramble to cover their pipeline?\n\nAsking because we've been filling that exact gap for similar-sized teams with senior reps that ramp in days, not months. You only pay for qualified meetings.\n\nRelevant because most teams your size deal with this at least once a year."
+    }
+  ]
+}

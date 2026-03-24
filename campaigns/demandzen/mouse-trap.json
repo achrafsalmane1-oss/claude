@@ -1,0 +1,19 @@
+{
+  "campaign_name": "Mouse Trap",
+  "client": "demandzen",
+  "link": "https://send.revsyncnow.com/",
+  "api_key": "71|IjIHJVZ3ku0pij8CZUlsT5A1ZfRsBI9dukVgYdkz81fe0f8c",
+  "emails": [
+    {
+      "id": "EM1",
+      "thread": "new",
+      "subject": "{{first_name}}, quick question",
+      "body": "{{first_name}}, noticed {{company_name}} has a solid SDR team.\n\nCurious, do you have a coverage plan for when someone goes on parental leave? Or does the rest of the team just absorb it?"
+    },
+    {
+      "id": "EM2",
+      "thread": "reply_to_EM1",
+      "body": "{{first_name}}, only asking because a few teams we work with lost 2-3 months of pipeline before they realized the gap. We helped them keep coverage going without hiring or retraining anyone.\n\nCan I share how they set it up?"
+    }
+  ]
+}

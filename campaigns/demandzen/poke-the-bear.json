@@ -1,0 +1,30 @@
+{
+  "campaign_name": "Poke the Bear",
+  "client": "demandzen",
+  "link": "https://send.revsyncnow.com/",
+  "api_key": "71|IjIHJVZ3ku0pij8CZUlsT5A1ZfRsBI9dukVgYdkz81fe0f8c",
+  "emails": [
+    {
+      "id": "EM1",
+      "thread": "new",
+      "subject": "{{first_name}}, quick question about SDR coverage",
+      "body": "{{first_name}}, what happens to your pipeline when one of your SDRs goes on parental leave for 3 months?\n\nMost sales leaders we talk to say they just split the book across the team. Then connect rates drop for everyone.\n\nWe've helped a few mid-market teams maintain full pipeline coverage during similar gaps. Their AEs didn't even notice the difference.\n\nWorth a quick chat about how they set that up?"
+    },
+    {
+      "id": "EM2",
+      "thread": "reply_to_EM1",
+      "body": "{{first_name}}, the reason I ask is because 70% of the pipeline from that territory usually just goes dark during leave. And training someone new for a 4-month window doesn't pencil out.\n\nWe've been the bridge for a few teams in similar spots. Only get paid when meetings are actually qualified.\n\nWould it help to hear how they handled it?"
+    },
+    {
+      "id": "EM3",
+      "thread": "new",
+      "subject": "{{first_name}}, something that surprised us",
+      "body": "{{first_name}}, one thing that surprised us working with teams your size: the pipeline gap from a single SDR on leave usually shows up 6-8 weeks later, not immediately.\n\nBy the time most leaders react, they've already lost a quarter's worth of coverage.\n\nCurious, do you have a playbook for when that happens, or is it more of a figure-it-out-when-it-comes situation?"
+    },
+    {
+      "id": "EM4",
+      "thread": "reply_to_EM3",
+      "body": "{{first_name}}, I know there's about {{employee_count}} people over at {{company_name}} and maybe SDR coverage isn't something you're thinking about right now. Should I reach out to {{other_contact_name}} instead given their role?"
+    }
+  ]
+}
