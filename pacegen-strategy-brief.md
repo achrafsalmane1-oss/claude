@@ -6,13 +6,15 @@
 
 ## Executive Summary
 
-Over the past ~120 days we've built, tested, and scaled 9 active outbound campaigns for PaceGen across two major market signals (Google and Microsoft ecosystems), contacted **119,769 prospects**, sent **210,881 emails**, generated **2,278 unique replies**, and produced **338 qualified interested responses** — all for a single offer category in a brand-new market (GEO).
+Over the past ~120 days we've built, tested, and scaled **15 outbound campaigns** for PaceGen across 3 offers (GEO/LLM visibility, Revenue Zen, Eastern Standard), contacted **156,870 prospects**, sent **256,479 emails**, generated **2,523 unique replies**, and produced **348 qualified interested responses**.
 
 This document covers what we built, the signal-based strategies we deployed, what's working, what we're cutting, and what the next 90 days look like.
 
 ---
 
 ## 1. Campaign Overview — Full History
+
+### Offer 1: PaceGen GEO / LLM Visibility
 
 | Campaign | Signal Type | Status | Leads Contacted | Emails Sent | Unique Replies | Interested |
 |---|---|---|---|---|---|---|
@@ -26,7 +28,30 @@ This document covers what we built, the signal-based strategies we deployed, wha
 | Competitor Gap Attack — Microsoft | Competitor Signal | Complete | 7,329 | 7,329 | 67 | 3 |
 | Whole-Offer Strategy — Microsoft | Whole Offer | Complete | 5,592 | 5,592 | 42 | 4 |
 | Content Investment + Traffic Decline | SEO/LLM Decay | Draft | — | — | — | — |
-| **TOTALS** | | | **119,769** | **210,881** | **2,278** | **338** |
+| **GEO Subtotal** | | | **119,769** | **210,881** | **2,278** | **338** |
+
+### Offer 2: Revenue Zen
+
+| Campaign | Status | Leads Contacted | Emails Sent | Unique Replies | Interested |
+|---|---|---|---|---|---|
+| Revenue Zen — Main Campaign | Paused | 2,205 | 5,759 | 34 | — |
+| RZ — Updated | Paused | 16,772 | 16,772 | 74 | 8 |
+| Copy of RZ — Updated | Active | 4,474 | 4,474 | 2 | — |
+| **RZ Subtotal** | | **23,451** | **27,005** | **110** | **8** |
+
+### Offer 3: Eastern Standard
+
+| Campaign | Status | Leads Contacted | Emails Sent | Unique Replies | Interested |
+|---|---|---|---|---|---|
+| Eastern Standard — Main Campaign | Paused | 5,366 | 10,309 | 69 | 1 |
+| ES — Updated | Active | 8,284 | 8,284 | 66 | 1 |
+| **ES Subtotal** | | **13,650** | **18,593** | **135** | **2** |
+
+### Grand Total — All Offers
+
+| | Leads Contacted | Emails Sent | Unique Replies | Interested |
+|---|---|---|---|---|
+| **TOTAL** | **156,870** | **256,479** | **2,523** | **348** |
 
 ---
 
@@ -43,7 +68,7 @@ We scraped companies with or without `llms.txt` files on their domains, a strong
 
 The Existing LLMs — Google campaign became our **highest unique reply rate campaign at ~3.6%** (685 replies / 19,209 leads), which is strong for cold outbound. This is a signal-based campaign.
 
-**Example copy that generated the reply from BLACKBOX.AI Co-Founder Roger Rizk:**
+**Example copy that generated the reply from Roger Rizk, Co-Founder & COO @ BLACKBOX.AI:**
 > *"Roger, checked blackbox.ai/llms.txt randomly again and I saw you already have one on your website. Smart move. Do you know if AI tools are actually citing Blackbox when people ask about ai development platform? We track AI citation rates and can show you exactly where you're showing up (or not) to help you generate more leads. Can I send over a report if this is slightly relevant?"*
 
 **Roger's reply:** *"please share how you can help in details"*
@@ -51,7 +76,7 @@ The Existing LLMs — Google campaign became our **highest unique reply rate cam
 ### Signal 2 — Competitor Gap Attack (Google + Microsoft)
 **Campaigns:** Competitor Gap Attack — Google, Competitor Gap Attack — Microsoft
 
-We ran prospects' competitors through ChatGPT and Perplexity and identified where competitors are cited but the prospect is not. The email leads with a specific, personalized finding.
+We ran prospects' competitors through ChatGPT and Perplexity and identified where competitors are cited but the prospect is not.
 
 **Example that generated a reply from Oleg Zankov, Founder @ Latenode:**
 > *"Oleg — ran 'best ai workflow automation saas' through ChatGPT. Zapier showed up. Latenode didn't. Right now is the easiest time to fix that. ChatGPT, Perplexity, Google AI Overviews — they're all still building their source preferences. Early movers are locking in positions while competitors sleep. We make AI recommend you instead of your competitors. 90 days to full visibility — most see first citations in 30. Want me to send over a competitive breakdown?"*
@@ -77,28 +102,33 @@ We reach out to companies that don't appear in ChatGPT when their core keywords 
 
 ## 3. What's Working
 
-**Top performers ranked by interested responses:**
+**Top performers ranked by interested responses (all offers):**
 
-| Campaign | Interested | Signal Type |
+| Campaign | Interested | Unique Replies |
 |---|---|---|
-| GEO Readiness | 207 | Broad GEO search gap |
-| Existing LLMs — Google | 92 | llms.txt detection |
-| Competitor Gap Attack — Google | 22 | Competitor citation gap |
-| Missing LLMs — Google | 10 | Missing llms.txt |
-| Whole-Offer Strategy — Microsoft | 4 | Multi-angle offer |
-| Whole-Offer Strategy — Google | 0 (9 replies) | Multi-angle offer |
+| GEO Readiness | 207 | 1,216 |
+| Existing LLMs — Google | 92 | 685 |
+| Competitor Gap Attack — Google | 22 | 163 |
+| Missing LLMs — Google | 10 | 59 |
+| RZ — Updated | 8 | 74 |
+| Whole-Offer Strategy — Microsoft | 4 | 42 |
+| Competitor Gap Attack — Microsoft | 3 | 67 |
+| Eastern Standard — Main Campaign | 1 | 69 |
+| ES — Updated | 1 | 66 |
 
-**Key insight:** The two strongest performers are signal-based (llms.txt + competitor gap). The broad GEO Readiness campaign wins on volume. Combining both is the right strategy.
+**Key insight:** GEO and the signal-based LLM campaigns are the clear winners by interested count. Revenue Zen and Eastern Standard are generating replies at solid rates but haven't converted to interested at the same level — likely a copy or offer-fit issue worth addressing in the next cycle.
 
 ---
 
 ## 4. What's Not Working / What We're Cutting
 
-**Whole-Offer Strategy — Google (Complete):** 1,153 leads, only 9 replies, 0 interested. The multi-angle approach dilutes the message. Cutting this entirely for the next cycle.
+**Whole-Offer Strategy — Google (Complete):** 1,153 leads, only 9 replies, 0 interested. Multi-angle approach dilutes the message. Cutting entirely for the next cycle.
 
-**Content Investment + Traffic Decline — Google (Draft):** Never launched. The SEO-decay angle targets a different buyer mindset and requires more education in the sequence. We're shelving this for now unless PaceGen wants to specifically target companies experiencing organic traffic decline.
+**Content Investment + Traffic Decline — Google (Draft):** Never launched. Shelving — the SEO-decay angle targets a different buyer mindset and requires more education in the sequence.
 
-**Microsoft ecosystem as primary:** The Microsoft-based campaigns consistently underperformed their Google equivalents across all signal types. We ran them to test parity — the data says Google is the right primary target. Microsoft signals can remain as a secondary supplement.
+**Microsoft ecosystem as primary:** Consistently underperformed Google equivalents across all signal types. Data says Google is the right primary target. Microsoft signals can remain as small supplemental.
+
+**RZ and ES reply-to-interested conversion:** Both offers are generating replies (110 and 135 respectively) but very few interested flags (8 and 2). This suggests the copy is getting attention but the offer framing or follow-up sequence isn't converting curiosity into intent. Recommend a copy and sequence review for both offers before the next cycle.
 
 ---
 
@@ -122,9 +152,9 @@ Both tiers are running. Volume at Tier 2 is what's keeping pipeline full while T
 
 **Recommendation for the next 90 days:**
 
-1. **New domain + inbox set per offer type** — 4 sending identities, one per offer angle. This improves deliverability and attribution.
+1. **New domain + inbox set per offer** — 4 sending identities minimum, one per offer angle (GEO, RZ, ES, plus one reserve). This also improves attribution per offer.
 2. **Warm new inboxes now** — 4-6 week warmup before using for high-volume sends.
-3. **Retire aging domains** — some of the current domains (`pacegenbrandauthority.info`, `pacegenanswerstrategy.info`) have sent at scale and should be rotated out.
+3. **Retire aging domains** — `pacegenbrandauthority.info`, `pacegenanswerstrategy.info` have sent at scale and should be rotated out.
 
 This isn't a nice-to-have. Fresh infrastructure is the single biggest lever for getting more replies out of the same copy.
 
@@ -135,11 +165,12 @@ This isn't a nice-to-have. Fresh infrastructure is the single biggest lever for 
 ### Campaigns to Continue / Scale
 - **GEO Readiness** — Refresh with new leads and new infrastructure. This is the backbone.
 - **Existing LLMs — Google** — Best reply rate. Reload with a new lead batch (the market refreshes as more companies adopt llms.txt).
+- **RZ and ES** — Continue but with a revised sequence focused on converting the high reply volume into more interested responses.
 
 ### New Campaigns to Launch
-- **Re-engagement campaign** — We have 2,000+ replies in the system, including auto-replies and soft maybes. A targeted re-engagement sequence ("Following up from 60 days ago — did you ever look at where you stand?") can generate meetings from an already-warm list.
-- **Blog content / thought leadership angle** — For prospects who have active SEO blogs but no AI citation strategy, we lead with the content angle: "You're creating great content. Here's why ChatGPT isn't citing it."
-- **New industry targeting** — PaceGen's sweet spot appears to be tech, SaaS, and professional services. We're seeing strong response from healthcare and nonprofit adjacents (Pazanga, FreeWorld, NAMI). We should formalize healthcare and NGO as a dedicated campaign with offer-specific copy.
+- **Re-engagement campaign** — We have 2,500+ replies in the system, including auto-replies and soft maybes. A targeted re-engagement sequence ("Following up from 60 days ago — did you ever look at where you stand?") can generate meetings from an already-warm list.
+- **Blog content / thought leadership angle** — For prospects with active SEO blogs but no AI citation strategy: "You're creating great content. Here's why ChatGPT isn't citing it."
+- **New industry targeting** — Strong response from healthcare and nonprofit adjacents (Pazanga, FreeWorld, NAMI). Formalize as a dedicated GEO campaign with offer-specific copy.
 
 ### What We're NOT Doing
 - Whole-offer multi-angle campaigns — data says they don't work
@@ -150,14 +181,14 @@ This isn't a nice-to-have. Fresh infrastructure is the single biggest lever for 
 ## 8. Summary
 
 In roughly 4 months we've:
-- Built and tested **9 distinct outbound campaigns** across multiple signal types
-- Contacted **119,769 unique prospects**
-- Sent **210,881 emails**
-- Generated **2,278 unique replies** and **338 qualified interested responses**
-- Proven out signal-based strategies (llms.txt, competitor gap) with documented positive replies from founders and CEOs at real companies
-- Identified the 2 campaigns worth scaling and the 2 worth cutting
+- Built and tested **15 distinct outbound campaigns** across 3 offers and multiple signal types
+- Contacted **156,870 unique prospects**
+- Sent **256,479 emails**
+- Generated **2,523 unique replies** and **348 qualified interested responses**
+- Proven out signal-based strategies with documented positive replies from real founders and CEOs
+- Identified the campaigns worth scaling and the ones worth cutting
 
-The pipeline is working. The next step is refreshing infrastructure, re-engaging the warm list, and adding 1-2 new campaign angles on top of the proven base.
+The pipeline is working across all three offers. The next step is refreshing infrastructure, revising the RZ and ES sequences to convert more replies into meetings, re-engaging the warm list, and adding 1-2 new campaign angles on top of the proven base.
 
 We're ready to propose a new 90-day scope if PaceGen wants to continue.
 
