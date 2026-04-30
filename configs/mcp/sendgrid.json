@@ -1,0 +1,17 @@
+{
+  "disabled": true,
+  "_comment": "SendGrid email send via MCP. The package @modelcontextprotocol/server-sendgrid does not exist on npm — provider:add refuses to register this template by default. To enable: (a) point command/args at your own SendGrid MCP server (e.g. command: node, args: [/path/to/sendgrid-mcp.js]) AND remove this disabled flag, or (b) re-run with --accept-disabled if you are intentionally testing the disabled path.",
+  "name": "sendgrid",
+  "displayName": "SendGrid (Email)",
+  "transport": "stdio",
+  "command": "npx",
+  "args": ["-y", "@modelcontextprotocol/server-sendgrid"],
+  "env": {
+    "SENDGRID_API_KEY": "${SENDGRID_API_KEY}"
+  },
+  "capabilities": ["email_send"],
+  "healthCheck": {
+    "tool": "send_email",
+    "timeout": 5000
+  }
+}

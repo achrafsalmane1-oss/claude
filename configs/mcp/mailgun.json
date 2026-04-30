@@ -1,0 +1,18 @@
+{
+  "disabled": true,
+  "_comment": "Mailgun email send via MCP. The package @modelcontextprotocol/server-mailgun does not exist on npm — provider:add refuses to register this template by default. To enable: (a) point command/args at your own Mailgun MCP server (e.g. command: node, args: [/path/to/mailgun-mcp.js]) AND remove this disabled flag, or (b) re-run with --accept-disabled if you are intentionally testing the disabled path.",
+  "name": "mailgun",
+  "displayName": "Mailgun (Email)",
+  "transport": "stdio",
+  "command": "npx",
+  "args": ["-y", "@modelcontextprotocol/server-mailgun"],
+  "env": {
+    "MAILGUN_API_KEY": "${MAILGUN_API_KEY}",
+    "MAILGUN_DOMAIN": "${MAILGUN_DOMAIN}"
+  },
+  "capabilities": ["email_send"],
+  "healthCheck": {
+    "tool": "send_message",
+    "timeout": 5000
+  }
+}

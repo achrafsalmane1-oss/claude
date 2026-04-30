@@ -1,6 +1,6 @@
 ---
 name: campaign-dashboard
-description: "This skill should be used when the user says 'campaign status', 'show me campaigns', 'visualize campaigns', 'what\'s the state of campaigns', 'campaign dashboard', 'open campaign view', 'how are outreach campaigns doing visually', 'show campaign pipeline', 'show me the leads for [campaign]', or any variant indicating they want a visual browser-based campaign dashboard."
+description: "This skill should be used when the user says 'campaign status', 'show me campaigns', 'visualize campaigns', 'what's the state of campaigns', 'campaign dashboard', 'open campaign view', 'how are outreach campaigns doing visually', 'show campaign pipeline', 'show me the leads for [campaign]', or any variant indicating they want a visual browser-based campaign dashboard."
 version: 1.0.0
 ---
 

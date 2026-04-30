@@ -1,0 +1,17 @@
+{
+  "disabled": true,
+  "_comment": "Brevo (formerly Sendinblue) email send via MCP. The package @modelcontextprotocol/server-brevo does not exist on npm — provider:add refuses to register this template by default. To enable: (a) point command/args at your own Brevo MCP server (e.g. command: node, args: [/path/to/brevo-mcp.js]) AND remove this disabled flag, or (b) re-run with --accept-disabled if you are intentionally testing the disabled path.",
+  "name": "brevo",
+  "displayName": "Brevo (Email)",
+  "transport": "stdio",
+  "command": "npx",
+  "args": ["-y", "@modelcontextprotocol/server-brevo"],
+  "env": {
+    "BREVO_API_KEY": "${BREVO_API_KEY}"
+  },
+  "capabilities": ["email_send"],
+  "healthCheck": {
+    "tool": "send_transactional_email",
+    "timeout": 5000
+  }
+}
