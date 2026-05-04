@@ -1,0 +1,38 @@
+{
+  "expo": {
+    "name": "Haven",
+    "slug": "haven",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "splash": {
+      "resizeMode": "contain",
+      "backgroundColor": "#080808"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.haven.savings",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Required for identity verification",
+        "NSPhotoLibraryUsageDescription": "Required for identity verification"
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#080808"
+      },
+      "package": "com.haven.savings"
+    },
+    "plugins": [
+      "expo-router",
+      "@stripe/stripe-react-native"
+    ],
+    "scheme": "haven",
+    "extra": {
+      "eas": {
+        "projectId": "your-eas-project-id"
+      }
+    }
+  }
+}

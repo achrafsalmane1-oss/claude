@@ -1,0 +1,45 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Environment files — NEVER commit these
+.env
+.env.local
+.env.*.local
+**/secrets.json
+
+# Solana / Anchor
+contract/target/
+contract/.anchor/
+contract/**-keypair.json
+~/.config/solana/id.json
+
+# Rust
+target/
+Cargo.lock
+
+# Expo / React Native
+mobile/.expo/
+mobile/dist/
+mobile/web-build/
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.orig.*
+
+# Build outputs
+backend/dist/
+out/
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.DS_Store
+
+# Logs
+*.log
+logs/

@@ -1,0 +1,17 @@
+{
+  "name": "haven-scripts",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "stake": "node stake.js",
+    "distribute": "node distribute_rewards.js",
+    "withdrawals": "node process_withdrawals.js",
+    "status": "node status.js"
+  },
+  "dependencies": {
+    "@coral-xyz/anchor": "^0.30.1",
+    "@solana/web3.js": "^1.95.3",
+    "dotenv": "^16.4.5",
+    "node-cron": "^3.0.3"
+  }
+}
