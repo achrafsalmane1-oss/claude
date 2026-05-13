@@ -1,0 +1,142 @@
+{
+  "meta": {
+    "created": "2026-05-13",
+    "author": "Ryan | Principal @ Breakout Capital Group",
+    "signature": "Ryan | Principal @ Breakout Capital Group\nToronto, ON",
+    "variables": ["{firstname}", "{niche}"],
+    "format": "plain_text",
+    "spintax": "Use {option A|option B|option C} syntax — platform replaces at send time",
+    "rules": [
+      "No use of 'opportunity' or 'introduction' anywhere",
+      "Only variables are {firstname} and {niche}",
+      "Same signature on every variant"
+    ]
+  },
+
+  "campaigns": [
+
+    {
+      "name": "June A — Timing Check",
+      "angle": "Lead with a timing question — are they raising soon? We have mandate-ready funds right now.",
+      "variants": [
+        {
+          "id": "A1",
+          "subject": "{Raising this year?|Fundraising plans for 2026?|Capital plans this year?}",
+          "body": "{firstname},\n\n{Quick question —|One quick thing —|Short one:} {are you planning|planning} to raise {at all|anytime} in the next {6-9|3-6|6-12} months?\n\n{We work with|Our firm scouts for|Breakout sources deals for} {a handful of|several|a few} {NA and European|North American and European} funds {actively looking at|with active mandates in|currently focused on} {niche} companies from Seed to Series C.\n\n{Worth a quick call if timing lines up?|Happy to connect if the timing is right?|Open to a quick chat to see if there's a fit?}\n\nRyan | Principal @ Breakout Capital Group\nToronto, ON"
+        },
+        {
+          "id": "A2",
+          "subject": "{Any plans to raise this year?|Looking to raise in 2026?|Planning a round this year?}",
+          "body": "{firstname},\n\n{We cover a lot of {niche} deals — wanted to check|I follow the {niche} space closely — quick question} on your fundraising plans.\n\n{A few|Several|A handful of} {buyside groups|investor groups|funds} {we source for|we work with|in our network} {have capital earmarked|are deploying capital|are actively allocating} for {niche} right now, {Seed through Series C|across Seed to C|from Seed to Series C}.\n\nAre you {thinking about a raise|considering a round|looking at capital} in the next {two|three|few} quarters?\n\nRyan | Principal @ Breakout Capital Group\nToronto, ON"
+        },
+        {
+          "id": "A3",
+          "subject": "{Q3 fundraising|Raising in Q3?|H2 capital plans?}",
+          "body": "{firstname},\n\n{Buyside activity in {niche} is strong right now|There's solid buyside interest in {niche} this quarter|We're seeing good fund interest in {niche} at the moment} — {thought it was worth reaching out|wanted to flag it|figured it was worth a note}.\n\n{We connect|Our firm connects|Breakout connects} {niche} founders with {pre-vetted|relevant|the right} {investor groups|funds|buyside firms} {looking at|focused on|allocating to} {Seed to Series C|early to growth stage|Seed through C} deals.\n\nAny chance {a raise|capital|a round} is on the roadmap?\n\nRyan | Principal @ Breakout Capital Group\nToronto, ON"
+        },
+        {
+          "id": "A4",
+          "subject": "{Capital this quarter?|Funding on the roadmap?|Raise on your timeline?}",
+          "body": "{firstname},\n\n{We source capital for {niche} companies regularly|We place capital for {niche} founders through our fund network|We've been working with {niche} founders on raising rounds} — {and have a few groups|and a few funds} {looking right now|actively searching|with open mandates}.\n\n{If you're considering|If a raise is} {anywhere on the roadmap|on the cards|something you're thinking about}, {worth a 15-min call|we could set up a quick chat|happy to explore if there's a match}.\n\nRyan | Principal @ Breakout Capital Group\nToronto, ON"
+        },
+        {
+          "id": "A5",
+          "subject": "{One quick question|Quick check|Fast question}",
+          "body": "{firstname},\n\n{Are you raising|Planning to raise|Thinking about capital} {this year|in 2026|anytime soon}?\n\n{We match|Our team matches|Breakout matches} {niche} {founders|companies|startups} with {North American and European|NA and European|NA/European} funds {currently deploying|with open mandates|actively investing} from Seed to Series C.\n\n{If timing is even close|If that's even remotely relevant}, {worth a quick call?|worth 15 minutes?|happy to share who we're working with.}\n\nRyan | Principal @ Breakout Capital Group\nToronto, ON"
+        }
+      ]
+    },
+
+    {
+      "name": "June B — Investor Demand",
+      "angle": "Lead with the demand side — specific funds are actively looking at their niche right now.",
+      "variants": [
+        {
+          "id": "B1",
+          "subject": "{Funds looking at {niche}|Buyside interest in {niche}|Investors focused on {niche}}",
+          "body": "{firstname},\n\n{We have|Our firm has|Breakout works with} {a few|several|a handful of} {NA and European|North American and European} funds {with active mandates|currently deploying|allocating capital} in {niche} right now.\n\n{They're looking at|Deal size is|Range is} {$2-50M|$1-30M|$2-30M} across {Seed through Series C|early to growth stage|Seed to C}.\n\nAre you {raising|considering a raise|looking at capital} {at all this year|anytime in 2026|in the next few quarters}?\n\nRyan | Principal @ Breakout Capital Group\nToronto, ON"
+        },
+        {
+          "id": "B2",
+          "subject": "{Active mandates in {niche}|{niche} deal mandates|Investor mandates — {niche}}",
+          "body": "{firstname},\n\n{Saw your company and wanted to reach out|Came across {niche} and thought of a few groups in our network} — {we have|there are} {a couple of|several|a few} {fund groups|buyside firms|investors} {we source for|in our network} {actively looking at|with open mandates in|focused on} {niche}.\n\n{Ticket sizes range|Deals run|They're looking at} {$2M to $50M|from seed to Series C|Seed through growth}, {NA and European firms|across NA and Europe|out of North America and Europe}.\n\n{Any chance you're raising?|Raising at all this year?|Worth a chat if you're thinking about it?}\n\nRyan | Principal @ Breakout Capital Group\nToronto, ON"
+        },
+        {
+          "id": "B3",
+          "subject": "{Buyside — {niche}|PE/VC focus: {niche}|Capital demand in {niche}}",
+          "body": "{firstname},\n\n{Quick note — |Just wanted to flag — |Heads up — }{we work with {niche} founders|we source deals in {niche}} and {currently have|right now have|have active} {buyside groups|fund groups|investor groups} {looking at|focused on|searching in} the space.\n\n{They're actively scouting|These groups are actively looking} {Seed to Series C|from early to growth stage} deals, {$2-50M range|ticket sizes from $2-50M|across $1-30M}.\n\n{Are you looking at raising|Any capital raise on the horizon|Raising anytime soon}?\n\nRyan | Principal @ Breakout Capital Group\nToronto, ON"
+        },
+        {
+          "id": "B4",
+          "subject": "{Investor pipeline for {niche}|Fund connections — {niche}|{niche} capital connections}",
+          "body": "{firstname},\n\n{We connect|Breakout connects|Our firm connects} {niche} founders directly with {relevant buyside groups|the right funds|pre-vetted investor groups} — {currently working with|right now we have} {a few|several|a handful of} {NA and European|North American and European} {funds|firms} {with mandates in|focused on|looking at} {niche}.\n\n{If you're eyeing|If you're thinking about|If a raise is on the table for} {2026|this year|the next year or two}, {worth getting on a call?|happy to connect?|worth exploring?}\n\nRyan | Principal @ Breakout Capital Group\nToronto, ON"
+        },
+        {
+          "id": "B5",
+          "subject": "{Funds scouting {niche}|Scouting {niche} deals|{niche} — active scouting}",
+          "body": "{firstname},\n\n{We scout {niche} deals for|We source {niche} companies for|Our network scouts {niche} for} {a few|several} {NA and European|North American and European} {funds|buyside groups|investor groups} {looking for|with mandates for|focused on} {Seed to C|early-stage to growth} deals.\n\n{The groups we work with|The funds in our network|Our buyside partners} {are deploying|have capital ready|are actively investing} — {$2M to $50M range|deals run $2-50M|ticket sizes vary from $2-50M}.\n\nAre you {looking at capital|thinking about a raise|considering a round} {this year|in 2026|at all}?\n\nRyan | Principal @ Breakout Capital Group\nToronto, ON"
+        }
+      ]
+    },
+
+    {
+      "name": "June C — Data & Results",
+      "angle": "Lead with speed and outcomes — founders in their space raise faster through our network. Data-backed feel like the best performer.",
+      "variants": [
+        {
+          "id": "C1",
+          "subject": "{Raise faster in {niche}|90-day round in {niche}?|Faster fundraise — {niche}}",
+          "body": "{firstname},\n\n{Most {niche} founders we work with|Founders in {niche} we've placed|{niche} companies we've matched} {close rounds|get connected to funds|reach term sheets} {in 60-90 days|within 90 days|in under 90 days} {through our network|through Breakout|via our fund relationships}.\n\nWe {source deals for|scout for|place capital with} {NA and European|North American and European} {funds|buyside groups} {investing in|focused on|with mandates in} {niche}, {Seed to Series C|from early to growth stage}.\n\n{Worth a quick call|Worth exploring|Happy to connect} if {you're thinking about raising|a round is on the horizon|capital is on the roadmap}?\n\nRyan | Principal @ Breakout Capital Group\nToronto, ON"
+        },
+        {
+          "id": "C2",
+          "subject": "{$2-50M {niche} mandates|Deal flow — {niche}|Active {niche} deal sourcing}",
+          "body": "{firstname},\n\n{Our firm has|Breakout has|We have} {$2-50M|$1-30M|several-million dollar} {mandates|allocations|investment mandates} {open right now|active right now|ready to deploy} {in {niche}|across {niche} companies|for {niche} founders} — {across Seed to Series C|from seed to growth stage|Seed through C}.\n\n{We help founders|We connect founders|Our team connects founders} {get in front of|reach|access} {relevant funds|the right investor groups|pre-vetted funds} {faster than going it alone|without the cold outreach grind|without spending months pitching blind}.\n\n{Any chance you're raising this year?|Raising at all in 2026?|Is a round on the cards?}\n\nRyan | Principal @ Breakout Capital Group\nToronto, ON"
+        },
+        {
+          "id": "C3",
+          "subject": "{Seed to C deal sourcing|Round sourcing for {niche}|Sourcing capital for {niche}}",
+          "body": "{firstname},\n\n{We source deals|Breakout sources deals|Our firm sources capital} for {a few|several|a handful of} {NA and European|North American and European} {funds|investor groups|buyside groups} {focused on|with mandates in|allocating to} {niche} — {deals run $2M to $50M|ticket sizes from $2-50M|Seed through Series C}.\n\n{Founders we've worked with|Companies we've placed|{niche} founders in our network} {have raised through|have connected with|have closed rounds with} {firms across NA and Europe|our fund network|groups in our network} {faster than via traditional channels|without months of cold pitching|in under 90 days}.\n\n{Is a raise on your timeline|Are you looking at capital|Is fundraising on the roadmap} {this year|in 2026|at all}?\n\nRyan | Principal @ Breakout Capital Group\nToronto, ON"
+        },
+        {
+          "id": "C4",
+          "subject": "{Investor matching — {niche}|{niche} round matching|Fund match for {niche} founders}",
+          "body": "{firstname},\n\n{We run a matching model|Our firm matches {niche} founders|Breakout matches {niche} companies} {to buyside groups|to the right funds|with relevant investor groups} {actively deploying|actively looking|with open mandates} — {North America and Europe|NA and European firms|across NA and Europe}, {Seed to Series C|from seed to growth}.\n\n{Match quality matters|The right fund fit matters|Getting in front of the right group matters} — {we've seen deals that|rounds that} {stalled for months close in weeks|moved faster with the right introductions|closed faster with the right fund fit}.\n\n{Raise on the table this year?|Thinking about a round in 2026?|Any capital plans for the year?}\n\nRyan | Principal @ Breakout Capital Group\nToronto, ON"
+        },
+        {
+          "id": "C5",
+          "subject": "{Capital sourcing — {niche}|{niche} fundraising support|Buyside network — {niche}}",
+          "body": "{firstname},\n\n{We've placed|Breakout has placed|Our team has connected} {niche} companies {with investor groups|with buyside groups|with funds} {across NA and Europe|in North America and Europe|in our fund network} — {$2M to $50M deals|Seed to Series C|early-stage to growth-stage}.\n\n{The pitch isn't cold outreach|This isn't cold pitching funds|We don't cold-pitch funds} — {we match|we pre-qualify and match|we vet both sides} {so the conversation starts warm|before making the connection|so the call is already relevant}.\n\n{Are you raising|Thinking about capital|Considering a round} {this year|in the next 6-12 months|at all in 2026}?\n\nRyan | Principal @ Breakout Capital Group\nToronto, ON"
+        }
+      ]
+    },
+
+    {
+      "name": "June D — Ultra Short / Direct",
+      "angle": "Two to three sentences max. No setup, no context. Blunt and direct — works for founders who hate long emails.",
+      "variants": [
+        {
+          "id": "D1",
+          "subject": "{Quick question|One quick question|Short question}",
+          "body": "{firstname},\n\n{Are you raising|Planning to raise|Thinking about capital} {in 2026|this year|anytime soon}?\n\n{We source {niche} deals for NA and European funds — Seed to Series C|Our firm places {niche} founders with funds in NA and Europe from Seed to C|Breakout connects {niche} founders to buyside groups from Seed to Series C}. {Worth a 15-minute call?|Happy to share more if relevant?|Worth a quick chat?}\n\nRyan | Principal @ Breakout Capital Group\nToronto, ON"
+        },
+        {
+          "id": "D2",
+          "subject": "{Funding for {niche}?|Capital for {niche}?|{niche} funding?}",
+          "body": "{firstname},\n\n{We have|Breakout has|Our firm has} {a few|several|a handful of} {NA and European|North American and European} funds {looking at {niche}|with mandates in {niche}|focused on {niche}} right now — {Seed to Series C|$2-50M range|from early to growth stage}.\n\n{Raising at all this year?|Any round on the horizon?|Is capital on the roadmap?}\n\nRyan | Principal @ Breakout Capital Group\nToronto, ON"
+        },
+        {
+          "id": "D3",
+          "subject": "{Worth a call?|Worth 15 minutes?|Worth connecting?}",
+          "body": "{firstname},\n\n{We scout {niche} deals|We source {niche} companies|Breakout scouts {niche} deals} for {investor groups|funds|buyside groups} {in NA and Europe|across North America and Europe} — {ticket sizes $2-50M|Seed through Series C|Seed to C}.\n\n{Raising in 2026?|Is a round on the cards?|Any chance you're raising this year?} {Worth 15 minutes?|Happy to connect?|Worth a quick call?}\n\nRyan | Principal @ Breakout Capital Group\nToronto, ON"
+        },
+        {
+          "id": "D4",
+          "subject": "{Investor match — {niche}|Fund match for {niche}|{niche} investor match}",
+          "body": "{firstname},\n\n{We match|Breakout matches|Our team matches} {niche} founders to {relevant funds|the right buyside groups|the right investor groups} in {NA and Europe|North America and Europe} — {from Seed to Series C|$2-50M range|early to growth stage}.\n\n{Is a raise on the horizon|Any capital plans|Thinking about fundraising} {this year|in 2026|at all}?\n\nRyan | Principal @ Breakout Capital Group\nToronto, ON"
+        }
+      ]
+    }
+
+  ]
+}
