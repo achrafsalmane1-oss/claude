@@ -6,3 +6,4 @@ output/
 
 # keep enrichment deliverables tracked
 !enrichment/*.csv
+*.log
