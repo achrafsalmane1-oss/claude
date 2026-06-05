@@ -9,6 +9,9 @@ Usage: python3 detect_country.py <file.csv> <country_col> <addr_col> <trade_tag>
 import csv, sys, re
 
 FILE, CCOL, ACOL, TAG = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4]
+# optional: fill remaining blanks with this country (use when the trade tag is
+# confirmed by the physical addresses, e.g. exporters whose addresses are Chinese)
+DEFAULT = sys.argv[5] if len(sys.argv) > 5 else ""
 
 US_STATES = set("al ak az ar ca co ct de fl ga hi id il in ia ks ky la me md ma "
                 "mi mn ms mo mt ne nv nh nj nm ny nc nd oh ok or pa ri sc sd tn "
@@ -66,6 +69,8 @@ for r in rows[1:]:
     c = detect(r[ai], cleaned)
     if not c and not cleaned:
         c = TAG          # no physical address -> trade tag is all we know
+    elif not c and DEFAULT:
+        c = DEFAULT      # addresses confirm the trade lane -> default blanks
     r[ci] = c
     if c: dist[c] += 1
     else: blank += 1
