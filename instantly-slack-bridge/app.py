@@ -122,18 +122,43 @@ def parse_reply(payload):
 POSITIVE_VALUES = {"1", "interested", "positive", "meeting_booked", "meeting booked"}
 
 
+# Phrases that signal a reply is NOT a positive lead. If any appear, we skip it.
+NEGATIVE_PHRASES = [
+    "not interested", "no interest", "no thanks", "no thank you",
+    "unsubscribe", "remove me", "take me off", "opt out", "opt-out",
+    "do not contact", "don't contact", "stop emailing", "stop contacting",
+    "leave me alone", "not the right", "wrong person", "wrong contact",
+    "no longer with", "has left the company", "is no longer", "spam",
+    "out of office", "out of the office", "automatic reply", "auto-reply",
+    "autoreply", "on vacation", "on leave", "away from my desk",
+    "delivery has failed", "undeliverable", "mailer-daemon",
+    "address not found", "not monitored", "do-not-reply", "do not reply",
+]
+
+
 def is_positive(reply):
-    """Decide whether a reply should be forwarded to Slack."""
+    """Decide whether a reply should be forwarded to Slack.
+
+    Instantly is not auto-tagging interest status in this account, so we
+    classify from the reply itself: skip clear non-positives (opt-outs,
+    auto-replies, wrong-person, bounces) and surface everything else, which
+    in cold-email practice is the set of replies worth a human response.
+    A real Instantly interest tag, if ever present, always counts as positive.
+    """
     if FORWARD_ALL_REPLIES:
         return True
+    # Honour an explicit Instantly interest/label signal if one is present.
     status = str(reply.get("interest_status", "")).strip().lower()
     event = str(reply.get("event_type", "")).strip().lower()
-    if status in POSITIVE_VALUES:
+    if status in POSITIVE_VALUES or "interest" in event or "positive" in event:
         return True
-    # Some Instantly setups emit a dedicated event for interested leads.
-    if "interest" in event or "positive" in event:
-        return True
-    return False
+    if status in {"-1", "-2", "-3", "not_interested", "wrong", "negative"}:
+        return False
+    # Fall back to reading the reply text.
+    text = (reply.get("reply_text") or "").lower()
+    if any(phrase in text for phrase in NEGATIVE_PHRASES):
+        return False
+    return True
 
 
 # ---------------------------------------------------------------------------
