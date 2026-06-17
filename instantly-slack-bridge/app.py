@@ -27,7 +27,6 @@ import hmac
 import json
 import logging
 import os
-import threading
 import time
 from datetime import datetime, timezone
 
@@ -378,12 +377,11 @@ def slack_interactions():
                 errors={"reply_block": "Please write a reply before sending."},
             )
         user_id = payload["user"]["id"]
-        threading.Thread(
-            target=process_reply_submission,
-            args=(ctx, reply_text, user_id),
-            daemon=True,
-        ).start()
-        # Empty 200 closes the modal immediately.
+        # Send synchronously so this works on serverless hosts (e.g. Vercel),
+        # where background threads are frozen once the response is returned.
+        # The Instantly call is fast, so we stay within Slack's 3s window.
+        process_reply_submission(ctx, reply_text, user_id)
+        # Empty 200 closes the modal.
         return ("", 200)
 
     return ("", 200)
