@@ -87,35 +87,68 @@ def _first(payload, *keys, default=""):
     return default
 
 
+_EMAIL_RE = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}")
+_UUID_RE = re.compile(r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}")
+
+
+def _deep_find(payload, regex, prefer_keys=()):
+    """Recursively search a payload for the first value matching regex.
+
+    Values under a key whose name contains one of prefer_keys win; otherwise
+    the first match found anywhere is returned. Makes us robust to whatever
+    shape/nesting Instantly uses.
+    """
+    preferred, any_match = [None], [None]
+
+    def walk(node, key=""):
+        if isinstance(node, dict):
+            for k, v in node.items():
+                walk(v, k)
+        elif isinstance(node, list):
+            for v in node:
+                walk(v, key)
+        elif isinstance(node, str):
+            m = regex.search(node)
+            if m:
+                val = m.group(0)
+                if any(p in key.lower() for p in prefer_keys) and preferred[0] is None:
+                    preferred[0] = val
+                if any_match[0] is None:
+                    any_match[0] = val
+
+    walk(payload)
+    return preferred[0] or any_match[0] or ""
+
+
 def parse_reply(payload):
     """Normalise an Instantly webhook payload into the fields we care about."""
+    eaccount = _first(payload, "eaccount", "email_account", "from_email")
+    lead_email = _first(
+        payload, "lead_email", "lead", "lead_email_address",
+        "from_address_email", "email", "from"
+    )
+    reply_to_uuid = _first(
+        payload, "reply_to_uuid", "email_id", "id", "uuid", "message_id"
+    )
+    # Recursive fallbacks so we always find the lead/id regardless of nesting.
+    if not lead_email:
+        candidate = _deep_find(payload, _EMAIL_RE, prefer_keys=("lead", "from", "contact", "prospect"))
+        if candidate and candidate != eaccount:
+            lead_email = candidate
+    if not reply_to_uuid:
+        reply_to_uuid = _deep_find(payload, _UUID_RE, prefer_keys=("email", "message", "reply"))
     return {
         "event_type": _first(payload, "event_type", "event", "type"),
-        # The uuid of the email we reply to. This is the critical field for
-        # sending a threaded reply back through Instantly.
-        "reply_to_uuid": _first(
-            payload, "reply_to_uuid", "email_id", "id", "uuid", "message_id"
-        ),
-        # Which of your sending mailboxes received the reply.
-        "eaccount": _first(payload, "eaccount", "email_account", "from_email"),
-        "lead_email": _first(
-            payload, "lead_email", "lead", "lead_email_address",
-            "from_address_email", "email", "from"
-        ),
+        "reply_to_uuid": reply_to_uuid,
+        "eaccount": eaccount,
+        "lead_email": lead_email,
         "lead_name": _first(payload, "lead_name", "name", "first_name"),
         "campaign_name": _first(payload, "campaign_name", "campaign"),
         "subject": _first(payload, "subject", "email_subject", "reply_subject"),
         "reply_text": _first(
-            payload,
-            "reply_text",
-            "reply_text_snippet",
-            "reply_html",
-            "body",
-            "text",
-            "message",
-            "content",
+            payload, "reply_text", "reply_text_snippet", "reply_html",
+            "body", "text", "message", "content",
         ),
-        # Interest / sentiment signal, if Instantly provides one.
         "interest_status": _first(
             payload, "interest_status", "lead_interest_status", "i_status", "label"
         ),
@@ -430,6 +463,17 @@ def health():
     return jsonify(status="ok", service="instantly-slack-bridge")
 
 
+@app.route("/debug/last", methods=["GET"])
+def debug_last():
+    if not INSTANTLY_WEBHOOK_SECRET or request.args.get("secret") != INSTANTLY_WEBHOOK_SECRET:
+        abort(401)
+    try:
+        with open("/tmp/last_instantly.json") as fh:
+            return jsonify(json.load(fh))
+    except Exception:  # noqa: BLE001
+        return jsonify(error="no payload captured yet")
+
+
 @app.route("/webhooks/instantly", methods=["POST"])
 def instantly_webhook():
     # Optional shared-secret check.
@@ -444,6 +488,11 @@ def instantly_webhook():
 
     payload = request.get_json(silent=True) or {}
     log.info("Instantly webhook payload: %s", json.dumps(payload)[:2000])
+    try:
+        with open("/tmp/last_instantly.json", "w") as fh:
+            json.dump(payload, fh)
+    except Exception:  # noqa: BLE001
+        pass
 
     reply = parse_reply(payload)
 
