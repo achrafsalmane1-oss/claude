@@ -27,7 +27,9 @@ import hmac
 import json
 import logging
 import os
+import re
 import time
+import urllib.parse
 from datetime import datetime, timezone
 
 import requests
@@ -96,7 +98,10 @@ def parse_reply(payload):
         ),
         # Which of your sending mailboxes received the reply.
         "eaccount": _first(payload, "eaccount", "email_account", "from_email"),
-        "lead_email": _first(payload, "lead_email", "lead", "email", "from"),
+        "lead_email": _first(
+            payload, "lead_email", "lead", "lead_email_address",
+            "from_address_email", "email", "from"
+        ),
         "lead_name": _first(payload, "lead_name", "name", "first_name"),
         "campaign_name": _first(payload, "campaign_name", "campaign"),
         "subject": _first(payload, "subject", "email_subject", "reply_subject"),
@@ -120,6 +125,92 @@ def parse_reply(payload):
 # Instantly interest-status values that we treat as "positive".
 # 1 == Interested in Instantly's lead-status convention; we also match text labels.
 POSITIVE_VALUES = {"1", "interested", "positive", "meeting_booked", "meeting booked"}
+
+
+# ---------------------------------------------------------------------------
+# Instantly API reads — fetch the authoritative reply so we never depend on
+# the webhook payload carrying the exact fields we need.
+# ---------------------------------------------------------------------------
+def _instantly_get(path):
+    try:
+        r = requests.get(
+            f"{INSTANTLY_API_BASE}{path}",
+            headers={"Authorization": f"Bearer {INSTANTLY_API_KEY}"},
+            timeout=15,
+        )
+        if r.status_code == 200:
+            return r.json()
+        log.warning("Instantly GET %s -> %s", path, r.status_code)
+    except Exception as exc:  # noqa: BLE001
+        log.warning("Instantly GET %s failed: %s", path, exc)
+    return None
+
+
+def fetch_email_by_id(email_id):
+    return _instantly_get(f"/emails/{urllib.parse.quote(str(email_id))}")
+
+
+def fetch_latest_reply_for_lead(lead_email):
+    """Find the most recent *received* email from a given lead."""
+    data = _instantly_get(f"/emails?search={urllib.parse.quote(lead_email)}&limit=10")
+    items = (data or {}).get("items", []) if isinstance(data, dict) else []
+    received = [e for e in items if e.get("ue_type") == 2]  # 2 == received
+    received.sort(key=lambda e: e.get("timestamp_email", ""), reverse=True)
+    if received:
+        return received[0]
+    return items[0] if items else None
+
+
+_campaign_names = {}
+
+
+def fetch_campaign_name(campaign_id):
+    if not campaign_id:
+        return ""
+    if campaign_id in _campaign_names:
+        return _campaign_names[campaign_id]
+    data = _instantly_get(f"/campaigns/{urllib.parse.quote(str(campaign_id))}")
+    name = (data or {}).get("name", "") if isinstance(data, dict) else ""
+    _campaign_names[campaign_id] = name
+    return name
+
+
+def _strip_html(html):
+    text = re.sub(r"<br\s*/?>", "\n", html or "", flags=re.I)
+    text = re.sub(r"</p>", "\n", text, flags=re.I)
+    text = re.sub(r"<[^>]+>", "", text)
+    return re.sub(r"\n{3,}", "\n\n", text).strip()
+
+
+def email_to_reply(email):
+    """Turn a full Instantly email object into our normalised reply dict."""
+    body = email.get("body") or {}
+    text = ""
+    if isinstance(body, dict):
+        text = (body.get("text") or "").strip()
+        if not text and body.get("html"):
+            text = _strip_html(body["html"])
+    text = text or (email.get("content_preview") or "")
+
+    name = ""
+    faj = email.get("from_address_json")
+    if isinstance(faj, list) and faj and isinstance(faj[0], dict):
+        name = faj[0].get("name", "")
+    elif isinstance(faj, dict):
+        name = faj.get("name", "")
+
+    return {
+        "event_type": "reply_received",
+        "reply_to_uuid": email.get("id", ""),
+        "eaccount": email.get("eaccount", ""),
+        "lead_email": email.get("lead") or email.get("from_address_email", ""),
+        "lead_name": name,
+        "campaign_name": fetch_campaign_name(email.get("campaign_id")),
+        "subject": email.get("subject", ""),
+        "reply_text": text,
+        "interest_status": email.get("i_status"),
+        "is_auto_reply": email.get("is_auto_reply"),
+    }
 
 
 # Phrases that signal a reply is NOT a positive lead. If any appear, we skip it.
@@ -147,12 +238,23 @@ def is_positive(reply):
     """
     if FORWARD_ALL_REPLIES:
         return True
-    # Honour an explicit Instantly interest/label signal if one is present.
-    status = str(reply.get("interest_status", "")).strip().lower()
+    # Auto-replies (OOO, bounces) are never positive.
+    if reply.get("is_auto_reply"):
+        return False
+    # Honour Instantly's interest status. It is numeric: >0 is a positive
+    # status (Interested / Meeting Booked / ...), <0 is negative.
+    raw = reply.get("interest_status")
+    try:
+        n = int(raw)
+    except (TypeError, ValueError):
+        n = None
+    if n is not None and n != 0:
+        return n > 0
+    status = str(raw or "").strip().lower()
     event = str(reply.get("event_type", "")).strip().lower()
     if status in POSITIVE_VALUES or "interest" in event or "positive" in event:
         return True
-    if status in {"-1", "-2", "-3", "not_interested", "wrong", "negative"}:
+    if status in {"not_interested", "wrong", "negative"}:
         return False
     # Fall back to reading the reply text.
     text = (reply.get("reply_text") or "").lower()
@@ -344,8 +446,22 @@ def instantly_webhook():
     log.info("Instantly webhook payload: %s", json.dumps(payload)[:2000])
 
     reply = parse_reply(payload)
+
+    # The webhook payload alone is unreliable, so fetch the authoritative email
+    # from Instantly's API (by id, else by lead) and use that as the source of
+    # truth for the lead, text, subject and the id we reply to.
+    email = None
+    if reply.get("reply_to_uuid"):
+        email = fetch_email_by_id(reply["reply_to_uuid"])
+    if not email and reply.get("lead_email"):
+        email = fetch_latest_reply_for_lead(reply["lead_email"])
+    if email:
+        reply = email_to_reply(email)
+    else:
+        log.warning("Could not resolve email from payload; using raw fields")
+
     if not is_positive(reply):
-        log.info("Reply not positive (status=%r) -- skipping", reply["interest_status"])
+        log.info("Reply not positive (status=%r) -- skipping", reply.get("interest_status"))
         return jsonify(status="ignored")
 
     if not reply["reply_to_uuid"] or not reply["eaccount"]:
