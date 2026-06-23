@@ -57,6 +57,15 @@ FORWARD_ALL_REPLIES = os.getenv("FORWARD_ALL_REPLIES", "false").lower() == "true
 INSTANTLY_API_BASE = "https://api.instantly.ai/api/v2"
 SLACK_API_BASE = "https://slack.com/api"
 
+# --- Graph8 (second sequencer) ---------------------------------------------
+GRAPH8_API_KEY = os.getenv("GRAPH8_API_KEY", "")
+GRAPH8_WEBHOOK_SECRET = os.getenv("GRAPH8_WEBHOOK_SECRET", "")
+GRAPH8_API_BASE = "https://be.graph8.com/api/v1"
+SLACK_CHANNEL_IMPORTERS = os.getenv("SLACK_CHANNEL_IMPORTERS", "")
+SLACK_CHANNEL_EXPORTERS = os.getenv("SLACK_CHANNEL_EXPORTERS", "")
+GRAPH8_IMPORTERS_CAMPAIGN_ID = os.getenv("GRAPH8_IMPORTERS_CAMPAIGN_ID", "")
+GRAPH8_EXPORTERS_CAMPAIGN_ID = os.getenv("GRAPH8_EXPORTERS_CAMPAIGN_ID", "")
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s %(levelname)s %(message)s",
@@ -424,18 +433,123 @@ def send_instantly_reply(ctx, reply_body_text):
 
 
 # ---------------------------------------------------------------------------
-# Background worker: send via Instantly, then update the Slack message.
+# Graph8 (second sequencer): read replies + send replies via the Inbox API
+# ---------------------------------------------------------------------------
+def _graph8_get(path):
+    try:
+        r = requests.get(
+            f"{GRAPH8_API_BASE}{path}",
+            headers={"Authorization": f"Bearer {GRAPH8_API_KEY}"},
+            timeout=15,
+        )
+        if r.status_code == 200:
+            return r.json()
+        log.warning("Graph8 GET %s -> %s", path, r.status_code)
+    except Exception as exc:  # noqa: BLE001
+        log.warning("Graph8 GET %s failed: %s", path, exc)
+    return None
+
+
+def fetch_graph8_reply(reply_id):
+    data = _graph8_get(f"/inbox/{urllib.parse.quote(str(reply_id), safe='')}")
+    if isinstance(data, dict):
+        obj = data.get("data", data)
+        if isinstance(obj, list):
+            obj = obj[0] if obj else None
+        return obj
+    return None
+
+
+# Graph8 tag names that mark a reply as not worth surfacing.
+GRAPH8_NEGATIVE_TAGS = {"bounced", "out of office", "unsubscribed", "not interested"}
+
+
+def graph8_to_reply(obj):
+    """Normalise a Graph8 inbox thread object into our reply dict."""
+    contact = obj.get("contact") or {}
+    msgs = obj.get("messages") or []
+    contact_msgs = [m for m in msgs if str(m.get("responder", "")).upper() == "CONTACT"]
+    user_msgs = [m for m in msgs if str(m.get("responder", "")).upper() == "USER"]
+    latest = contact_msgs[-1] if contact_msgs else (msgs[-1] if msgs else {})
+    text = _strip_html(latest.get("content", "")) if latest else ""
+    eaccount = (user_msgs[-1].get("from_address") if user_msgs else "") or ""
+    name = " ".join(
+        x for x in [contact.get("first_name", ""), contact.get("last_name", "")] if x
+    ).strip()
+    tags = [str(t.get("name", "")).lower() for t in (obj.get("tags") or [])]
+    return {
+        "provider": "graph8",
+        "event_type": "email_replied",
+        "reply_to_uuid": obj.get("id", ""),  # Graph8 reply_id (used to send)
+        "eaccount": eaccount,
+        "lead_email": contact.get("email", "") or (latest.get("from_address", "") if latest else ""),
+        "lead_name": name,
+        "campaign_name": obj.get("campaign_name", ""),
+        "subject": obj.get("subject", ""),
+        "reply_text": text,
+        "interest_status": "",
+        "is_auto_reply": any(t in GRAPH8_NEGATIVE_TAGS for t in tags),
+        "channel_kind": obj.get("channel", "email"),
+    }
+
+
+def route_graph8_channel(payload, obj):
+    """Pick the importers vs exporters Slack channel for a Graph8 reply."""
+    blob = json.dumps(payload).lower() + " " + json.dumps(obj, default=str).lower()
+    if GRAPH8_EXPORTERS_CAMPAIGN_ID and GRAPH8_EXPORTERS_CAMPAIGN_ID.lower() in blob:
+        return SLACK_CHANNEL_EXPORTERS
+    if GRAPH8_IMPORTERS_CAMPAIGN_ID and GRAPH8_IMPORTERS_CAMPAIGN_ID.lower() in blob:
+        return SLACK_CHANNEL_IMPORTERS
+    # Fall back to keywords in the campaign/sequence names.
+    if "exporter" in blob:
+        return SLACK_CHANNEL_EXPORTERS
+    if "importer" in blob:
+        return SLACK_CHANNEL_IMPORTERS
+    return SLACK_CHANNEL_IMPORTERS  # safe default; routing refined on first real reply
+
+
+def send_graph8_reply(ctx, reply_body_text):
+    reply_id = urllib.parse.quote(str(ctx["reply_to_uuid"]), safe="")
+    payload = {
+        "body": reply_body_text,
+        "channel": ctx.get("channel_kind", "email"),
+    }
+    if ctx.get("subject"):
+        payload["subject"] = ctx["subject"]
+    resp = requests.post(
+        f"{GRAPH8_API_BASE}/inbox/{reply_id}/send",
+        headers={
+            "Authorization": f"Bearer {GRAPH8_API_KEY}",
+            "Content-Type": "application/json",
+        },
+        json=payload,
+        timeout=30,
+    )
+    ok = resp.status_code in (200, 201)
+    if not ok:
+        log.error("Graph8 reply failed %s: %s", resp.status_code, resp.text[:500])
+    return ok, resp
+
+
+# ---------------------------------------------------------------------------
+# Background worker: send the reply, then update the Slack message.
 # Runs off-thread so Slack's 3-second modal-submit deadline is always met.
 # ---------------------------------------------------------------------------
 def process_reply_submission(ctx, reply_text, user_id):
-    ok, resp = send_instantly_reply(ctx, reply_text)
+    provider = ctx.get("provider", "instantly")
+    if provider == "graph8":
+        ok, resp = send_graph8_reply(ctx, reply_text)
+        source = "Graph8"
+    else:
+        ok, resp = send_instantly_reply(ctx, reply_text)
+        source = "Instantly"
     sent_at = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
     if ok:
         status_line = f"✅ Reply sent by <@{user_id}> · {sent_at}"
     else:
         status_line = (
-            f"⚠️ Failed to send (Instantly returned {resp.status_code}). "
-            f"<@{user_id}>, please retry or check Instantly."
+            f"⚠️ Failed to send ({source} returned {resp.status_code}). "
+            f"<@{user_id}>, please retry."
         )
     quoted = "\n".join("> " + line for line in reply_text.splitlines())
     new_blocks = [
@@ -518,6 +632,7 @@ def instantly_webhook():
 
     # Context that travels with the Slack button so we can reply later, with no DB.
     context = {
+        "provider": "instantly",
         "reply_to_uuid": reply["reply_to_uuid"],
         "eaccount": reply["eaccount"],
         "lead_email": reply["lead_email"],
@@ -528,6 +643,63 @@ def instantly_webhook():
         "chat.postMessage",
         {
             "channel": SLACK_CHANNEL_ID,
+            "text": f"Positive reply from {reply['lead_email'] or 'a lead'}",
+            "blocks": blocks,
+        },
+    )
+    return jsonify(status="posted" if result.get("ok") else "slack_error")
+
+
+@app.route("/webhooks/graph8", methods=["POST"])
+def graph8_webhook():
+    if GRAPH8_WEBHOOK_SECRET:
+        provided = (
+            request.headers.get("X-Webhook-Secret") or request.args.get("secret", "")
+        )
+        if not hmac.compare_digest(provided, GRAPH8_WEBHOOK_SECRET):
+            log.warning("Rejected Graph8 webhook: bad/missing secret")
+            abort(401)
+
+    payload = request.get_json(silent=True) or {}
+    log.info("Graph8 webhook payload: %s", json.dumps(payload)[:2000])
+    try:
+        with open("/tmp/last_graph8.json", "w") as fh:
+            json.dump(payload, fh)
+    except Exception:  # noqa: BLE001
+        pass
+
+    # Only act on reply events.
+    event = json.dumps(payload).lower()
+    if "repl" not in event:
+        return jsonify(status="ignored", reason="not a reply event")
+
+    # Find the reply/thread id anywhere in the payload, then fetch the thread.
+    reply_id = _first(
+        payload, "reply_id", "thread_id", "message_id", "id", "inbox_id"
+    ) or _deep_find(payload, re.compile(r"[^\s\"]+@[^\s\"]+"), prefer_keys=("reply", "message", "thread", "id"))
+    obj = fetch_graph8_reply(reply_id) if reply_id else None
+    if not obj:
+        log.warning("Graph8: could not resolve inbox thread (reply_id=%r)", reply_id)
+        return jsonify(status="error", reason="thread not found")
+
+    reply = graph8_to_reply(obj)
+    if not is_positive(reply):
+        log.info("Graph8 reply not positive -- skipping (%s)", reply.get("lead_email"))
+        return jsonify(status="ignored")
+
+    channel = route_graph8_channel(payload, obj)
+    context = {
+        "provider": "graph8",
+        "reply_to_uuid": reply["reply_to_uuid"],
+        "channel_kind": reply.get("channel_kind", "email"),
+        "lead_email": reply["lead_email"],
+        "subject": reply["subject"],
+    }
+    blocks = build_message_blocks(reply, json.dumps(context))
+    result = slack_call(
+        "chat.postMessage",
+        {
+            "channel": channel,
             "text": f"Positive reply from {reply['lead_email'] or 'a lead'}",
             "blocks": blocks,
         },
