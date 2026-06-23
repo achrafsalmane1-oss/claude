@@ -259,15 +259,44 @@ def email_to_reply(email):
 
 # Phrases that signal a reply is NOT a positive lead. If any appear, we skip it.
 NEGATIVE_PHRASES = [
+    # explicit disinterest / opt-out
     "not interested", "no interest", "no thanks", "no thank you",
     "unsubscribe", "remove me", "take me off", "opt out", "opt-out",
     "do not contact", "don't contact", "stop emailing", "stop contacting",
     "leave me alone", "not the right", "wrong person", "wrong contact",
-    "no longer with", "has left the company", "is no longer", "spam",
-    "out of office", "out of the office", "automatic reply", "auto-reply",
-    "autoreply", "on vacation", "on leave", "away from my desk",
-    "delivery has failed", "undeliverable", "mailer-daemon",
-    "address not found", "not monitored", "do-not-reply", "do not reply",
+    "please remove", "kindly remove", "no longer interested",
+    # wrong/left contact
+    "no longer with", "has left the company", "is no longer", "no longer employed",
+    "no longer works", "has left", "left the company", "is not the correct",
+    # out-of-office / auto-reply
+    "out of office", "out of the office", "out-of-office",
+    "away from the office", "away from office", "away from my desk",
+    "i am away", "i'm away", "currently away", "am currently away",
+    "on vacation", "on holiday", "public holiday", "bank holiday",
+    "on leave", "annual leave", "maternity leave", "paternity leave",
+    "parental leave", "sick leave", "medical leave",
+    "currently traveling", "currently travelling", "limited access to email",
+    "limited access to my email", "limited email access",
+    "will respond to your email", "will reply to your email",
+    "will respond when i", "will get back to you when i",
+    "back in the office", "return to the office", "returning to the office",
+    "upon my return", "on my return", "in my absence", "during my absence",
+    "if your email is urgent", "if this is urgent", "if your enquiry is urgent",
+    "if your inquiry is urgent", "for urgent matters", "for immediate assistance",
+    "for urgent assistance", "thank you for your email. i am",
+    "automatic reply", "auto-reply", "autoreply", "auto reply",
+    "this is an automated", "automated response", "automated message",
+    "do-not-reply", "do not reply", "not monitored", "no longer monitored",
+    # auto-acknowledgements
+    "thank you for contacting", "thanks for contacting",
+    "we have received your", "your message has been received",
+    "your email has been received", "this is to confirm we received",
+    "your enquiry has been received", "your inquiry has been received",
+    "this address will be", "will be deactivated", "is being deactivated",
+    "no longer be monitored", "will no longer be", "endereço será", "será desativado",
+    # bounces / system
+    "delivery has failed", "undeliverable", "mailer-daemon", "mail delivery",
+    "address not found", "recipient not found", "message blocked", "spam",
 ]
 
 
@@ -282,7 +311,7 @@ def is_positive(reply):
     """
     if FORWARD_ALL_REPLIES:
         return True
-    # Auto-replies (OOO, bounces) are never positive.
+    # Auto-replies (OOO, bounces) flagged by the source are never positive.
     if reply.get("is_auto_reply"):
         return False
     # Honour Instantly's interest status. It is numeric: >0 is a positive
@@ -300,8 +329,8 @@ def is_positive(reply):
         return True
     if status in {"not_interested", "wrong", "negative"}:
         return False
-    # Fall back to reading the reply text.
-    text = (reply.get("reply_text") or "").lower()
+    # Fall back to reading the subject + reply text for negative signals.
+    text = ((reply.get("subject") or "") + "  " + (reply.get("reply_text") or "")).lower()
     if any(phrase in text for phrase in NEGATIVE_PHRASES):
         return False
     return True
