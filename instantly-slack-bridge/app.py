@@ -65,6 +65,8 @@ SLACK_CHANNEL_IMPORTERS = os.getenv("SLACK_CHANNEL_IMPORTERS", "")
 SLACK_CHANNEL_EXPORTERS = os.getenv("SLACK_CHANNEL_EXPORTERS", "")
 GRAPH8_IMPORTERS_CAMPAIGN_ID = os.getenv("GRAPH8_IMPORTERS_CAMPAIGN_ID", "")
 GRAPH8_EXPORTERS_CAMPAIGN_ID = os.getenv("GRAPH8_EXPORTERS_CAMPAIGN_ID", "")
+GRAPH8_IMPORTERS_SEQUENCE_ID = os.getenv("GRAPH8_IMPORTERS_SEQUENCE_ID", "")
+GRAPH8_EXPORTERS_SEQUENCE_ID = os.getenv("GRAPH8_EXPORTERS_SEQUENCE_ID", "")
 
 logging.basicConfig(
     level=logging.INFO,
@@ -493,19 +495,54 @@ def graph8_to_reply(obj):
     }
 
 
+_seq_emails_cache = {}  # sequence_id -> (fetched_at, set_of_emails)
+
+
+def _graph8_sequence_emails(seq_id):
+    """Set of contact emails that have replied within a given sequence (cached)."""
+    if not seq_id:
+        return set()
+    cached = _seq_emails_cache.get(seq_id)
+    if cached and (time.time() - cached[0]) < 60:
+        return cached[1]
+    data = _graph8_get(f"/inbox?sequence_id={urllib.parse.quote(seq_id)}&page_size=100")
+    emails = {
+        (r.get("contact") or {}).get("email", "").lower()
+        for r in ((data or {}).get("data", []) if isinstance(data, dict) else [])
+        if (r.get("contact") or {}).get("email")
+    }
+    _seq_emails_cache[seq_id] = (time.time(), emails)
+    return emails
+
+
 def route_graph8_channel(payload, obj):
-    """Pick the importers vs exporters Slack channel for a Graph8 reply."""
+    """Pick the importers vs exporters Slack channel for a Graph8 reply.
+
+    Primary signal: which live sequence the lead belongs to (the two
+    sequences have disjoint reply sets). Falls back to ids/keywords in the
+    webhook payload.
+    """
+    email = ((obj.get("contact") or {}).get("email") or "").lower()
+    if email:
+        if email in _graph8_sequence_emails(GRAPH8_EXPORTERS_SEQUENCE_ID):
+            return SLACK_CHANNEL_EXPORTERS
+        if email in _graph8_sequence_emails(GRAPH8_IMPORTERS_SEQUENCE_ID):
+            return SLACK_CHANNEL_IMPORTERS
+
     blob = json.dumps(payload).lower() + " " + json.dumps(obj, default=str).lower()
-    if GRAPH8_EXPORTERS_CAMPAIGN_ID and GRAPH8_EXPORTERS_CAMPAIGN_ID.lower() in blob:
-        return SLACK_CHANNEL_EXPORTERS
-    if GRAPH8_IMPORTERS_CAMPAIGN_ID and GRAPH8_IMPORTERS_CAMPAIGN_ID.lower() in blob:
-        return SLACK_CHANNEL_IMPORTERS
-    # Fall back to keywords in the campaign/sequence names.
+    for sid, ch in [
+        (GRAPH8_EXPORTERS_SEQUENCE_ID, SLACK_CHANNEL_EXPORTERS),
+        (GRAPH8_EXPORTERS_CAMPAIGN_ID, SLACK_CHANNEL_EXPORTERS),
+        (GRAPH8_IMPORTERS_SEQUENCE_ID, SLACK_CHANNEL_IMPORTERS),
+        (GRAPH8_IMPORTERS_CAMPAIGN_ID, SLACK_CHANNEL_IMPORTERS),
+    ]:
+        if sid and sid.lower() in blob:
+            return ch
     if "exporter" in blob:
         return SLACK_CHANNEL_EXPORTERS
     if "importer" in blob:
         return SLACK_CHANNEL_IMPORTERS
-    return SLACK_CHANNEL_IMPORTERS  # safe default; routing refined on first real reply
+    return SLACK_CHANNEL_IMPORTERS  # safe default
 
 
 def send_graph8_reply(ctx, reply_body_text):
