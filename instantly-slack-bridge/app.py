@@ -36,6 +36,11 @@ import requests
 from dotenv import load_dotenv
 from flask import Flask, request, jsonify, abort
 
+try:
+    import anthropic
+except ImportError:  # available in production via requirements.txt
+    anthropic = None
+
 load_dotenv()
 
 # ---------------------------------------------------------------------------
@@ -53,6 +58,11 @@ INSTANTLY_WEBHOOK_SECRET = os.getenv("INSTANTLY_WEBHOOK_SECRET", "")
 # While testing, set FORWARD_ALL_REPLIES=true to forward every reply to Slack
 # (not just positive ones), so you can confirm the pipeline end to end.
 FORWARD_ALL_REPLIES = os.getenv("FORWARD_ALL_REPLIES", "false").lower() == "true"
+
+# Optional: AI-based positive/negative classification (handles any language and
+# nuance far better than keywords). If set, it becomes the primary decision.
+ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
+AI_CLASSIFIER_MODEL = os.getenv("AI_CLASSIFIER_MODEL", "claude-haiku-4-5")
 
 INSTANTLY_API_BASE = "https://api.instantly.ai/api/v2"
 SLACK_API_BASE = "https://slack.com/api"
@@ -300,6 +310,53 @@ NEGATIVE_PHRASES = [
 ]
 
 
+_ai_client = None
+
+
+def _get_ai_client():
+    global _ai_client
+    if _ai_client is None and anthropic and ANTHROPIC_API_KEY:
+        _ai_client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+    return _ai_client
+
+
+_AI_SYSTEM = (
+    "You classify replies to cold sales emails for a sales team. Respond with "
+    "exactly one word: POSITIVE or NEGATIVE.\n"
+    "POSITIVE = a real human showing interest or genuinely engaging — asking a "
+    "question, wanting pricing/info/a deck, proposing or accepting a meeting/call, "
+    "expressing curiosity, or routing you to the right person.\n"
+    "NEGATIVE = automatic reply, out-of-office, delivery/bounce notice, "
+    "unsubscribe or opt-out, 'not interested', wrong person, or a mere "
+    "acknowledgement with no interest. Judge replies in ANY language."
+)
+
+
+def classify_positive_ai(reply):
+    """Return True/False from the AI classifier, or None if unavailable."""
+    client = _get_ai_client()
+    if not client:
+        return None
+    text = ((reply.get("subject") or "") + "\n\n" + (reply.get("reply_text") or "")).strip()
+    if not text:
+        return None
+    try:
+        msg = client.messages.create(
+            model=AI_CLASSIFIER_MODEL,
+            max_tokens=5,
+            system=_AI_SYSTEM,
+            messages=[{"role": "user", "content": text[:6000]}],
+        )
+        out = "".join(b.text for b in msg.content if b.type == "text").strip().upper()
+        if "POSITIVE" in out:
+            return True
+        if "NEGATIVE" in out:
+            return False
+    except Exception as exc:  # noqa: BLE001
+        log.warning("AI classify failed (%s); falling back to keywords", exc)
+    return None
+
+
 def is_positive(reply):
     """Decide whether a reply should be forwarded to Slack.
 
@@ -323,6 +380,11 @@ def is_positive(reply):
         n = None
     if n is not None and n != 0:
         return n > 0
+    # AI classification is the most accurate signal (any language); use it when
+    # configured. Falls through to keyword heuristics if it's unavailable.
+    ai = classify_positive_ai(reply)
+    if ai is not None:
+        return ai
     status = str(raw or "").strip().lower()
     event = str(reply.get("event_type", "")).strip().lower()
     if status in POSITIVE_VALUES or "interest" in event or "positive" in event:
