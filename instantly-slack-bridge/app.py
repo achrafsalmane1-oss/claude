@@ -64,6 +64,15 @@ FORWARD_ALL_REPLIES = os.getenv("FORWARD_ALL_REPLIES", "false").lower() == "true
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
 AI_CLASSIFIER_MODEL = os.getenv("AI_CLASSIFIER_MODEL", "claude-haiku-4-5")
 
+# Signature automatically appended to every reply sent from Slack. EMAIL_SIGNATURE
+# is the default; EMAIL_SIGNATURES_JSON optionally maps a sending mailbox to its
+# own signature (e.g. {"ssupport@cloudstrayd.com": "Best,\nST Support"}).
+EMAIL_SIGNATURE = os.getenv("EMAIL_SIGNATURE", "")
+try:
+    EMAIL_SIGNATURES = json.loads(os.getenv("EMAIL_SIGNATURES_JSON", "") or "{}")
+except (ValueError, TypeError):
+    EMAIL_SIGNATURES = {}
+
 INSTANTLY_API_BASE = "https://api.instantly.ai/api/v2"
 SLACK_API_BASE = "https://slack.com/api"
 
@@ -497,7 +506,19 @@ def verify_slack_signature(req):
 # ---------------------------------------------------------------------------
 # Instantly: send the reply
 # ---------------------------------------------------------------------------
+def apply_signature(text, eaccount=""):
+    """Append the configured signature (per-mailbox if set, else default)."""
+    sig = ""
+    if eaccount and EMAIL_SIGNATURES:
+        sig = EMAIL_SIGNATURES.get(eaccount.lower(), "")
+    sig = sig or EMAIL_SIGNATURE
+    if not sig:
+        return text
+    return text.rstrip() + "\n\n" + sig
+
+
 def send_instantly_reply(ctx, reply_body_text):
+    reply_body_text = apply_signature(reply_body_text, ctx.get("eaccount", ""))
     subject = ctx.get("subject") or ""
     if subject and not subject.lower().startswith("re:"):
         subject = f"Re: {subject}"
@@ -637,6 +658,7 @@ def route_graph8_channel(payload, obj):
 
 
 def send_graph8_reply(ctx, reply_body_text):
+    reply_body_text = apply_signature(reply_body_text, ctx.get("eaccount", ""))
     reply_id = urllib.parse.quote(str(ctx["reply_to_uuid"]), safe="")
     payload = {
         "body": reply_body_text,
@@ -821,6 +843,7 @@ def graph8_webhook():
         "reply_to_uuid": reply["reply_to_uuid"],
         "channel_kind": reply.get("channel_kind", "email"),
         "lead_email": reply["lead_email"],
+        "eaccount": reply.get("eaccount", ""),
         "subject": reply["subject"],
     }
     blocks = build_message_blocks(reply, json.dumps(context))
