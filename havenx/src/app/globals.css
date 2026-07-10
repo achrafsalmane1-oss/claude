@@ -1,0 +1,79 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-instrument), ui-serif, Georgia, serif;
+
+  /* Surfaces */
+  --color-cream: #f6f5ef;
+  --color-panel: #fbfaf6;
+  --color-line: #e9e6db;
+  --color-line-soft: #f0eee5;
+
+  /* Ink */
+  --color-ink: #21252d;
+  --color-ink-soft: #5d646f;
+  --color-ink-faint: #9199a4;
+
+  /* Brand green */
+  --color-green: #2fb44f;
+  --color-green-deep: #1e7f3c;
+  --color-green-dark: #166c31;
+  --color-green-soft: #e4f6e8;
+  --color-green-mist: #f0faf2;
+
+  /* Accents (headline chips) */
+  --color-violet: #7c6ce8;
+  --color-violet-soft: #e6e2fb;
+  --color-amber: #d95f18;
+  --color-amber-soft: #fbecd8;
+
+  /* Status */
+  --color-rise: #1e8e44;
+  --color-fall: #c4423f;
+
+  /* Sky */
+  --color-sky-deep: #8ec6ee;
+  --color-sky-pale: #dcedf8;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--color-cream);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Serif display headings / numerals, as in the reference design */
+.display {
+  font-family: var(--font-display);
+  font-weight: 400;
+  letter-spacing: -0.01em;
+}
+
+/* Dot grid overlay used on the hero sky */
+.dot-grid {
+  background-image: radial-gradient(
+    rgba(255, 255, 255, 0.55) 1.2px,
+    transparent 1.2px
+  );
+  background-size: 26px 26px;
+}
+
+.dot-grid-dark {
+  background-image: radial-gradient(
+    rgba(33, 37, 45, 0.06) 1.2px,
+    transparent 1.2px
+  );
+  background-size: 26px 26px;
+}
+
+::selection {
+  background: var(--color-green-soft);
+  color: var(--color-green-dark);
+}

@@ -1,0 +1,169 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id            String         @id @default(cuid())
+  email         String         @unique
+  name          String?
+  createdAt     DateTime       @default(now())
+  sessions      Session[]
+  subscription  Subscription?
+  mandate       Mandate?
+  prospects     Prospect[]
+  notifications Notification[]
+  snapshots     FunnelSnapshot[]
+}
+
+model Session {
+  token     String   @id
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}
+
+model MagicLinkToken {
+  token     String    @id
+  email     String
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  PAST_DUE
+  CANCELED
+}
+
+model Subscription {
+  id                   String             @id @default(cuid())
+  userId               String             @unique
+  user                 User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status               SubscriptionStatus @default(ACTIVE)
+  plan                 String             @default("core")
+  priceUsd             Int                @default(499)
+  stripeCustomerId     String?
+  stripeSubscriptionId String?
+  startedAt            DateTime           @default(now())
+  // Day 1-10: infrastructure setup + warmup. Outreach begins day 11.
+  outreachStartsAt     DateTime
+  // First billing cycle is 40 days; monthly thereafter.
+  firstCycleEndsAt     DateTime
+  currentPeriodEnd     DateTime
+}
+
+model Mandate {
+  id                    String   @id @default(cuid())
+  userId                String   @unique
+  user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  active                Boolean  @default(true)
+  industries            String[]
+  geographies           String[]
+  revenueMinUsd         Int?
+  revenueMaxUsd         Int?
+  ebitdaMinUsd          Int?
+  ebitdaMaxUsd          Int?
+  employeesMin          Int?
+  employeesMax          Int?
+  businessModelKeywords String[]
+  mustHaves             String?
+  hardExclusions        String?
+  ownerSituations       String[]
+  senderName            String
+  senderCompany         String
+  senderSignature       String?
+  senderReplyToName     String?
+  thesis                String?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+}
+
+enum ProspectStage {
+  SOURCED
+  ENRICHED
+  CONTACTED
+  REPLIED
+}
+
+enum ReplyDisposition {
+  NOT_INTERESTED
+  NOT_NOW
+  INTERESTED
+}
+
+enum IntroStatus {
+  NEW
+  CLAIMED
+}
+
+model Prospect {
+  id                   String            @id @default(cuid())
+  userId               String
+  user                 User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  stage                ProspectStage     @default(SOURCED)
+  replyDisposition     ReplyDisposition?
+  introStatus          IntroStatus       @default(NEW)
+  bookingLinkRequested Boolean           @default(false)
+
+  ownerName  String
+  ownerTitle String?
+  linkedinUrl String?
+
+  companyName    String
+  domain         String
+  description    String?
+  incorporatedOn DateTime?
+  headcount      Int?
+  estRevenueUsd  Int?
+  location       String?
+
+  replyText   String?
+  sourcedAt   DateTime  @default(now())
+  enrichedAt  DateTime?
+  contactedAt DateTime?
+  repliedAt   DateTime?
+  claimedAt   DateTime?
+
+  // Revealed to the customer when they claim the introduction.
+  contactEmail String?
+  contactPhone String?
+
+  @@index([userId, stage])
+  @@index([userId, replyDisposition])
+}
+
+model Notification {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String
+  title     String
+  body      String
+  href      String?
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId, readAt])
+}
+
+// Daily per-account funnel counts, for the dashboard growth chart.
+model FunnelSnapshot {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date       DateTime
+  sourced    Int
+  enriched   Int
+  contacted  Int
+  replied    Int
+  interested Int
+
+  @@unique([userId, date])
+}
