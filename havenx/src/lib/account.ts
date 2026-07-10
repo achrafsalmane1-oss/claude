@@ -37,6 +37,14 @@ export async function activateAccount(
       company: "",
     });
 
+    // Ops record for the fulfillment pipeline; the provisioning cron picks
+    // it up (plan → domains → inboxes → warmup → campaign).
+    await db.infrastructure.upsert({
+      where: { userId: user.id },
+      update: {},
+      create: { userId: user.id },
+    });
+
     await notifications.notify({
       userId: user.id,
       email,

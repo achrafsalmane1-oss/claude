@@ -8,16 +8,48 @@ datasource db {
 }
 
 model User {
-  id            String         @id @default(cuid())
-  email         String         @unique
-  name          String?
-  createdAt     DateTime       @default(now())
-  sessions      Session[]
-  subscription  Subscription?
-  mandate       Mandate?
-  prospects     Prospect[]
-  notifications Notification[]
-  snapshots     FunnelSnapshot[]
+  id             String         @id @default(cuid())
+  email          String         @unique
+  name           String?
+  createdAt      DateTime       @default(now())
+  sessions       Session[]
+  subscription   Subscription?
+  mandate        Mandate?
+  prospects      Prospect[]
+  notifications  Notification[]
+  snapshots      FunnelSnapshot[]
+  infrastructure Infrastructure?
+}
+
+enum InfraStatus {
+  PENDING // paid, nothing provisioned yet
+  PROVISIONING // plan/domains/inboxes being purchased & connected
+  WARMING // inboxes connected to sending tool, warmup running (days 1-10)
+  ACTIVE // campaign live, daily top-ups running
+  PAUSED
+  FAILED
+}
+
+// Internal ops record of a client's outreach infrastructure. Never exposed
+// in the customer-facing UI (no channel mechanics leak to customers).
+model Infrastructure {
+  id                String      @id @default(cuid())
+  userId            String      @unique
+  user              User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status            InfraStatus @default(PENDING)
+  lastCompletedStep String?
+  lastError         String?
+  planId            String? // inbox-provider plan/order id
+  domains           String[] // purchased sending domains
+  inboxes           Json? // provider inbox records (SMTP credential refs, not raw secrets)
+  senderAccountIds  String[] // connected account ids in the sending tool
+  campaignId        String? // campaign id in the sending tool
+  copyVariants      Json? // generated campaign copy (two variants)
+  warmupStartedAt   DateTime?
+  activatedAt       DateTime?
+  dailySendTarget   Int         @default(2000)
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
 }
 
 model Session {
@@ -134,6 +166,12 @@ model Prospect {
   // Revealed to the customer when they claim the introduction.
   contactEmail String?
   contactPhone String?
+
+  // Fulfillment pipeline fields (never shown to the customer as mechanics)
+  nicheVariant String? // 2-3 word lowercase niche used in copy personalization
+  emailStatus  String? // found | verified | invalid
+  pushedAt     DateTime? // when the lead was pushed to the sending tool
+  senderLeadId String? // lead id in the sending tool
 
   @@index([userId, stage])
   @@index([userId, replyDisposition])

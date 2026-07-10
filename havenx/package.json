@@ -12,6 +12,7 @@
     "setup": "prisma generate && prisma db push && prisma db seed"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.111.0",
     "@prisma/adapter-pg": "^7.8.0",
     "@prisma/client": "^7.8.0",
     "dotenv": "^17.4.2",
