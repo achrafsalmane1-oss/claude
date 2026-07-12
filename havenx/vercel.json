@@ -1,8 +1,8 @@
 {
   "crons": [
-    { "path": "/api/cron/provision", "schedule": "0 * * * *" },
+    { "path": "/api/cron/provision", "schedule": "0 6 * * *" },
     { "path": "/api/cron/topup", "schedule": "0 5 * * 1-5" },
-    { "path": "/api/cron/send", "schedule": "0 13-21 * * 1-5" },
-    { "path": "/api/cron/replies", "schedule": "*/15 * * * *" }
+    { "path": "/api/cron/send", "schedule": "0 14 * * 1-5" },
+    { "path": "/api/cron/replies", "schedule": "0 9 * * *" }
   ]
 }
