@@ -3,17 +3,11 @@
  * pipeline: 25 days of history, a full funnel, interested introductions with
  * real-feeling replies, notifications, and daily snapshots for the chart.
  */
-import "dotenv/config";
-import { PrismaPg } from "@prisma/adapter-pg";
-import {
-  PrismaClient,
-  type ProspectStage,
-  type ReplyDisposition,
-} from "../src/generated/prisma/client";
-
-const db = new PrismaClient({
-  adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }),
-});
+import type {
+  ProspectStage,
+  ReplyDisposition,
+} from "@/generated/prisma/client";
+import { db } from "./db";
 
 const DAY = 86_400_000;
 const NOW = Date.now();
@@ -251,7 +245,7 @@ function makeProspects(): SeedProspect[] {
   return prospects;
 }
 
-async function main() {
+export async function seedDemo() {
   console.log("Seeding demo account…");
 
   // Idempotent: wipe and recreate the demo user
@@ -375,10 +369,3 @@ async function main() {
   );
   console.log("Demo login: demo@havenx.app (or use “View live demo” on the homepage)");
 }
-
-main()
-  .catch((e) => {
-    console.error(e);
-    process.exit(1);
-  })
-  .finally(() => db.$disconnect());
