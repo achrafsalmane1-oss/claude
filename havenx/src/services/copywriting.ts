@@ -73,6 +73,16 @@ export class AnthropicCopywritingService implements CopywritingService {
 
   async generateCampaignCopy(mandate: Mandate): Promise<CampaignCopy> {
     const base = templateVariants(mandate);
+    try {
+      return await this.generate(mandate, base);
+    } catch (e) {
+      // Never let an API error (billing, rate limit, outage) block activation.
+      console.error("[copywriter] falling back to template:", e);
+      return base;
+    }
+  }
+
+  private async generate(mandate: Mandate, base: CampaignCopy): Promise<CampaignCopy> {
     const response = await this.client.messages.create({
       model: this.model,
       max_tokens: 2000,
@@ -128,20 +138,26 @@ ${JSON.stringify(base.variants, null, 2)}`,
   }
 
   async nicheVariant(industry: string, companyDescription: string): Promise<string> {
-    const response = await this.client.messages.create({
-      model: this.model,
-      max_tokens: 20,
-      messages: [
-        {
-          role: "user",
-          content: `Company industry: "${industry}". Description: "${companyDescription}".
+    const fallback = industry.toLowerCase().replace(/[^a-z\s]/g, "").trim().split(/\s+/).slice(0, 3).join(" ");
+    try {
+      const response = await this.client.messages.create({
+        model: this.model,
+        max_tokens: 20,
+        messages: [
+          {
+            role: "user",
+            content: `Company industry: "${industry}". Description: "${companyDescription}".
 
 Reply with ONLY a 2-3 word, all-lowercase niche phrase that completes this sentence naturally: "We're actively looking to buy companies in ___". No punctuation, no quotes. Example outputs: "commercial hvac", "dental practices", "route-based landscaping".`,
-        },
-      ],
-    });
-    const text = response.content.find((b) => b.type === "text")?.text?.trim().toLowerCase();
-    if (!text) return industry.toLowerCase().split(/\s+/).slice(0, 3).join(" ");
-    return text.replace(/[^a-z\s-]/g, "").trim().split(/\s+/).slice(0, 3).join(" ");
+          },
+        ],
+      });
+      const text = response.content.find((b) => b.type === "text")?.text?.trim().toLowerCase();
+      if (!text) return fallback;
+      return text.replace(/[^a-z\s-]/g, "").trim().split(/\s+/).slice(0, 3).join(" ") || fallback;
+    } catch (e) {
+      console.error("[copywriter] niche fallback:", e);
+      return fallback;
+    }
   }
 }

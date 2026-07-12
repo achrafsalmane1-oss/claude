@@ -1,76 +1,32 @@
 import { db } from "@/lib/db";
-import type { InboxRecord } from "./inboxProvider";
-import type { CampaignCopy } from "./copywriting";
 
-export interface CampaignLead {
-  prospectId: string;
-  email: string;
-  firstName: string;
-  companyName: string;
-  niche: string; // 2-3 word lowercase niche variant
+export interface OutboundEmail {
+  fromUserId: string; // provider mailbox id to send from
+  to: string;
+  subject: string;
+  body: string;
+}
+
+export interface InboundEmail {
+  messageId: string;
+  fromEmail: string; // the owner who replied
+  toMailbox: string; // our sending inbox that received it
+  text: string;
+  isWarmup: boolean;
 }
 
 export interface SendingToolService {
-  /** Connect SMTP inboxes as sending accounts, with warmup enabled. */
-  connectInboxes(inboxes: InboxRecord[]): Promise<string[]>;
+  /** Turn on native warmup for the given provider mailbox ids. */
+  setupWarming(providerUserIds: string[]): Promise<void>;
 
-  /**
-   * Create the client's campaign: two copy variants, Mon-Fri schedule,
-   * dailyLimit across the connected accounts. Returns the campaign id.
-   */
-  createCampaign(input: {
-    name: string;
-    accountIds: string[];
-    copy: CampaignCopy;
-    dailyLimit: number;
-  }): Promise<string>;
+  /** Send one email. Returns the provider message id, or null on failure. */
+  sendEmail(email: OutboundEmail): Promise<string | null>;
 
-  /** Push leads with personalization variables. Returns per-lead ids. */
-  addLeads(campaignId: string, leads: CampaignLead[]): Promise<string[]>;
-
-  /** Remaining un-contacted leads in the campaign (to keep it topped up). */
-  getQueueDepth(campaignId: string): Promise<number>;
-}
-
-/**
- * Mock sending tool. "Sending" is simulated: pushed leads are marked
- * CONTACTED, and syncMockReplies() periodically turns a small share of
- * contacted prospects into replies so the demo pipeline keeps moving.
- */
-export class MockSendingToolService implements SendingToolService {
-  async connectInboxes(inboxes: InboxRecord[]): Promise<string[]> {
-    console.log(`[sender:mock] connected ${inboxes.length} inboxes, warmup enabled`);
-    return inboxes.map((i) => `acct_${i.address.replace(/[^a-z0-9]/g, "")}`);
-  }
-
-  async createCampaign(input: {
-    name: string;
-    accountIds: string[];
-    copy: CampaignCopy;
-    dailyLimit: number;
-  }): Promise<string> {
-    console.log(
-      `[sender:mock] campaign "${input.name}" created — ${input.accountIds.length} accounts, ${input.dailyLimit}/day Mon-Fri, ${input.copy.variants.length} variants`
-    );
-    return `camp_mock_${Date.now().toString(36)}`;
-  }
-
-  async addLeads(campaignId: string, leads: CampaignLead[]): Promise<string[]> {
-    const now = new Date();
-    await db.prospect.updateMany({
-      where: { id: { in: leads.map((l) => l.prospectId) } },
-      data: {
-        stage: "CONTACTED",
-        contactedAt: now,
-        pushedAt: now,
-      },
-    });
-    return leads.map((l) => `lead_${l.prospectId.slice(-8)}`);
-  }
-
-  async getQueueDepth(): Promise<number> {
-    return 0; // mock always wants a top-up
-  }
+  /** Pull new inbound messages account-wide, for reply detection. */
+  fetchInbound(cursor?: string | null): Promise<{
+    inbound: InboundEmail[];
+    nextCursor?: string | null;
+  }>;
 }
 
 const MOCK_REPLIES: { text: string; weight: number }[] = [
@@ -81,30 +37,54 @@ const MOCK_REPLIES: { text: string; weight: number }[] = [
   { text: "Maybe. What kind of numbers are you seeing for businesses like mine? I'd want to keep my crew on.", weight: 1 },
 ];
 
-/** Dev-only: simulate a trickle of inbound replies for a user's contacted pool. */
-export async function pickMockReplies(userId: string, max = 3) {
-  const contacted = await db.prospect.findMany({
-    where: { userId, stage: "CONTACTED", contactedAt: { lt: new Date(Date.now() - 3_600_000) } },
-    take: 50,
-    orderBy: { contactedAt: "asc" },
-  });
-  const count = Math.min(max, Math.floor(contacted.length * 0.05));
-  const total = MOCK_REPLIES.reduce((a, r) => a + r.weight, 0);
-  return contacted.slice(0, count).map((p) => {
-    let roll = Math.random() * total;
-    const reply =
-      MOCK_REPLIES.find((r) => (roll -= r.weight) <= 0) ?? MOCK_REPLIES[0];
-    return { prospect: p, replyText: reply.text };
-  });
+/**
+ * Mock sender. sendEmail is a no-op success; fetchInbound synthesizes a small
+ * trickle of replies from already-contacted prospects so the demo pipeline
+ * flows end-to-end without a real provider.
+ */
+export class MockSendingToolService implements SendingToolService {
+  async setupWarming(ids: string[]) {
+    console.log(`[sender:mock] warmup enabled on ${ids.length} inboxes`);
+  }
+
+  async sendEmail(email: OutboundEmail): Promise<string | null> {
+    return `mockmsg_${email.to}_${Date.now().toString(36)}`;
+  }
+
+  async fetchInbound(): Promise<{ inbound: InboundEmail[]; nextCursor?: string | null }> {
+    const contacted = await db.prospect.findMany({
+      where: {
+        stage: "CONTACTED",
+        contactEmail: { not: null },
+        contactedAt: { lt: new Date(Date.now() - 3_600_000) },
+      },
+      take: 40,
+      orderBy: { contactedAt: "asc" },
+    });
+    const count = Math.min(3, Math.ceil(contacted.length * 0.05));
+    const total = MOCK_REPLIES.reduce((a, r) => a + r.weight, 0);
+    const inbound = contacted.slice(0, count).map((p) => {
+      let roll = Math.random() * total;
+      const reply = MOCK_REPLIES.find((r) => (roll -= r.weight) <= 0) ?? MOCK_REPLIES[0];
+      return {
+        messageId: `mockin_${p.id}_${Date.now().toString(36)}`,
+        fromEmail: p.contactEmail!,
+        toMailbox: "inbox@havenx",
+        text: reply.text,
+        isWarmup: false,
+      };
+    });
+    return { inbound };
+  }
 }
 
 /**
- * Instantly API v2 adapter. Written against the public v2 docs
- * (https://developer.instantly.ai) — UNTESTED until a key is provided; verify
- * field names on first live run. Requires INSTANTLY_API_KEY.
+ * Winnr sender. Winnr hosts the inboxes, so it is also the transport:
+ * native warmup, per-message send, and account-wide inbox polling.
+ * Requires WINNR_API_KEY.
  */
-export class InstantlySendingToolService implements SendingToolService {
-  private base = "https://api.instantly.ai/api/v2";
+export class WinnrSendingToolService implements SendingToolService {
+  private base = "https://api.winnr.app/v1";
   constructor(private apiKey: string) {}
 
   private async call(path: string, method: string, body?: unknown) {
@@ -117,88 +97,63 @@ export class InstantlySendingToolService implements SendingToolService {
       body: body ? JSON.stringify(body) : undefined,
     });
     if (!res.ok) {
-      throw new Error(`Instantly ${method} ${path} → ${res.status}: ${await res.text()}`);
+      throw new Error(`Winnr ${method} ${path} → ${res.status}: ${await res.text()}`);
     }
     return res.json();
   }
 
-  async connectInboxes(inboxes: InboxRecord[]): Promise<string[]> {
-    const ids: string[] = [];
-    for (const inbox of inboxes) {
-      const account = await this.call("/accounts", "POST", {
-        email: inbox.address,
-        smtp_host: inbox.smtpHost,
-        smtp_port: inbox.smtpPort,
-        smtp_username: inbox.smtpUsername,
-        smtp_password: inbox.smtpPasswordRef, // replace with secret lookup
-        imap_host: inbox.imapHost,
-        imap_port: inbox.imapPort,
-        warmup: { enabled: true },
-      });
-      ids.push(account.id ?? inbox.address);
-    }
-    return ids;
-  }
-
-  async createCampaign(input: {
-    name: string;
-    accountIds: string[];
-    copy: CampaignCopy;
-    dailyLimit: number;
-  }): Promise<string> {
-    const campaign = await this.call("/campaigns", "POST", {
-      name: input.name,
-      email_list: input.accountIds,
-      daily_limit: input.dailyLimit,
-      // Mon-Fri sending window
-      campaign_schedule: {
-        schedules: [
-          {
-            name: "weekdays",
-            timing: { from: "08:00", to: "17:00" },
-            days: { 1: true, 2: true, 3: true, 4: true, 5: true },
-            timezone: "America/Chicago",
-          },
-        ],
-      },
-      sequences: [
-        {
-          steps: [
-            {
-              type: "email",
-              variants: input.copy.variants.map((v) => ({
-                subject: v.subject,
-                body: v.body,
-              })),
-            },
-          ],
-        },
-      ],
+  async setupWarming(userIds: string[]) {
+    if (userIds.length === 0) return;
+    await this.call("/warming/enable", "POST", {
+      user_ids: userIds,
+      settings: { emails_per_day: 25, rampup_enabled: true, rampup_speed: "normal" },
     });
-    return campaign.id;
   }
 
-  async addLeads(campaignId: string, leads: CampaignLead[]): Promise<string[]> {
-    const ids: string[] = [];
-    for (const lead of leads) {
-      const created = await this.call("/leads", "POST", {
-        campaign: campaignId,
-        email: lead.email,
-        first_name: lead.firstName,
-        company_name: lead.companyName,
-        custom_variables: { niche: lead.niche },
-      });
-      ids.push(created.id ?? lead.email);
+  async sendEmail(email: OutboundEmail): Promise<string | null> {
+    try {
+      const res = await this.call(
+        `/email-users/${email.fromUserId}/inbox/send`,
+        "POST",
+        { to: email.to, subject: email.subject, body: email.body, html: false }
+      );
+      return res.data?.message_id ?? res.message_id ?? `sent_${Date.now()}`;
+    } catch (e) {
+      console.error("[sender:winnr] send failed:", e);
+      return null;
     }
-    return ids;
   }
 
-  async getQueueDepth(campaignId: string): Promise<number> {
-    const res = await this.call(
-      `/campaigns/${campaignId}/analytics`,
-      "GET"
-    ).catch(() => null);
-    if (!res) return 0;
-    return Math.max(0, (res.leads_count ?? 0) - (res.contacted_count ?? 0));
+  async fetchInbound(
+    cursor?: string | null
+  ): Promise<{ inbound: InboundEmail[]; nextCursor?: string | null }> {
+    const q = new URLSearchParams({ limit: "100", exclude_warmup: "true" });
+    if (cursor) q.set("cursor", cursor);
+    const res = await this.call(`/inbox?${q.toString()}`, "GET");
+    const inbound: InboundEmail[] = (res.data ?? [])
+      .filter((m: { folder?: string; is_warmup?: boolean }) => !m.is_warmup)
+      .map((m: {
+        message_id?: string;
+        id?: string;
+        from?: string;
+        from_email?: string;
+        to?: string;
+        text?: string;
+        snippet?: string;
+        body_preview?: string;
+      }) => ({
+        messageId: m.message_id ?? m.id ?? "",
+        fromEmail: extractEmail(m.from_email ?? m.from ?? ""),
+        toMailbox: m.to ?? "",
+        text: m.text ?? m.snippet ?? m.body_preview ?? "",
+        isWarmup: false,
+      }))
+      .filter((m: InboundEmail) => m.messageId && m.fromEmail);
+    return { inbound, nextCursor: res.pagination?.next_cursor ?? null };
   }
+}
+
+function extractEmail(raw: string): string {
+  const m = raw.match(/<([^>]+)>/);
+  return (m ? m[1] : raw).trim().toLowerCase();
 }

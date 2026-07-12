@@ -15,23 +15,26 @@ export class MockEmailVerifierService implements EmailVerifierService {
 }
 
 /**
- * Reoon Email Verifier adapter (power mode). Untested until a key is
- * provided — verify the response mapping against the account's docs.
- * Requires REOON_API_KEY.
+ * Orbisearch adapter. GET /v1/verify?email= with X-API-Key.
+ * Response: { status: "valid"|"invalid"|"risky"|"catch-all"|..., ... }.
+ * Requires ORBISEARCH_API_KEY.
  */
-export class ReoonEmailVerifierService implements EmailVerifierService {
+export class OrbisearchEmailVerifierService implements EmailVerifierService {
   constructor(private apiKey: string) {}
 
   async verify(email: string): Promise<VerificationResult> {
-    const url = `https://emailverifier.reoon.com/api/v1/verify?email=${encodeURIComponent(email)}&key=${this.apiKey}&mode=power`;
-    const res = await fetch(url);
+    const res = await fetch(
+      `https://api.orbisearch.com/v1/verify?email=${encodeURIComponent(email)}`,
+      { headers: { "X-API-Key": this.apiKey } }
+    );
     if (!res.ok) return "risky";
     const data = await res.json();
     const status = String(data?.status ?? "").toLowerCase();
-    if (status === "safe" || status === "valid" || status === "deliverable") {
+    if (status === "valid" || status === "deliverable" || status === "safe") {
       return "deliverable";
     }
-    if (status === "invalid" || status === "disabled") return "invalid";
+    if (status === "invalid" || status === "undeliverable") return "invalid";
+    // catch-all / risky / unknown → risky (we don't cold-email these)
     return "risky";
   }
 }

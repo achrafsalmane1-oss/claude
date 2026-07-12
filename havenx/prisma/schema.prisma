@@ -48,8 +48,15 @@ model Infrastructure {
   warmupStartedAt   DateTime?
   activatedAt       DateTime?
   dailySendTarget   Int         @default(2000)
+  inboxCursor       String? // pagination cursor for account inbox polling
   createdAt         DateTime    @default(now())
   updatedAt         DateTime    @updatedAt
+}
+
+// Dedup guard for inbound replies pulled from the email provider inbox.
+model ProcessedInbound {
+  messageId String   @id
+  createdAt DateTime @default(now())
 }
 
 model Session {

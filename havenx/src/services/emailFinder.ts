@@ -3,14 +3,20 @@ export interface FoundEmail {
   confidence: "high" | "medium" | "low";
 }
 
+export interface FindInput {
+  fullName: string;
+  domain: string;
+  linkedinUrl?: string;
+}
+
 export interface EmailFinderService {
-  /** Find a work email for a person at a domain. Null if none found. */
-  find(fullName: string, domain: string): Promise<FoundEmail | null>;
+  /** Find a work email for a person. Null if none found. */
+  find(input: FindInput): Promise<FoundEmail | null>;
 }
 
 /** Mock: derives first@domain, succeeds ~90% of the time. */
 export class MockEmailFinderService implements EmailFinderService {
-  async find(fullName: string, domain: string): Promise<FoundEmail | null> {
+  async find({ fullName, domain }: FindInput): Promise<FoundEmail | null> {
     if (Math.random() < 0.1) return null;
     const first = fullName.split(" ")[0]?.toLowerCase() ?? "owner";
     return { email: `${first}@${domain}`, confidence: "high" };
@@ -18,33 +24,51 @@ export class MockEmailFinderService implements EmailFinderService {
 }
 
 /**
- * Real email-finder adapter. Point EMAIL_FINDER_API_URL at the provider's
- * find-by-name endpoint and set EMAIL_FINDER_API_KEY; adjust the request/
- * response mapping to the provider's schema (each of these APIs is a single
- * POST with name+domain and a JSON response — a ~10-line change once the
- * provider is confirmed).
+ * Moltsets adapter. Tries the LinkedIn→best-email endpoint first (highest hit
+ * rate when we have a profile URL from sourcing), then falls back to
+ * name+company_domain. Both return { results: { email }, status }.
+ * Requires MOLTSETS_API_KEY.
  */
-export class HttpEmailFinderService implements EmailFinderService {
-  constructor(
-    private apiUrl: string,
-    private apiKey: string
-  ) {}
+export class MoltsetsEmailFinderService implements EmailFinderService {
+  private base = "https://api.moltsets.com/api/v1/tools";
+  constructor(private apiKey: string) {}
 
-  async find(fullName: string, domain: string): Promise<FoundEmail | null> {
-    const res = await fetch(this.apiUrl, {
+  private async post(tool: string, body: unknown) {
+    const res = await fetch(`${this.base}/${tool}`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${this.apiKey}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ full_name: fullName, domain }),
+      body: JSON.stringify(body),
     });
-    if (!res.ok) return null;
-    const data = await res.json();
-    if (!data?.email) return null;
-    return {
-      email: String(data.email),
-      confidence: data.confidence ?? "medium",
-    };
+    if (!res.ok && res.status !== 404) {
+      // 404 = "not_found" (still JSON); other non-2xx are real errors
+      const text = await res.text();
+      if (!text.trim().startsWith("{")) {
+        throw new Error(`Moltsets ${tool} → ${res.status}: ${text}`);
+      }
+      return JSON.parse(text);
+    }
+    return res.json();
+  }
+
+  async find({ fullName, domain, linkedinUrl }: FindInput): Promise<FoundEmail | null> {
+    if (linkedinUrl) {
+      const r = await this.post("linkedin_to_best_email", {
+        linkedin_url: linkedinUrl,
+      }).catch(() => null);
+      const email = r?.results?.email;
+      if (email) {
+        return { email, confidence: r.results.type === "business" ? "high" : "medium" };
+      }
+    }
+    const r = await this.post("search_business_email_by_name", {
+      name: fullName,
+      company_domain: domain,
+    }).catch(() => null);
+    const email = r?.results?.email;
+    if (email) return { email, confidence: "medium" };
+    return null;
   }
 }

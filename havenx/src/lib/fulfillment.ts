@@ -9,21 +9,20 @@ import {
   notifications,
 } from "@/services";
 import type { InboxRecord } from "@/services/inboxProvider";
-import type { CampaignLead } from "@/services/sender";
-import { pickMockReplies, MockSendingToolService } from "@/services/sender";
+import type { CampaignCopy } from "@/services/copywriting";
 import { processReply } from "./replies";
 
-const DOMAINS_PER_CLIENT = 10; // 2000/day ÷ (10 domains × 3 inboxes × ~70/inbox)
+const DOMAINS_PER_CLIENT = 10; // 2000/day ÷ (10 domains × 3 inboxes × ~67/inbox)
 const INBOXES_PER_DOMAIN = 3;
-const TOPUP_BUFFER = 1.3; // push 30% extra to absorb bounces/invalids
+const SEND_BATCH = 200; // emails sent per dispatch-cron run per client
+const ENRICH_BATCH = 250; // owners enriched per top-up run per client (bounds runtime)
 
 /**
  * Provisioning state machine. Idempotent and resumable: each step records
  * itself in `lastCompletedStep`; a failed step records `lastError` and is
- * retried on the next cron tick. Steps, in order:
+ * retried on the next cron tick.
  *   buy_plan → buy_domains → create_inboxes → connect_sender (warmup starts)
- * Then, once the subscription's day-11 mark passes: generate copy, create the
- * campaign, and flip to ACTIVE.
+ * Then, once the subscription's day-11 mark passes: generate copy → ACTIVE.
  */
 export async function advanceProvisioning(userId: string) {
   const [infra, user] = await Promise.all([
@@ -39,8 +38,9 @@ export async function advanceProvisioning(userId: string) {
   const mandate = user.mandate;
 
   try {
-    let { planId, domains, senderAccountIds } = infra;
-    let inboxes = (infra.inboxes as InboxRecord[] | null) ?? [];
+    let { planId, domains } = infra;
+    let inboxes = (infra.inboxes as unknown as InboxRecord[] | null) ?? [];
+    let domainIds: Record<string, string> = {};
     let step = infra.lastCompletedStep;
 
     if (!step) {
@@ -61,35 +61,46 @@ export async function advanceProvisioning(userId: string) {
         mandate.senderCompany,
         DOMAINS_PER_CLIENT
       );
-      await inboxProvider.buyDomains(planId!, domains);
+      domainIds = await inboxProvider.buyDomains(planId!, domains);
       step = "buy_domains";
       await db.infrastructure.update({
         where: { userId },
-        data: { domains, lastCompletedStep: step, lastError: null },
+        data: {
+          domains: Object.keys(domainIds),
+          inboxes: JSON.parse(JSON.stringify({ __domainIds: domainIds })),
+          lastCompletedStep: step,
+          lastError: null,
+        },
       });
+    } else if (step === "buy_domains") {
+      const stored = infra.inboxes as { __domainIds?: Record<string, string> } | null;
+      domainIds = stored?.__domainIds ?? Object.fromEntries((domains ?? []).map((d) => [d, d]));
     }
 
     if (step === "buy_domains") {
       inboxes = await inboxProvider.createInboxes(
-        planId!,
-        domains,
+        domainIds,
         INBOXES_PER_DOMAIN,
         mandate.senderName
       );
       step = "create_inboxes";
       await db.infrastructure.update({
         where: { userId },
-        data: { inboxes: JSON.parse(JSON.stringify(inboxes)), lastCompletedStep: step, lastError: null },
+        data: {
+          inboxes: JSON.parse(JSON.stringify(inboxes)),
+          lastCompletedStep: step,
+          lastError: null,
+        },
       });
     }
 
     if (step === "create_inboxes") {
-      senderAccountIds = await sender.connectInboxes(inboxes);
+      await sender.setupWarming(inboxes.map((i) => i.providerUserId));
       step = "connect_sender";
       await db.infrastructure.update({
         where: { userId },
         data: {
-          senderAccountIds,
+          senderAccountIds: inboxes.map((i) => i.providerUserId),
           lastCompletedStep: step,
           status: "WARMING",
           warmupStartedAt: infra.warmupStartedAt ?? new Date(),
@@ -98,22 +109,16 @@ export async function advanceProvisioning(userId: string) {
       });
     }
 
-    // Day 11+: warmup done → generate copy, create campaign, go live.
+    // Day 11+: warmup done → generate copy, go live. (No external campaign —
+    // this app is the sequencer; sending happens in the dispatch cron.)
     if (step === "connect_sender") {
       if (new Date() < user.subscription.outreachStartsAt) return;
 
       const copy = await copywriter.generateCampaignCopy(mandate);
-      const campaignId = await sender.createCampaign({
-        name: `${mandate.senderCompany} — buy-box outreach`,
-        accountIds: senderAccountIds,
-        copy,
-        dailyLimit: infra.dailySendTarget,
-      });
       await db.infrastructure.update({
         where: { userId },
         data: {
-          campaignId,
-          copyVariants: JSON.parse(JSON.stringify(copy)) ,
+          copyVariants: JSON.parse(JSON.stringify(copy)),
           status: "ACTIVE",
           activatedAt: new Date(),
           lastCompletedStep: "campaign_live",
@@ -139,40 +144,34 @@ export async function advanceProvisioning(userId: string) {
 }
 
 /**
- * Daily top-up (cron, Mon-Fri): keep every active client's campaign fed so
- * it never runs out — source → find email → verify → niche variant → push.
+ * Enrichment top-up (cron, weekdays): keep a healthy backlog of send-ready
+ * (ENRICHED + verified) owners so the dispatch cron never starves —
+ * source → find email → verify → niche variant. No sending here.
  */
 export async function topUpClient(userId: string) {
   const [infra, user] = await Promise.all([
     db.infrastructure.findUnique({ where: { userId } }),
     db.user.findUnique({ where: { id: userId }, include: { mandate: true } }),
   ]);
-  if (!infra || infra.status !== "ACTIVE" || !infra.campaignId || !user?.mandate) {
-    return { pushed: 0 };
-  }
+  if (!infra || infra.status !== "ACTIVE" || !user?.mandate) return { enriched: 0 };
 
-  const queued = await sender.getQueueDepth(infra.campaignId);
-  const needed = Math.max(
-    0,
-    Math.ceil(infra.dailySendTarget * TOPUP_BUFFER) - queued
-  );
-  if (needed === 0) return { pushed: 0 };
+  // Keep ~2 days of sending queued as verified, deliverable, un-contacted.
+  const ready = await db.prospect.count({
+    where: { userId, stage: "ENRICHED", emailStatus: "verified", contactedAt: null },
+  });
+  const needed = Math.min(ENRICH_BATCH, Math.max(0, infra.dailySendTarget * 2 - ready));
+  if (needed === 0) return { enriched: 0 };
 
-  // 1. Source fresh owners (skip domains we already have for this client).
-  const raw = await sourcing.source(user.mandate, needed);
+  const raw = await sourcing.source(user.mandate, Math.ceil(needed * 1.4));
   const existing = new Set(
-    (
-      await db.prospect.findMany({
-        where: { userId },
-        select: { domain: true },
-      })
-    ).map((p) => p.domain)
+    (await db.prospect.findMany({ where: { userId }, select: { domain: true } })).map(
+      (p) => p.domain
+    )
   );
   const fresh = raw.filter((l) => !existing.has(l.domain));
 
-  const leads: CampaignLead[] = [];
+  let enriched = 0;
   for (const lead of fresh) {
-    // 2. Persist as SOURCED.
     const prospect = await db.prospect.create({
       data: {
         userId,
@@ -189,19 +188,19 @@ export async function topUpClient(userId: string) {
       },
     });
 
-    // 3. Find + verify the owner's email.
-    const found = await emailFinder.find(lead.ownerName, lead.domain);
+    const found = await emailFinder.find({
+      fullName: lead.ownerName,
+      domain: lead.domain,
+      linkedinUrl: lead.linkedinUrl,
+    });
     if (!found) continue;
+
     const verdict = await emailVerifier.verify(found.email);
     if (verdict === "invalid") {
-      await db.prospect.update({
-        where: { id: prospect.id },
-        data: { emailStatus: "invalid" },
-      });
+      await db.prospect.update({ where: { id: prospect.id }, data: { emailStatus: "invalid" } });
       continue;
     }
 
-    // 4. Niche variant for copy personalization (2-3 words, lowercase).
     const niche = await copywriter.nicheVariant(
       user.mandate.industries[0] ?? "services",
       lead.description
@@ -212,48 +211,121 @@ export async function topUpClient(userId: string) {
       data: {
         stage: "ENRICHED",
         enrichedAt: new Date(),
-        contactEmail: found.email,
+        contactEmail: found.email.toLowerCase(),
         emailStatus: verdict === "deliverable" ? "verified" : "found",
         nicheVariant: niche,
       },
     });
-
-    if (verdict === "deliverable") {
-      leads.push({
-        prospectId: prospect.id,
-        email: found.email,
-        firstName: lead.ownerName.split(" ")[0],
-        companyName: lead.companyName,
-        niche,
-      });
-    }
+    if (verdict === "deliverable") enriched++;
   }
 
-  // 5. Push verified leads into the campaign.
-  if (leads.length > 0) {
-    const ids = await sender.addLeads(infra.campaignId, leads);
-    await Promise.all(
-      leads.map((l, i) =>
-        db.prospect.update({
-          where: { id: l.prospectId },
-          data: { senderLeadId: ids[i] },
-        })
-      )
-    );
-  }
-
-  // 6. Snapshot today's funnel for the dashboard chart.
   await snapshotFunnel(userId);
+  return { enriched };
+}
 
-  // Dev only: the mock sender simulates a trickle of inbound replies so the
-  // demo pipeline keeps moving end-to-end.
-  if (sender instanceof MockSendingToolService) {
-    for (const { prospect, replyText } of await pickMockReplies(userId)) {
-      await processReply(prospect.id, replyText);
-    }
+function startOfUtcDay(): Date {
+  const d = new Date();
+  d.setUTCHours(0, 0, 0, 0);
+  return d;
+}
+
+function fill(t: string, v: { firstName: string; companyName: string; niche: string }) {
+  return t
+    .replaceAll("{{firstName}}", v.firstName)
+    .replaceAll("{{companyName}}", v.companyName)
+    .replaceAll("{{niche}}", v.niche);
+}
+
+/**
+ * Send dispatch (cron, weekday business hours): sends the day's outreach for
+ * one client up to its daily target, paced across runs and rotated across
+ * inboxes. Picks verified, deliverable, un-contacted owners and sends in the
+ * client's name. Never sends on weekends (the cron schedule enforces that).
+ */
+export async function dispatchSends(userId: string) {
+  const infra = await db.infrastructure.findUnique({ where: { userId } });
+  if (!infra || infra.status !== "ACTIVE") return { sent: 0 };
+
+  const inboxes = (infra.inboxes as unknown as InboxRecord[] | null) ?? [];
+  const copy = infra.copyVariants as unknown as CampaignCopy | null;
+  if (inboxes.length === 0 || !copy?.variants?.length) return { sent: 0 };
+
+  const sentToday = await db.prospect.count({
+    where: { userId, contactedAt: { gte: startOfUtcDay() } },
+  });
+  const remaining = Math.min(SEND_BATCH, infra.dailySendTarget - sentToday);
+  if (remaining <= 0) return { sent: 0 };
+
+  const batch = await db.prospect.findMany({
+    where: { userId, stage: "ENRICHED", emailStatus: "verified", contactedAt: null },
+    take: remaining,
+    orderBy: { enrichedAt: "asc" },
+  });
+
+  let sent = 0;
+  for (let i = 0; i < batch.length; i++) {
+    const p = batch[i];
+    if (!p.contactEmail) continue;
+    const inbox = inboxes[i % inboxes.length];
+    const variant = copy.variants[i % copy.variants.length];
+    const vars = {
+      firstName: p.ownerName.split(" ")[0],
+      companyName: p.companyName,
+      niche: p.nicheVariant ?? "your industry",
+    };
+    const messageId = await sender.sendEmail({
+      fromUserId: inbox.providerUserId,
+      to: p.contactEmail,
+      subject: fill(variant.subject, vars),
+      body: fill(variant.body, vars),
+    });
+    if (!messageId) continue;
+    await db.prospect.update({
+      where: { id: p.id },
+      data: { stage: "CONTACTED", contactedAt: new Date(), pushedAt: new Date(), senderLeadId: messageId },
+    });
+    sent++;
   }
 
-  return { pushed: leads.length };
+  if (sent > 0) await snapshotFunnel(userId);
+  return { sent };
+}
+
+/**
+ * Reply poll (cron): pulls new inbound mail account-wide from the sending
+ * provider, dedupes by provider message id, matches each reply to a prospect
+ * by sender email, and runs it through classification + notification.
+ */
+export async function pollReplies() {
+  const anchor = await db.infrastructure.findFirst({
+    where: { status: "ACTIVE" },
+    orderBy: { updatedAt: "asc" },
+  });
+  const { inbound, nextCursor } = await sender.fetchInbound(anchor?.inboxCursor);
+
+  let processed = 0;
+  for (const msg of inbound) {
+    if (msg.isWarmup) continue;
+    const seen = await db.processedInbound.findUnique({ where: { messageId: msg.messageId } });
+    if (seen) continue;
+    await db.processedInbound.create({ data: { messageId: msg.messageId } });
+
+    const prospect = await db.prospect.findFirst({
+      where: { contactEmail: msg.fromEmail, stage: { in: ["CONTACTED", "REPLIED"] } },
+      orderBy: { contactedAt: "desc" },
+    });
+    if (!prospect) continue;
+    await processReply(prospect.id, msg.text);
+    processed++;
+  }
+
+  if (anchor && nextCursor !== undefined) {
+    await db.infrastructure.update({
+      where: { userId: anchor.userId },
+      data: { inboxCursor: nextCursor },
+    });
+  }
+  return { processed };
 }
 
 export async function snapshotFunnel(userId: string) {
@@ -264,8 +336,7 @@ export async function snapshotFunnel(userId: string) {
     db.prospect.count({ where: { userId, stage: "REPLIED" } }),
     db.prospect.count({ where: { userId, replyDisposition: "INTERESTED" } }),
   ]);
-  const today = new Date();
-  today.setUTCHours(0, 0, 0, 0);
+  const today = startOfUtcDay();
   await db.funnelSnapshot.upsert({
     where: { userId_date: { userId, date: today } },
     update: { sourced, enriched, contacted, replied, interested },
