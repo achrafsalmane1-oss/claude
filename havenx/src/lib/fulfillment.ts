@@ -35,6 +35,14 @@ export async function advanceProvisioning(userId: string) {
   if (!infra || !user?.mandate || !user.subscription) return;
   if (infra.status === "ACTIVE" || infra.status === "PAUSED") return;
 
+  // MONEY INTERLOCK: when the real (paid) providers are active, never spend
+  // infrastructure money on an account that hasn't actually paid. A real
+  // Stripe subscription id is the proof of payment. Mock/staging mode skips
+  // this so the demo pipeline still runs end-to-end for free.
+  if (process.env.FULFILLMENT_LIVE === "true" && !user.subscription.stripeSubscriptionId) {
+    return;
+  }
+
   const mandate = user.mandate;
 
   try {
