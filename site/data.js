@@ -1,11 +1,12 @@
 window.FRANKLIN_DATA = {
   "client": "Franklin",
-  "generated_at": "2026-07-16T15:37:41.496306+00:00",
+  "generated_at": "2026-07-16T15:48:50.954776+00:00",
   "generated_at_display": "July 16, 2026",
   "timezone": "UTC",
   "totals": {
-    "emails_sent": 1613,
+    "emails_sent": 1621,
     "replies": 94,
+    "positive_replies": 0,
     "reply_rate": 5.8,
     "campaigns_total": 3,
     "campaigns_active": 1
@@ -113,16 +114,17 @@ window.FRANKLIN_DATA = {
     },
     {
       "date": "2026-07-16",
-      "sent": 187,
-      "replies": 4
+      "sent": 200,
+      "replies": 5
     }
   ],
   "campaigns": [
     {
       "name": "Franklin - Batch 2",
       "status": "active",
-      "sent": 844,
+      "sent": 852,
       "replies": 46,
+      "positive": 0,
       "started": "2026-07-14"
     },
     {
@@ -130,6 +132,7 @@ window.FRANKLIN_DATA = {
       "status": "completed",
       "sent": 721,
       "replies": 46,
+      "positive": 0,
       "started": "2026-07-09"
     },
     {
@@ -137,6 +140,7 @@ window.FRANKLIN_DATA = {
       "status": "paused",
       "sent": 48,
       "replies": 2,
+      "positive": 0,
       "started": "2026-06-26"
     }
   ]

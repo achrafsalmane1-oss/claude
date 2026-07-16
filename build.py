@@ -122,6 +122,7 @@ def build() -> dict:
     #     current cumulative counts). ---
     total_sent = sum(int(c.get("emails_sent", 0) or 0) for c in campaigns)
     total_replies = sum(int(c.get("replied", 0) or 0) for c in campaigns)
+    total_positive = sum(int(c.get("interested", 0) or 0) for c in campaigns)
     active = sum(1 for c in campaigns if c.get("status") == "active")
     reply_rate = round(100 * total_replies / total_sent, 1) if total_sent else 0.0
 
@@ -168,6 +169,7 @@ def build() -> dict:
                 "status": c.get("status"),
                 "sent": int(c.get("emails_sent", 0) or 0),
                 "replies": int(c.get("replied", 0) or 0),
+                "positive": int(c.get("interested", 0) or 0),
                 "started": started.isoformat(),
             }
         )
@@ -181,6 +183,7 @@ def build() -> dict:
         "totals": {
             "emails_sent": total_sent,
             "replies": total_replies,
+            "positive_replies": total_positive,
             "reply_rate": reply_rate,
             "campaigns_total": len(campaigns),
             "campaigns_active": active,
@@ -195,8 +198,20 @@ def main():
     OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
     # Write as a JS assignment so the page works both on a web host and when
     # opened directly from disk (no fetch / CORS needed).
-    js = "window.FRANKLIN_DATA = " + json.dumps(payload, indent=2) + ";\n"
-    OUTPUT_PATH.write_text(js, encoding="utf-8")
+    data_js = "window.FRANKLIN_DATA = " + json.dumps(payload, indent=2) + ";\n"
+    OUTPUT_PATH.write_text(data_js, encoding="utf-8")
+
+    # Also emit a single self-contained HTML file (data inlined) for hosts that
+    # serve one file only (e.g. a shared Artifact link).
+    index_path = OUTPUT_PATH.parent / "index.html"
+    standalone_path = OUTPUT_PATH.parent / "franklin-dashboard.html"
+    if index_path.exists():
+        html = index_path.read_text(encoding="utf-8")
+        html = html.replace(
+            '<script src="data.js"></script>',
+            "<script>\n" + data_js + "</script>",
+        )
+        standalone_path.write_text(html, encoding="utf-8")
 
     t = payload["totals"]
     print("\n========== BUILT ==========")
