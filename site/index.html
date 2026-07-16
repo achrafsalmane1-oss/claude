@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Campaign Performance</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --page:        #f9f9f7;
+      --surface-1:   #fcfcfb;
+      --text-1:      #0b0b0b;
+      --text-2:      #52514e;
+      --muted:       #898781;
+      --grid:        #e1e0d9;
+      --baseline:    #c3c2b7;
+      --border:      rgba(11,11,11,0.10);
+      --sends:       #2a78d6;
+      --sends-soft:  rgba(42,120,214,0.10);
+      --replies:     #008300;
+      --replies-soft:rgba(0,131,0,0.12);
+      --good:        #006300;
+      --shadow:      0 1px 2px rgba(11,11,11,0.04), 0 6px 20px rgba(11,11,11,0.05);
+    }
+    @media (prefers-color-scheme: dark) {
+      :root:where(:not([data-theme="light"])) {
+        color-scheme: dark;
+        --page:        #0d0d0d;
+        --surface-1:   #1a1a19;
+        --text-1:      #ffffff;
+        --text-2:      #c3c2b7;
+        --muted:       #898781;
+        --grid:        #2c2c2a;
+        --baseline:    #383835;
+        --border:      rgba(255,255,255,0.10);
+        --sends:       #3987e5;
+        --sends-soft:  rgba(57,135,229,0.14);
+        --replies:     #2fa84f;
+        --replies-soft:rgba(47,168,79,0.16);
+        --good:        #0ca30c;
+        --shadow:      0 1px 2px rgba(0,0,0,0.4), 0 8px 28px rgba(0,0,0,0.45);
+      }
+    }
+    :root[data-theme="dark"] {
+      color-scheme: dark;
+      --page:        #0d0d0d;
+      --surface-1:   #1a1a19;
+      --text-1:      #ffffff;
+      --text-2:      #c3c2b7;
+      --muted:       #898781;
+      --grid:        #2c2c2a;
+      --baseline:    #383835;
+      --border:      rgba(255,255,255,0.10);
+      --sends:       #3987e5;
+      --sends-soft:  rgba(57,135,229,0.14);
+      --replies:     #2fa84f;
+      --replies-soft:rgba(47,168,79,0.16);
+      --good:        #0ca30c;
+      --shadow:      0 1px 2px rgba(0,0,0,0.4), 0 8px 28px rgba(0,0,0,0.45);
+    }
+
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; }
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      background: var(--page);
+      color: var(--text-1);
+      -webkit-font-smoothing: antialiased;
+      line-height: 1.45;
+    }
+    .wrap { max-width: 1080px; margin: 0 auto; padding: 32px 20px 64px; }
+
+    /* Header */
+    header.top {
+      display: flex; align-items: flex-start; justify-content: space-between;
+      gap: 16px; flex-wrap: wrap; margin-bottom: 28px;
+    }
+    .brand { display: flex; flex-direction: column; gap: 4px; }
+    .eyebrow {
+      font-size: 12px; font-weight: 600; letter-spacing: 0.08em;
+      text-transform: uppercase; color: var(--muted);
+    }
+    h1 { font-size: 28px; font-weight: 600; margin: 0; letter-spacing: -0.01em; }
+    .updated {
+      font-size: 13px; color: var(--text-2); display: flex; align-items: center;
+      gap: 8px; white-space: nowrap;
+    }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--good); flex: none; }
+    .theme-btn {
+      appearance: none; border: 1px solid var(--border); background: var(--surface-1);
+      color: var(--text-2); border-radius: 8px; padding: 6px 10px; font-size: 13px;
+      cursor: pointer; font-family: inherit;
+    }
+    .theme-btn:hover { color: var(--text-1); }
+
+    /* KPI row */
+    .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 26px; }
+    @media (max-width: 720px) { .kpis { grid-template-columns: repeat(2, 1fr); } }
+    .kpi {
+      background: var(--surface-1); border: 1px solid var(--border); border-radius: 14px;
+      padding: 18px 18px 16px; box-shadow: var(--shadow); position: relative; overflow: hidden;
+    }
+    .kpi .label { font-size: 13px; color: var(--text-2); margin-bottom: 10px; }
+    .kpi .value { font-size: 40px; font-weight: 600; letter-spacing: -0.02em; line-height: 1; }
+    .kpi .sub { font-size: 12.5px; color: var(--muted); margin-top: 8px; }
+    .kpi.accent-sends .value { color: var(--text-1); }
+    .kpi .rail { position: absolute; left: 0; top: 0; bottom: 0; width: 4px; }
+    .kpi.accent-sends .rail { background: var(--sends); }
+    .kpi.accent-replies .rail { background: var(--replies); }
+    .kpi.accent-rate .rail { background: var(--good); }
+    .kpi.accent-camp .rail { background: var(--baseline); }
+
+    /* Cards */
+    .card {
+      background: var(--surface-1); border: 1px solid var(--border); border-radius: 16px;
+      padding: 22px 22px 18px; box-shadow: var(--shadow); margin-bottom: 22px;
+    }
+    .card h2 { font-size: 16px; font-weight: 600; margin: 0 0 2px; }
+    .card .csub { font-size: 13px; color: var(--text-2); margin: 0 0 18px; }
+    .card-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+    .legend-key { display: inline-flex; align-items: center; gap: 7px; font-size: 12.5px; color: var(--text-2); }
+    .swatch { width: 11px; height: 11px; border-radius: 3px; flex: none; }
+
+    /* Chart */
+    .chart-holder { position: relative; width: 100%; }
+    svg.chart { width: 100%; height: auto; display: block; overflow: visible; }
+    .bar-hit { fill: transparent; cursor: default; }
+    .gridline { stroke: var(--grid); stroke-width: 1; }
+    .baseline { stroke: var(--baseline); stroke-width: 1; }
+    .tick-txt { fill: var(--muted); font-size: 11px; font-family: inherit; }
+    .tick-txt.y { text-anchor: end; }
+    .tick-txt.x { text-anchor: middle; }
+
+    .tooltip {
+      position: absolute; pointer-events: none; opacity: 0; transform: translate(-50%, -8px);
+      background: var(--text-1); color: var(--surface-1); padding: 8px 11px; border-radius: 9px;
+      font-size: 12.5px; white-space: nowrap; box-shadow: var(--shadow); transition: opacity .12s ease;
+      z-index: 5;
+    }
+    .tooltip .tt-date { font-weight: 600; margin-bottom: 3px; }
+    .tooltip .tt-row { display: flex; align-items: center; gap: 6px; opacity: 0.92; }
+    .tooltip .tt-sw { width: 8px; height: 8px; border-radius: 2px; }
+
+    /* Table */
+    table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    thead th {
+      text-align: left; font-weight: 600; color: var(--text-2); font-size: 12px;
+      text-transform: uppercase; letter-spacing: 0.04em; padding: 0 12px 10px;
+      border-bottom: 1px solid var(--border);
+    }
+    thead th.num, tbody td.num { text-align: right; font-variant-numeric: tabular-nums; }
+    tbody td { padding: 13px 12px; border-bottom: 1px solid var(--border); }
+    tbody tr:last-child td { border-bottom: none; }
+    .cname { font-weight: 500; }
+    .badge {
+      display: inline-block; font-size: 11.5px; font-weight: 600; padding: 2px 9px;
+      border-radius: 999px; letter-spacing: 0.02em; text-transform: capitalize;
+    }
+    .badge.active    { color: var(--good); background: var(--replies-soft); }
+    .badge.completed { color: var(--sends); background: var(--sends-soft); }
+    .badge.paused    { color: var(--text-2); background: var(--border); }
+
+    .toggle-row { margin-top: 6px; }
+    .link-btn {
+      appearance: none; background: none; border: none; color: var(--text-2);
+      font-family: inherit; font-size: 13px; cursor: pointer; padding: 4px 0; text-decoration: underline;
+      text-underline-offset: 3px;
+    }
+    .link-btn:hover { color: var(--text-1); }
+    .datatable { margin-top: 14px; }
+    .datatable[hidden] { display: none; }
+
+    footer.foot { margin-top: 30px; font-size: 12px; color: var(--muted); text-align: center; }
+    .visually-hidden {
+      position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="top">
+      <div class="brand">
+        <span class="eyebrow" id="eyebrow">Campaign performance</span>
+        <h1 id="title">Loading…</h1>
+      </div>
+      <div style="display:flex; flex-direction:column; align-items:flex-end; gap:10px;">
+        <button class="theme-btn" id="themeBtn" type="button">◐ Theme</button>
+        <span class="updated"><span class="dot"></span><span id="updated"></span></span>
+      </div>
+    </header>
+
+    <section class="kpis" id="kpis"></section>
+
+    <section class="card">
+      <div class="card-head">
+        <div>
+          <h2>Emails sent per day</h2>
+          <p class="csub">Daily outreach volume across all campaigns.</p>
+        </div>
+        <span class="legend-key"><span class="swatch" style="background:var(--sends)"></span>Emails sent</span>
+      </div>
+      <div class="chart-holder" id="sendsHolder">
+        <svg class="chart" id="sendsChart" role="img" aria-label="Emails sent per day"></svg>
+        <div class="tooltip" id="sendsTip"></div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="card-head">
+        <div>
+          <h2>Replies per day</h2>
+          <p class="csub">Positive engagement landing in the inbox each day.</p>
+        </div>
+        <span class="legend-key"><span class="swatch" style="background:var(--replies)"></span>Replies</span>
+      </div>
+      <div class="chart-holder" id="repliesHolder">
+        <svg class="chart" id="repliesChart" role="img" aria-label="Replies per day"></svg>
+        <div class="tooltip" id="repliesTip"></div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="card-head" style="margin-bottom:14px;">
+        <div>
+          <h2>Campaigns</h2>
+          <p class="csub" style="margin-bottom:0;">Every campaign we've launched for you.</p>
+        </div>
+      </div>
+      <div style="overflow-x:auto;">
+        <table id="campTable">
+          <thead>
+            <tr>
+              <th>Campaign</th>
+              <th>Status</th>
+              <th class="num">Emails sent</th>
+              <th class="num">Replies</th>
+              <th class="num">Reply rate</th>
+              <th>Launched</th>
+            </tr>
+          </thead>
+          <tbody id="campBody"></tbody>
+        </table>
+      </div>
+      <div class="toggle-row">
+        <button class="link-btn" id="dailyToggle" type="button" aria-expanded="false">Show day-by-day numbers</button>
+        <div class="datatable" id="dailyTableWrap" hidden></div>
+      </div>
+    </section>
+
+    <footer class="foot" id="foot"></footer>
+  </div>
+
+  <script src="data.js"></script>
+  <script>
+  (function () {
+    "use strict";
+    var D = window.FRANKLIN_DATA;
+    var elTitle = document.getElementById("title");
+
+    if (!D) {
+      elTitle.textContent = "No data available yet";
+      return;
+    }
+
+    /* ---------- helpers ---------- */
+    function fmt(n) { return Number(n).toLocaleString("en-US"); }
+    function compact(n) {
+      n = Number(n);
+      if (n >= 1e6) return (n / 1e6).toFixed(n % 1e6 ? 1 : 0) + "M";
+      if (n >= 1e4) return (n / 1e3).toFixed(n % 1e3 ? 1 : 0) + "K";
+      return fmt(n);
+    }
+    function parseDate(iso) {
+      var p = iso.split("-");
+      return new Date(Date.UTC(+p[0], +p[1] - 1, +p[2]));
+    }
+    function shortDate(iso) {
+      var d = parseDate(iso);
+      return d.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
+    }
+    function longDate(iso) {
+      var d = parseDate(iso);
+      return d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" });
+    }
+    var SVGNS = "http://www.w3.org/2000/svg";
+    function svg(tag, attrs) {
+      var e = document.createElementNS(SVGNS, tag);
+      for (var k in attrs) e.setAttribute(k, attrs[k]);
+      return e;
+    }
+
+    /* ---------- header ---------- */
+    elTitle.textContent = D.client + " — Campaign Performance";
+    document.getElementById("eyebrow").textContent = "Prepared for " + D.client;
+    document.getElementById("updated").textContent =
+      "Updated " + D.generated_at_display + " · refreshes daily";
+    document.title = D.client + " — Campaign Performance";
+    document.getElementById("foot").textContent =
+      "Live figures from our sending platform · all times " + (D.timezone || "UTC") +
+      " · last refreshed " + D.generated_at_display + ".";
+
+    /* ---------- KPIs ---------- */
+    var t = D.totals;
+    var kpis = [
+      { cls: "accent-sends",   label: "Total emails sent",  value: fmt(t.emails_sent),
+        sub: "Across " + t.campaigns_total + " campaign" + (t.campaigns_total === 1 ? "" : "s") },
+      { cls: "accent-replies", label: "Total replies",      value: fmt(t.replies),
+        sub: "Direct responses received" },
+      { cls: "accent-rate",    label: "Reply rate",         value: t.reply_rate + "%",
+        sub: "Replies per email sent" },
+      { cls: "accent-camp",    label: "Active campaigns",   value: fmt(t.campaigns_active),
+        sub: t.campaigns_total + " launched to date" }
+    ];
+    var kEl = document.getElementById("kpis");
+    kpis.forEach(function (k) {
+      var d = document.createElement("div");
+      d.className = "kpi " + k.cls;
+      d.innerHTML = '<span class="rail"></span>' +
+        '<div class="label">' + k.label + '</div>' +
+        '<div class="value">' + k.value + '</div>' +
+        '<div class="sub">' + k.sub + '</div>';
+      kEl.appendChild(d);
+    });
+
+    /* ---------- column chart renderer ---------- */
+    function niceMax(v) {
+      if (v <= 0) return 10;
+      var pow = Math.pow(10, Math.floor(Math.log10(v)));
+      var steps = [1, 2, 2.5, 5, 10];
+      for (var i = 0; i < steps.length; i++) {
+        var m = steps[i] * pow;
+        if (m >= v) return m;
+      }
+      return 10 * pow;
+    }
+
+    function renderColumns(cfg) {
+      var svgEl = cfg.svg, tip = cfg.tip, holder = cfg.holder;
+      var data = D.daily, series = cfg.field, color = cfg.color;
+      var W = 760, H = 300;
+      var mL = 44, mR = 14, mT = 14, mB = 34;
+      var plotW = W - mL - mR, plotH = H - mT - mB;
+      svgEl.setAttribute("viewBox", "0 0 " + W + " " + H);
+
+      var maxV = niceMax(Math.max.apply(null, data.map(function (d) { return d[series]; })).valueOf() || 0);
+      var yOf = function (v) { return mT + plotH - (v / maxV) * plotH; };
+
+      // y gridlines + ticks (0, 1/2, max)
+      var ticks = [0, maxV / 2, maxV];
+      ticks.forEach(function (tv) {
+        var y = yOf(tv);
+        svgEl.appendChild(svg("line", { x1: mL, y1: y, x2: mL + plotW, y2: y,
+          class: tv === 0 ? "baseline" : "gridline" }));
+        var lbl = svg("text", { x: mL - 8, y: y + 4, class: "tick-txt y" });
+        lbl.textContent = compact(Math.round(tv));
+        svgEl.appendChild(lbl);
+      });
+
+      var n = data.length;
+      var slot = plotW / n;
+      var barW = Math.min(24, slot * 0.62);
+      var labelEvery = Math.ceil(n / 8);
+
+      data.forEach(function (d, i) {
+        var cx = mL + slot * i + slot / 2;
+        var val = d[series];
+        var h = (val / maxV) * plotH;
+        var x = cx - barW / 2;
+        var y = mT + plotH - h;
+
+        if (val > 0) {
+          // rounded top, square base: use a path
+          var r = Math.min(4, barW / 2, h);
+          var path = "M" + x + "," + (mT + plotH) +
+            " L" + x + "," + (y + r) +
+            " Q" + x + "," + y + " " + (x + r) + "," + y +
+            " L" + (x + barW - r) + "," + y +
+            " Q" + (x + barW) + "," + y + " " + (x + barW) + "," + (y + r) +
+            " L" + (x + barW) + "," + (mT + plotH) + " Z";
+          svgEl.appendChild(svg("path", { d: path, fill: color }));
+        }
+
+        // full-height hit target for hover
+        var hit = svg("rect", { x: mL + slot * i, y: mT, width: slot, height: plotH, class: "bar-hit" });
+        (function (dd) {
+          hit.addEventListener("mouseenter", function () { showTip(dd); });
+          hit.addEventListener("mousemove", function () { showTip(dd); });
+          hit.addEventListener("mouseleave", function () { tip.style.opacity = 0; });
+        })(d);
+        svgEl.appendChild(hit);
+
+        // sparse x labels
+        if (i % labelEvery === 0 || i === n - 1) {
+          var xl = svg("text", { x: cx, y: H - 12, class: "tick-txt x" });
+          xl.textContent = shortDate(d.date);
+          svgEl.appendChild(xl);
+        }
+      });
+
+      function showTip(d) {
+        var rect = holder.getBoundingClientRect();
+        var frac = (mL + slot * data.indexOf(d) + slot / 2) / W;
+        var px = frac * rect.width;
+        var py = (yOf(d[series]) / H) * rect.height;
+        tip.innerHTML =
+          '<div class="tt-date">' + longDate(d.date) + '</div>' +
+          '<div class="tt-row"><span class="tt-sw" style="background:' + color + '"></span>' +
+          fmt(d[series]) + ' ' + cfg.noun + '</div>';
+        tip.style.left = px + "px";
+        tip.style.top = Math.max(py, 4) + "px";
+        tip.style.opacity = 1;
+      }
+    }
+
+    renderColumns({
+      svg: document.getElementById("sendsChart"),
+      tip: document.getElementById("sendsTip"),
+      holder: document.getElementById("sendsHolder"),
+      field: "sent", noun: "emails sent",
+      color: getComputedStyle(document.documentElement).getPropertyValue("--sends").trim()
+    });
+    renderColumns({
+      svg: document.getElementById("repliesChart"),
+      tip: document.getElementById("repliesTip"),
+      holder: document.getElementById("repliesHolder"),
+      field: "replies", noun: "replies",
+      color: getComputedStyle(document.documentElement).getPropertyValue("--replies").trim()
+    });
+
+    /* ---------- campaigns table ---------- */
+    var body = document.getElementById("campBody");
+    D.campaigns.forEach(function (c) {
+      var rate = c.sent ? (100 * c.replies / c.sent).toFixed(1) + "%" : "—";
+      var tr = document.createElement("tr");
+      tr.innerHTML =
+        '<td class="cname">' + escapeHtml(c.name) + '</td>' +
+        '<td><span class="badge ' + c.status + '">' + c.status + '</span></td>' +
+        '<td class="num">' + fmt(c.sent) + '</td>' +
+        '<td class="num">' + fmt(c.replies) + '</td>' +
+        '<td class="num">' + rate + '</td>' +
+        '<td>' + shortDate(c.started) + '</td>';
+      body.appendChild(tr);
+    });
+
+    /* ---------- day-by-day table (accessibility + transparency) ---------- */
+    var toggle = document.getElementById("dailyToggle");
+    var wrap = document.getElementById("dailyTableWrap");
+    var built = false;
+    toggle.addEventListener("click", function () {
+      if (!built) {
+        var rows = D.daily.filter(function (d) { return d.sent || d.replies; })
+          .map(function (d) {
+            return "<tr><td>" + longDate(d.date) + "</td><td class='num'>" +
+              fmt(d.sent) + "</td><td class='num'>" + fmt(d.replies) + "</td></tr>";
+          }).join("");
+        wrap.innerHTML =
+          "<table><thead><tr><th>Date</th><th class='num'>Emails sent</th>" +
+          "<th class='num'>Replies</th></tr></thead><tbody>" + rows + "</tbody></table>";
+        built = true;
+      }
+      var show = wrap.hasAttribute("hidden");
+      if (show) { wrap.removeAttribute("hidden"); toggle.textContent = "Hide day-by-day numbers"; }
+      else { wrap.setAttribute("hidden", ""); toggle.textContent = "Show day-by-day numbers"; }
+      toggle.setAttribute("aria-expanded", show ? "true" : "false");
+    });
+
+    function escapeHtml(s) {
+      return String(s).replace(/[&<>"']/g, function (m) {
+        return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[m];
+      });
+    }
+
+    /* ---------- theme toggle ---------- */
+    var root = document.documentElement;
+    document.getElementById("themeBtn").addEventListener("click", function () {
+      var cur = root.getAttribute("data-theme");
+      var next = cur === "dark" ? "light" : "dark";
+      root.setAttribute("data-theme", next);
+      // re-render charts so colors pick up the new theme
+      ["sendsChart", "repliesChart"].forEach(function (id) {
+        document.getElementById(id).innerHTML = "";
+      });
+      renderColumns({
+        svg: document.getElementById("sendsChart"), tip: document.getElementById("sendsTip"),
+        holder: document.getElementById("sendsHolder"), field: "sent", noun: "emails sent",
+        color: getComputedStyle(root).getPropertyValue("--sends").trim()
+      });
+      renderColumns({
+        svg: document.getElementById("repliesChart"), tip: document.getElementById("repliesTip"),
+        holder: document.getElementById("repliesHolder"), field: "replies", noun: "replies",
+        color: getComputedStyle(root).getPropertyValue("--replies").trim()
+      });
+    });
+  })();
+  </script>
+</body>
+</html>

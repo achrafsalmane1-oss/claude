@@ -1,0 +1,61 @@
+name: Build & publish Franklin dashboard
+
+# Rebuilds the dashboard data from the Email Bison API and publishes the
+# static site to GitHub Pages. Runs once a day, on every push to main, and
+# on demand.
+#
+# NOTE: scheduled runs only fire from the repository's DEFAULT branch, so this
+# workflow file must live on `main` for the daily refresh to happen.
+
+on:
+  schedule:
+    - cron: "0 13 * * *"      # every day at 13:00 UTC
+  workflow_dispatch: {}
+  push:
+    branches: [main]
+    paths:
+      - "build.py"
+      - "site/**"
+      - ".github/workflows/dashboard.yml"
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Never run two deploys at once; let the newest win.
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Build curated dashboard data
+        env:
+          EMAIL_BISON_API_KEY: ${{ secrets.EMAIL_BISON_API_KEY }}
+          EMAIL_BISON_BASE_URL: ${{ vars.EMAIL_BISON_BASE_URL || 'https://send.breakoutcreatives.com/api' }}
+          CLIENT_NAME: ${{ vars.CLIENT_NAME || 'Franklin' }}
+        run: python build.py
+
+      - name: Upload site artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+      - name: Deploy to GitHub Pages
+        id: deploy
+        uses: actions/deploy-pages@v4
