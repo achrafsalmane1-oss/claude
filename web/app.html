@@ -392,12 +392,22 @@ a{color:inherit;text-decoration:none}
 
     <!-- ============ SETTINGS ============ -->
     <section class="view" id="v-settings">
-      <div class="panel"><div class="phead"><div><h1>Settings</h1><p>Workspace, billing, and delivery preferences.</p></div></div>
-        <div class="ownlist" style="margin-top:20px">
-          <div class="own"><div><div class="nm">Workspace</div><div class="role">Northstar Consulting · 1 seat</div></div><a class="link-all" href="#">Manage →</a></div>
-          <div class="own"><div><div class="nm">Plan</div><div class="role">Growth — 5,000 drops / mo</div></div><a class="link-all" href="#">Billing →</a></div>
-          <div class="own"><div><div class="nm">Caller ID &amp; voice</div><div class="role">Alex Morgan · “Ava” voice clone</div></div><a class="link-all" href="#">Edit →</a></div>
-        </div>
+      <div class="panel"><div class="phead"><div><h1>Settings</h1><p>Account, plan, and compliance.</p></div><button class="btn btn-out" id="set-signout">Sign out</button></div></div>
+
+      <div class="bx"><div class="idrow"><div class="bk">Account</div><div><div class="nmn" id="set-email">—</div><div class="sub" id="set-ws">—</div></div></div></div>
+
+      <div class="panel" style="margin-top:16px">
+        <div class="phead" style="align-items:center;margin-bottom:12px"><div><h1 style="font-size:20px">Plan &amp; usage</h1></div><span id="set-plan" class="statuspill"><span class="d"></span>—</span></div>
+        <div style="font-size:14px;color:var(--muted);margin-bottom:8px"><b id="set-used" style="color:var(--ink)">0</b> of <span id="set-cap">0</span> drops used this month</div>
+        <div class="track" style="height:9px"><i id="set-bar" style="width:0%"></i></div>
+        <div id="set-plans" style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:22px"></div>
+      </div>
+
+      <div class="panel" style="margin-top:16px">
+        <div class="phead" style="align-items:center;margin-bottom:8px"><div><h1 style="font-size:20px">Do-not-contact list</h1><p>Numbers here are skipped on every send, permanently.</p></div></div>
+        <div class="lsearch"><input id="set-dnc-num" placeholder="+1 555 123 4567" style="flex:1"/><button class="btn btn-out" id="set-dnc-add">Suppress</button></div>
+        <div class="lstatus" id="set-dnc-status"></div>
+        <div style="overflow-x:auto"><table class="tbl"><tbody id="set-dnc-rows"></tbody></table></div>
       </div>
     </section>
   </main>
@@ -422,7 +432,7 @@ a{color:inherit;text-decoration:none}
         if(me){ var av=document.querySelector('.topbar .av');
           if(av) av.textContent=(me.email||'?')[0].toUpperCase();
           var crumb=document.querySelector('.topbar .crumb b');
-          if(crumb && me.workspace) crumb.textContent=me.workspace; }
+          if(crumb && me.workspace) crumb.textContent=me.workspace; try{loadSettings();}catch(e){} }
       }).catch(function(){});
     }
   }).catch(function(){});
@@ -612,6 +622,55 @@ a{color:inherit;text-decoration:none}
     });
     cdPreview();
   })();
+
+
+  /* ---- settings (served/live only) ---- */
+  function loadSettings(){
+    if(!localStorage.getItem('cd_token')) return;
+    CDfetch('/api/auth/me').then(function(r){return r.ok?r.json():null;}).then(function(me){
+      if(!me) return;
+      var e=document.getElementById('set-email'); if(e)e.textContent=me.email;
+      var w=document.getElementById('set-ws'); if(w)w.textContent=me.workspace;
+      var u=me.usage||{};
+      document.getElementById('set-plan').innerHTML='<span class="d"></span>'+(u.plan||'—').charAt(0).toUpperCase()+(u.plan||'').slice(1);
+      document.getElementById('set-used').textContent=(u.used||0).toLocaleString();
+      document.getElementById('set-cap').textContent=(u.cap||0).toLocaleString();
+      document.getElementById('set-bar').style.width=(u.cap?Math.min(100,100*(u.used||0)/u.cap):0)+'%';
+      renderPlanCards(u.plan);
+    });
+    CDfetch('/api/suppressions').then(function(r){return r.ok?r.json():{suppressions:[]};}).then(function(d){
+      document.getElementById('set-dnc-rows').innerHTML=(d.suppressions||[]).map(function(s){
+        return '<tr><td class="co">'+s.phone+'</td><td style="color:var(--muted)">'+(s.reason||'')+'</td></tr>';}).join('')
+        || '<tr><td style="color:var(--faint)">No suppressed numbers yet.</td></tr>';
+    });
+  }
+  function renderPlanCards(current){
+    CDfetch('/api/billing/plans').then(function(r){return r.json();}).then(function(d){
+      document.getElementById('set-plans').innerHTML=d.plans.map(function(p){
+        var cur=p.id===current;
+        return '<div class="fc"><div class="l">'+p.name+'</div>'
+          +'<div class="v" style="font-size:26px">$'+p.price_usd+'<span style="font-size:13px;color:var(--muted)">/mo</span></div>'
+          +'<div class="d" style="margin:4px 0 12px">'+p.blurb+'</div>'
+          +(cur?'<button class="btn btn-out" disabled style="width:100%;opacity:.6">Current plan</button>'
+               :'<button class="btn btn-green cd-upgrade" data-plan="'+p.id+'" style="width:100%">Upgrade</button>')+'</div>';
+      }).join('');
+      document.querySelectorAll('.cd-upgrade').forEach(function(b){b.onclick=function(){
+        b.textContent='…'; b.disabled=true;
+        CDfetch('/api/billing/checkout',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({plan:b.dataset.plan})})
+        .then(function(r){return r.json();}).then(function(res){ if(res.url) location.href=res.url; });
+      };});
+    });
+  }
+  var soBtn=document.getElementById('set-signout');
+  if(soBtn) soBtn.onclick=function(){localStorage.removeItem('cd_token');location.href='/login.html';};
+  var dncAdd=document.getElementById('set-dnc-add');
+  if(dncAdd) dncAdd.onclick=function(){
+    var num=document.getElementById('set-dnc-num').value.trim(); if(!num) return;
+    CDfetch('/api/suppressions',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({phone:num})})
+    .then(function(r){return r.json();}).then(function(){document.getElementById('set-dnc-num').value='';loadSettings();});
+  };
+  document.querySelectorAll('.nav-i').forEach(function(it){ if(it.getAttribute('data-v')==='settings') it.addEventListener('click',loadSettings); });
+  setTimeout(loadSettings, 900);
 
 })();
 </script>
