@@ -24,7 +24,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, EmailStr, Field
 
-from . import auth, providers
+from fastapi import Request
+
+from . import auth, billing, providers
 
 MOLTSETS_BASE = "https://api.moltsets.com/api/v1/tools"
 MOLTSETS_KEY = os.environ.get("MOLTSETS_API_KEY", "")
@@ -190,6 +192,38 @@ def me(ctx: Ctx = Depends(get_ctx)):
 @app.get("/api/usage")
 def usage(ctx: Ctx = Depends(get_ctx)):
     return usage_for(ctx.wid)
+
+
+# ---------- billing ----------
+
+@app.get("/api/billing/plans")
+def billing_plans():
+    return {"plans": billing.plan_catalog(), "mode": "live" if billing.live() else "stub"}
+
+
+class CheckoutIn(BaseModel):
+    plan: str
+
+
+@app.post("/api/billing/checkout")
+def billing_checkout(body: CheckoutIn, ctx: Ctx = Depends(get_ctx)):
+    if body.plan not in billing.PLANS:
+        raise HTTPException(422, "unknown plan")
+    result = billing.create_checkout(ctx.wid, body.plan, ctx.user["email"])
+    if result.get("stub"):  # no Stripe yet: apply the plan immediately
+        with db() as conn:
+            conn.execute("UPDATE workspaces SET plan=? WHERE id=?", (body.plan, ctx.wid))
+    return result
+
+
+@app.post("/api/webhooks/stripe")
+async def stripe_webhook(request: Request):
+    raw = await request.body()
+    parsed = billing.verify_and_parse_webhook(raw, request.headers.get("stripe-signature", ""))
+    if parsed:
+        with db() as conn:
+            conn.execute("UPDATE workspaces SET plan=? WHERE id=?", (parsed["plan"], parsed["workspace_id"]))
+    return {"ok": True}
 
 
 # ---------- moltsets ----------

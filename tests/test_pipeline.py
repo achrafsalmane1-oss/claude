@@ -107,6 +107,30 @@ def test_plan_cap_enforced():
         auth.PLAN_CAPS["starter"] = 1000
 
 
+def test_billing_stub_upgrade():
+    h = signup("bill@acme.com")
+    plans = client.get("/api/billing/plans").json()
+    assert plans["mode"] == "stub"
+    assert {p["id"] for p in plans["plans"]} == {"starter", "growth", "scale"}
+    # stub checkout applies the plan immediately
+    r = client.post("/api/billing/checkout", headers=h, json={"plan": "growth"}).json()
+    assert r["stub"] is True and "upgraded=growth" in r["url"]
+    assert client.get("/api/usage", headers=h).json() == {"plan": "growth", "cap": 5000, "used": 0, "remaining": 5000}
+
+
+def test_stripe_webhook_upgrades_workspace():
+    h = signup("hook2@acme.com")
+    wid = client.get("/api/auth/me", headers=h)  # ensure workspace exists
+    assert wid.status_code == 200
+    import sqlite3
+    conn = sqlite3.connect(os.environ["COLDDROPS_DB"]); conn.row_factory = sqlite3.Row
+    w = conn.execute("SELECT w.id FROM workspaces w JOIN users u ON u.workspace_id=w.id WHERE u.email='hook2@acme.com'").fetchone()["id"]
+    evt = {"type": "checkout.session.completed",
+           "data": {"object": {"metadata": {"workspace_id": w, "plan": "scale"}}}}
+    assert client.post("/api/webhooks/stripe", json=evt).json()["ok"] is True
+    assert client.get("/api/usage", headers=h).json()["plan"] == "scale"
+
+
 def test_webhook_updates_status():
     h = signup("hook@acme.com")
     cid = client.post("/api/campaigns", headers=h, json={"name": "Hook", "script": "Hi {{first_name}}"}).json()["id"]

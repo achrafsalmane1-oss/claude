@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Colddrops — DNC & Acceptable Use</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#F7F6F1;color:#20242A;font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+header{border-bottom:1px solid rgba(24,26,22,.09);background:#fff}
+.bar{max-width:760px;margin:0 auto;padding:16px 24px;display:flex;align-items:center;justify-content:space-between}
+.wm{display:inline-flex;align-items:center;font-weight:800;font-style:italic;letter-spacing:-.03em;font-size:20px;color:#141519}
+.bar a{color:#2E9E52;font-weight:600;text-decoration:none;font-size:14px}
+main{max-width:760px;margin:0 auto;padding:48px 24px 80px}
+h1{font-size:34px;letter-spacing:-.02em;margin-bottom:6px}
+.upd{color:#8A8F86;font-size:13px;margin-bottom:32px}
+h2{font-size:19px;margin:30px 0 10px;letter-spacing:-.01em}
+p,li{color:#3B4147;margin-bottom:12px}
+ul{padding-left:22px} li{margin-bottom:7px}
+a.inline{color:#2E9E52;font-weight:600;text-decoration:none}
+.note{background:#EAF3EE;border:1px solid rgba(46,125,91,.25);border-radius:12px;padding:16px 18px;color:#2b4a3a;font-size:14.5px;margin:18px 0}
+footer{max-width:760px;margin:0 auto;padding:24px;border-top:1px solid rgba(24,26,22,.09);color:#8A8F86;font-size:13px}
+footer a{color:#6E7379;text-decoration:none;margin-right:16px}
+</style></head><body>
+<header><div class="bar"><a href="/index.html" style="color:inherit"><span class="wm">c<svg viewBox="0 0 24 30" style="height:22px;transform:translateY(-8%);margin:0 1px" aria-hidden="true"><path d="M13.6 1.2 C13.6 1.2 3.2 12.4 3.2 19 a9.4 9.4 0 0 0 18.8 0 C22 12.4 13.6 1.2 13.6 1.2 Z" fill="#22B573"/><ellipse cx="9.4" cy="21" rx="2.7" ry="2.2" fill="#fff" transform="rotate(-18 9.4 21)"/></svg>ld drops</span></a><a href="/index.html">← Back to site</a></div></header>
+<main><h1>DNC & Acceptable Use</h1><div class="upd">Last updated July 2026</div>
+
+<p>Colddrops is built for <b>permission-based</b> outbound. This policy is mandatory and part of our Terms.</p>
+<h2>Your compliance obligations</h2>
+<ul>
+<li>Only contact people you have a lawful basis to reach.</li>
+<li>Scrub your lists against applicable do-not-call / do-not-contact registries before sending.</li>
+<li>Identify yourself truthfully in every message and provide a clear way to opt out.</li>
+<li>Honor opt-outs immediately and permanently.</li>
+</ul>
+<h2>How Colddrops helps</h2>
+<ul>
+<li><b>Suppression list</b> — every workspace has a do-not-contact list. Any number on it is skipped at send time, automatically, forever.</li>
+<li><b>Send windows</b> — drops are scheduled within reasonable local-time windows.</li>
+<li><b>Audit trail</b> — every drop, listen, and callback is logged.</li>
+</ul>
+<div class="note">Add a number to your suppression list from Settings, or via <code>POST /api/suppressions</code>. Opt-out requests captured from replies are suppressed automatically.</div>
+<h2>Opt out of being contacted</h2>
+<p>If you received a message via Colddrops and want to stop, reply to the sender to opt out, or email <a class="inline" href="mailto:optout@colddrops.app">optout@colddrops.app</a> with the number. We will suppress it across the sending workspace.</p>
+<h2>Prohibited uses</h2>
+<p>No contacting emergency lines; no harassment, deception, or impersonation; no use prohibited by law, regulation, or carrier policy. Violations can result in immediate suspension.</p>
+
+</main>
+<footer><a href="/privacy.html">Privacy</a><a href="/terms.html">Terms</a><a href="/dnc.html">DNC &amp; Acceptable Use</a><br><br>© 2026 Colddrops. Permission-based outbound.</footer>
+</body></html>
