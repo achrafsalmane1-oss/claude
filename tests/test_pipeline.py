@@ -3,9 +3,10 @@ import os
 import tempfile
 
 os.environ["COLDDROPS_DB"] = os.path.join(tempfile.mkdtemp(), "test.db")
-os.environ.pop("ELEVENLABS_API_KEY", None)
-os.environ.pop("DROPCOWBOY_TEAM_ID", None)
-os.environ.pop("DROPCOWBOY_SECRET", None)
+os.environ["VOICE_BACKEND"] = "chime"      # offline, deterministic, no network
+os.environ["DELIVERY_BACKEND"] = "dry_run"
+for k in ("ELEVENLABS_API_KEY", "TELNYX_API_KEY", "TELNYX_CONNECTION_ID", "TELNYX_FROM_NUMBER"):
+    os.environ.pop(k, None)
 
 from fastapi.testclient import TestClient  # noqa: E402
 from server import providers  # noqa: E402

@@ -67,11 +67,20 @@ API: POST /api/leads/search · /api/leads/mobiles · /api/script/preview ·
 /api/campaigns (+/contacts, /send, detail) · /api/suppressions ·
 /api/webhooks/dropcowboy · GET /api/health.
 
-The send pipeline (script merge → personalized voice render → RVM drop →
-delivery webhook, with DNC/opt-out suppression) runs end-to-end in **dry-run
-mode** out of the box — placeholder audio, simulated delivery. Set
-ELEVENLABS_API_KEY + DROPCOWBOY_TEAM_ID + DROPCOWBOY_SECRET (see .env.example)
-and the same pipeline goes live. Tests: `python3 -m pytest tests/`.
+### Voice + delivery are pluggable
+
+**Voice** (`VOICE_BACKEND=auto`): ElevenLabs when a paid key is present, else
+free **gTTS** (real speech, $0), else an offline chime. Fallback is automatic —
+a paywall or outage never breaks a send.
+
+**Delivery** (`DELIVERY_BACKEND=auto`): self-operated **Telnyx** Call Control
+(dial + answering-machine detection → play the drop into voicemail; we own
+routing, caller-ID and cost — no reseller), else **dry_run** (simulated).
+
+The full pipeline — script merge → personalized voice render → drop →
+delivery/AMD webhook, with DNC/opt-out suppression — runs end-to-end today in
+dry-run + free-voice mode. Add a paid ElevenLabs key and/or Telnyx creds
+(see .env.example) to go live, same code path. Tests: `python3 -m pytest tests/`.
 
 ## Compliance
 

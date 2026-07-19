@@ -323,12 +323,12 @@ def process_drop(drop_id: int) -> None:
         return
     try:
         text, _missing = merge_script(row["script"], dict(row))
-        path, url = providers.render_voice(text, row["foreign_id"])
-        result = providers.send_rvm(norm_phone(row["mobile"]), url, row["foreign_id"])
+        voice = providers.render_voice(text, row["foreign_id"])
+        result = providers.send_rvm(norm_phone(row["mobile"]), voice["url"], row["foreign_id"])
         with db() as conn:
             conn.execute(
                 "UPDATE drops SET audio_path=?, provider_id=?, status=?, updated_at=? WHERE id=?",
-                (str(path.name), result["provider_id"], result["status"], time.time(), drop_id),
+                (voice["path"].name, result["provider_id"], result["status"], time.time(), drop_id),
             )
             conn.execute(
                 "UPDATE contacts SET status=? WHERE id=?", (result["status"], row["id"])
@@ -421,13 +421,68 @@ async def dropcowboy_webhook(payload: dict):
     return {"ok": True, "foreign_id": fid, "status": mapped}
 
 
+@app.post("/api/webhooks/telnyx")
+async def telnyx_webhook(payload: dict):
+    """Call Control events for self-operated delivery.
+
+    On machine detection we play the drop audio (carried on a custom header);
+    on playback end we hang up; terminal call states update the drop status.
+    """
+    data = (payload.get("data") or {})
+    event = data.get("event_type", "")
+    p = data.get("payload", {})
+    ccid = p.get("call_control_id")
+    fid = providers.decode_client_state(p.get("client_state"))
+
+    def set_status(status: str):
+        if not fid:
+            return
+        with db() as conn:
+            row = conn.execute("SELECT * FROM drops WHERE foreign_id=?", (fid,)).fetchone()
+            if row:
+                conn.execute("UPDATE drops SET status=?, updated_at=? WHERE id=?",
+                             (status, time.time(), row["id"]))
+                conn.execute("UPDATE contacts SET status=? WHERE id=?", (status, row["contact_id"]))
+
+    if event in ("call.machine.detection.ended", "call.machine.premium.detection.ended"):
+        result = p.get("result", "")
+        if result in ("machine", "detected"):  # voicemail reached -> play the drop
+            audio = ""
+            for h in p.get("custom_headers", []) or []:
+                if h.get("name") == "X-Colddrops-Audio":
+                    audio = h.get("value", "")
+            if ccid and audio and providers.TELNYX_KEY:
+                requests.post(
+                    f"https://api.telnyx.com/v2/calls/{ccid}/actions/playback_start",
+                    headers={"Authorization": f"Bearer {providers.TELNYX_KEY}"},
+                    json={"audio_url": audio}, timeout=30)
+            set_status("delivered")
+        else:  # human answered — abandon (this is a voicemail drop, not a call)
+            if ccid and providers.TELNYX_KEY:
+                requests.post(f"https://api.telnyx.com/v2/calls/{ccid}/actions/hangup",
+                              headers={"Authorization": f"Bearer {providers.TELNYX_KEY}"}, timeout=30)
+            set_status("skipped_human")
+    elif event == "call.playback.ended":
+        if ccid and providers.TELNYX_KEY:
+            requests.post(f"https://api.telnyx.com/v2/calls/{ccid}/actions/hangup",
+                          headers={"Authorization": f"Bearer {providers.TELNYX_KEY}"}, timeout=30)
+    elif event == "call.hangup":
+        with db() as conn:
+            row = conn.execute("SELECT status FROM drops WHERE foreign_id=?", (fid,)).fetchone()
+        if row and row["status"] in ("queued", "sending"):
+            set_status("failed")
+    return {"ok": True}
+
+
 @app.get("/api/health")
 def health():
     return {
         "ok": True,
         "moltsets_configured": bool(MOLTSETS_KEY),
-        "voice_configured": providers.voice_live(),
-        "delivery_configured": providers.delivery_live(),
+        "voice_backend": providers.active_voice_backend(),
+        "voice_real": providers.voice_live(),
+        "delivery_backend": providers.active_delivery_backend(),
+        "delivery_live": providers.delivery_live(),
         "mode": "live" if providers.voice_live() and providers.delivery_live() else "dry_run",
     }
 
