@@ -307,6 +307,8 @@ a{color:inherit;text-decoration:none}
         <div style="overflow-x:auto"><table class="tbl"><tbody id="cd-contact-rows"></tbody></table></div>
       </div>
 
+      <div class="panel" id="cd-camp-list" style="display:none"></div>
+
       <div class="funnel" id="cd-funnel">
         <div class="fc"><div class="top"><span class="l">Queued</span></div><div class="v" id="cd-f-queued">0</div><div class="track"><i style="width:100%"></i></div><div class="d">staged for this send</div></div>
         <div class="fc"><div class="top"><span class="l">Delivered</span></div><div class="v" id="cd-f-delivered">0</div><div class="track"><i id="cd-b-delivered" style="width:0%"></i></div><div class="d">landed in voicemail</div></div>
@@ -326,6 +328,8 @@ a{color:inherit;text-decoration:none}
     <!-- ============ CALLBACKS ============ -->
     <section class="view" id="v-interested">
       <div class="panel"><div class="phead"><div><h1>Callbacks</h1><p>Prospects who heard your drop and called back. <b>4 waiting for you.</b></p></div><div style="text-align:right"><div class="serif" style="font-size:34px;line-height:1;color:var(--green-d)">6</div><div style="font-size:12px;color:var(--faint)">this week</div></div></div></div>
+
+      <div id="cb-live" style="display:none"></div>
 
       <div class="icard" data-open="1">
         <div class="ihead"><span class="av">EF</span><div><div class="nm">Elena Ferris <span class="tag new">New</span></div><div class="role">Broker-Owner, Coastal Bend Realty — Dallas, TX</div></div><div class="right"><div class="rev">0:28 listen</div><div class="ago">called back 4h ago</div></div><svg class="car" viewBox="0 0 24 24"><path d="M6 15l6-6 6 6"/></svg></div>
@@ -703,6 +707,51 @@ a{color:inherit;text-decoration:none}
   // trigger from the auth gate + on dashboard nav
   document.querySelectorAll('.nav-i').forEach(function(it){ if(it.getAttribute('data-v')==='dashboard') it.addEventListener('click',loadDashboard); });
   setTimeout(loadDashboard, 950);
+
+  /* ---- campaigns list, CSV export, callbacks (served only) ---- */
+  function cdCsv(id,name){
+    CDfetch('/api/campaigns/'+id+'/contacts.csv').then(function(r){return r.blob();}).then(function(b){
+      var u=URL.createObjectURL(b),a=document.createElement('a');a.href=u;a.download=(name||'campaign')+'-contacts.csv';
+      document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(u);});
+  }
+  function loadCampaignsList(){
+    if(!localStorage.getItem('cd_token')) return;
+    CDfetch('/api/campaigns').then(function(r){return r.ok?r.json():null;}).then(function(d){
+      if(!d) return; var el=document.getElementById('cd-camp-list'); if(!el) return;
+      if(!d.campaigns.length){ el.style.display='none'; return; }
+      el.style.display='block';
+      el.innerHTML='<div class="phead" style="margin-bottom:8px"><div><h1 style="font-size:20px">Your campaigns</h1></div></div>'
+        +'<div style="overflow-x:auto"><table class="tbl"><thead><tr><th>Name</th><th>Contacts</th><th>Delivered</th><th>Status</th><th class="r">Export</th></tr></thead><tbody>'
+        +d.campaigns.map(function(c){
+          return '<tr><td class="co">'+c.name+'</td><td>'+(c.contact_count||0)+'</td><td>'+(c.delivered_count||0)+'</td>'
+            +'<td><span class="spill">'+c.status+'</span></td>'
+            +'<td class="r"><span class="cd-csv" data-id="'+c.id+'" data-n="'+encodeURIComponent(c.name)+'" style="cursor:pointer;color:var(--green-d);font-weight:600">CSV \u2193</span></td></tr>';
+        }).join('')+'</tbody></table></div>';
+      el.querySelectorAll('.cd-csv').forEach(function(x){x.onclick=function(){cdCsv(x.dataset.id,decodeURIComponent(x.dataset.n));};});
+    });
+  }
+  function loadCallbacks(){
+    if(!localStorage.getItem('cd_token')) return;
+    CDfetch('/api/callbacks').then(function(r){return r.ok?r.json():null;}).then(function(d){
+      if(!d) return; var live=document.getElementById('cb-live'); if(!live) return;
+      document.querySelectorAll('#v-interested .icard').forEach(function(c){c.style.display='none';});
+      var cnt=document.querySelector('#v-interested .phead .serif'); if(cnt) cnt.textContent=d.count;
+      live.style.display='block';
+      live.innerHTML = d.count ? d.callbacks.map(function(c){
+        var nm=((c.first_name||'')+' '+(c.last_name||'')).trim()||'Contact';
+        return '<div class="icard"><div class="ihead"><span class="av">'+(nm[0]||'C').toUpperCase()+'</span>'
+          +'<div><div class="nm">'+nm+'</div><div class="role">'+(c.title?c.title+', ':'')+(c.company||'')+(c.country?(' \u2014 '+c.country):'')+'</div></div>'
+          +'<div class="right"><div class="rev">'+(c.mobile||'')+'</div><div class="ago">'+(c.campaign||'')+'</div></div></div></div>';
+      }).join('') : '<div class="panel" style="text-align:center;color:var(--muted)">No callbacks yet. When prospects call back, they land here.</div>';
+    });
+  }
+  document.querySelectorAll('.nav-i').forEach(function(it){
+    var v=it.getAttribute('data-v');
+    if(v==='pipeline') it.addEventListener('click',loadCampaignsList);
+    if(v==='interested') it.addEventListener('click',loadCallbacks);
+  });
+  setTimeout(function(){loadCampaignsList();loadCallbacks();}, 1000);
+
 
   document.querySelectorAll('.nav-i').forEach(function(it){ if(it.getAttribute('data-v')==='settings') it.addEventListener('click',loadSettings); });
   setTimeout(loadSettings, 900);

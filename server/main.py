@@ -412,6 +412,30 @@ def add_contacts(campaign_id: int, body: ContactsIn, ctx: Ctx = Depends(get_ctx)
     return {"campaign_id": campaign_id, "contact_count": n}
 
 
+@app.post("/api/contacts/{contact_id}/callback")
+def mark_callback(contact_id: int, ctx: Ctx = Depends(get_ctx)):
+    with db() as conn:
+        row = conn.execute(
+            """SELECT ct.id FROM contacts ct JOIN campaigns c ON c.id=ct.campaign_id
+               WHERE ct.id=? AND c.workspace_id=?""", (contact_id, ctx.wid)).fetchone()
+        if not row:
+            raise HTTPException(404, "contact not found")
+        conn.execute("UPDATE contacts SET status='called_back' WHERE id=?", (contact_id,))
+    return {"contact_id": contact_id, "status": "called_back"}
+
+
+@app.get("/api/callbacks")
+def list_callbacks(ctx: Ctx = Depends(get_ctx)):
+    with db() as conn:
+        rows = conn.execute(
+            """SELECT ct.id, ct.first_name, ct.last_name, ct.company, ct.title, ct.country,
+                      ct.email, ct.mobile, ct.linkedin_url, c.name AS campaign
+               FROM contacts ct JOIN campaigns c ON c.id=ct.campaign_id
+               WHERE c.workspace_id=? AND ct.status='called_back'
+               ORDER BY ct.id DESC""", (ctx.wid,)).fetchall()
+    return {"callbacks": [dict(r) for r in rows], "count": len(rows)}
+
+
 @app.get("/api/campaigns/{campaign_id}/contacts.csv")
 def export_contacts_csv(campaign_id: int, ctx: Ctx = Depends(get_ctx)):
     with db() as conn:

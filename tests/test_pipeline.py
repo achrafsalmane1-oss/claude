@@ -107,6 +107,22 @@ def test_plan_cap_enforced():
         auth.PLAN_CAPS["starter"] = 1000
 
 
+def test_callbacks_flow():
+    h = signup("cb@acme.com")
+    cid = client.post("/api/campaigns", headers=h, json={"name": "cb", "script": "Hi {{first_name}}"}).json()["id"]
+    client.post(f"/api/campaigns/{cid}/contacts", headers=h, json={"contacts": [
+        {"first_name": "Rang", "company": "Back Co", "mobile": "+1 415 555 9000"}]})
+    # find the contact id
+    ct = client.get(f"/api/campaigns/{cid}", headers=h).json()["contacts"][0]["id"]
+    assert client.get("/api/callbacks", headers=h).json()["count"] == 0
+    assert client.post(f"/api/contacts/{ct}/callback", headers=h).json()["status"] == "called_back"
+    cbs = client.get("/api/callbacks", headers=h).json()
+    assert cbs["count"] == 1 and cbs["callbacks"][0]["first_name"] == "Rang"
+    # another workspace can't mark my contact
+    b = signup("cb2@acme.com")
+    assert client.post(f"/api/contacts/{ct}/callback", headers=b).status_code == 404
+
+
 def test_billing_stub_upgrade():
     h = signup("bill@acme.com")
     plans = client.get("/api/billing/plans").json()
