@@ -53,6 +53,21 @@ voice orb, and a live-demo module. Copy centers on permission-based outbound.
 
 Annual = 2 months free.
 
+
+## Run it
+
+```bash
+pip install -r requirements.txt
+MOLTSETS_API_KEY=ms_xxx uvicorn server.main:app --reload
+# open http://localhost:8000  (landing) and /app.html (workspace)
+```
+
+The Lead finder in the app goes live automatically when served by this server.
+API: POST /api/leads/search · /api/leads/mobiles · /api/script/preview ·
+/api/campaigns (+/contacts, /send) · GET /api/health.
+Sending activates once ELEVENLABS_API_KEY, DROPCOWBOY_TEAM_ID, and
+DROPCOWBOY_SECRET are set.
+
 ## Compliance
 
 Ringless voicemail is regulated (U.S. TCPA and equivalents abroad). Do not launch
