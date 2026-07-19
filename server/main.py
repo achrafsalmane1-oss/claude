@@ -194,6 +194,28 @@ def usage(ctx: Ctx = Depends(get_ctx)):
     return usage_for(ctx.wid)
 
 
+@app.get("/api/dashboard")
+def dashboard(ctx: Ctx = Depends(get_ctx)):
+    with db() as conn:
+        drops_sent = conn.execute("SELECT COUNT(*) FROM drops WHERE workspace_id=?", (ctx.wid,)).fetchone()[0]
+        delivered = conn.execute("SELECT COUNT(*) FROM drops WHERE workspace_id=? AND status='delivered'", (ctx.wid,)).fetchone()[0]
+        campaigns = conn.execute("SELECT COUNT(*) FROM campaigns WHERE workspace_id=?", (ctx.wid,)).fetchone()[0]
+        contacts = conn.execute(
+            "SELECT COUNT(*) FROM contacts ct JOIN campaigns c ON c.id=ct.campaign_id WHERE c.workspace_id=?",
+            (ctx.wid,)).fetchone()[0]
+        latest = conn.execute(
+            """SELECT ct.first_name, ct.last_name, ct.company, ct.country, ct.status, ct.mobile
+               FROM contacts ct JOIN campaigns c ON c.id=ct.campaign_id
+               WHERE c.workspace_id=? AND ct.status IN ('delivered','sent')
+               ORDER BY ct.id DESC LIMIT 5""", (ctx.wid,)).fetchall()
+    return {
+        "stats": {"drops_sent": drops_sent, "delivered": delivered,
+                  "campaigns": campaigns, "contacts": contacts},
+        "usage": usage_for(ctx.wid),
+        "latest": [dict(r) for r in latest],
+    }
+
+
 # ---------- billing ----------
 
 @app.get("/api/billing/plans")
