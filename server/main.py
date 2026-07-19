@@ -1,15 +1,16 @@
 """Colddrops API server.
 
-Serves the web app and the product API:
+Serves the web app and the product API, now multi-tenant:
+  - auth (signup/login/me) + per-workspace data scoping
+  - plan + monthly usage metering (Stripe-ready, no Stripe needed yet)
   - lead search / mobile enrichment (Moltsets)
-  - script merge preview
-  - campaigns + contacts (SQLite)
-  - the send pipeline: merge -> voice render -> RVM drop -> webhook status,
-    with DNC/opt-out suppression. Works end-to-end in dry-run mode until the
-    voice + delivery providers are configured.
+  - script merge, campaigns/contacts, CSV export
+  - send pipeline: merge -> voice render -> drop -> webhook, with DNC suppression
 
 Run:  MOLTSETS_API_KEY=ms_xxx uvicorn server.main:app --reload
 """
+import io
+import csv
 import os
 import re
 import sqlite3
@@ -18,23 +19,20 @@ import uuid
 from pathlib import Path
 
 import requests
-from fastapi import BackgroundTasks, FastAPI, HTTPException
+from fastapi import BackgroundTasks, Depends, FastAPI, Header, HTTPException, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, EmailStr, Field
 
-from . import providers
+from . import auth, providers
 
 MOLTSETS_BASE = "https://api.moltsets.com/api/v1/tools"
 MOLTSETS_KEY = os.environ.get("MOLTSETS_API_KEY", "")
 DB_PATH = Path(os.environ.get("COLDDROPS_DB", Path(__file__).parent / "colddrops.db"))
 WEB_DIR = Path(__file__).resolve().parent.parent / "web"
 
-app = FastAPI(title="Colddrops API", version="0.2.0")
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"], allow_methods=["*"], allow_headers=["*"],
-)
+app = FastAPI(title="Colddrops API", version="0.3.0")
+app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
 
 # ---------- storage ----------
@@ -49,37 +47,40 @@ def init_db() -> None:
     with db() as conn:
         conn.executescript(
             """
+            CREATE TABLE IF NOT EXISTS workspaces (
+              id INTEGER PRIMARY KEY, name TEXT NOT NULL,
+              plan TEXT NOT NULL DEFAULT 'starter', created_at REAL NOT NULL
+            );
+            CREATE TABLE IF NOT EXISTS users (
+              id INTEGER PRIMARY KEY, email TEXT UNIQUE NOT NULL, pw_hash TEXT NOT NULL,
+              workspace_id INTEGER NOT NULL REFERENCES workspaces(id), created_at REAL NOT NULL
+            );
+            CREATE TABLE IF NOT EXISTS sessions (
+              token TEXT PRIMARY KEY, user_id INTEGER NOT NULL REFERENCES users(id),
+              created_at REAL NOT NULL
+            );
             CREATE TABLE IF NOT EXISTS campaigns (
-              id INTEGER PRIMARY KEY,
-              name TEXT NOT NULL,
-              script TEXT NOT NULL DEFAULT '',
-              voice TEXT NOT NULL DEFAULT 'ava',
-              status TEXT NOT NULL DEFAULT 'draft',
+              id INTEGER PRIMARY KEY, workspace_id INTEGER NOT NULL REFERENCES workspaces(id),
+              name TEXT NOT NULL, script TEXT NOT NULL DEFAULT '',
+              voice TEXT NOT NULL DEFAULT 'ava', status TEXT NOT NULL DEFAULT 'draft',
               created_at REAL NOT NULL
             );
             CREATE TABLE IF NOT EXISTS contacts (
-              id INTEGER PRIMARY KEY,
-              campaign_id INTEGER NOT NULL REFERENCES campaigns(id),
-              first_name TEXT, last_name TEXT, company TEXT,
-              title TEXT, country TEXT, email TEXT,
-              linkedin_url TEXT, mobile TEXT,
-              status TEXT NOT NULL DEFAULT 'queued',
-              created_at REAL NOT NULL
+              id INTEGER PRIMARY KEY, campaign_id INTEGER NOT NULL REFERENCES campaigns(id),
+              first_name TEXT, last_name TEXT, company TEXT, title TEXT, country TEXT,
+              email TEXT, linkedin_url TEXT, mobile TEXT,
+              status TEXT NOT NULL DEFAULT 'queued', created_at REAL NOT NULL
             );
             CREATE TABLE IF NOT EXISTS drops (
-              id INTEGER PRIMARY KEY,
-              foreign_id TEXT UNIQUE NOT NULL,
-              campaign_id INTEGER NOT NULL REFERENCES campaigns(id),
-              contact_id INTEGER NOT NULL REFERENCES contacts(id),
-              audio_path TEXT, provider_id TEXT,
-              status TEXT NOT NULL DEFAULT 'queued',
-              error TEXT,
-              created_at REAL NOT NULL, updated_at REAL NOT NULL
+              id INTEGER PRIMARY KEY, foreign_id TEXT UNIQUE NOT NULL,
+              workspace_id INTEGER NOT NULL, campaign_id INTEGER NOT NULL, contact_id INTEGER NOT NULL,
+              audio_path TEXT, provider_id TEXT, status TEXT NOT NULL DEFAULT 'queued',
+              error TEXT, created_at REAL NOT NULL, updated_at REAL NOT NULL
             );
             CREATE TABLE IF NOT EXISTS suppressions (
-              phone TEXT PRIMARY KEY,
-              reason TEXT NOT NULL DEFAULT 'opt_out',
-              created_at REAL NOT NULL
+              workspace_id INTEGER NOT NULL, phone TEXT NOT NULL,
+              reason TEXT NOT NULL DEFAULT 'opt_out', created_at REAL NOT NULL,
+              PRIMARY KEY (workspace_id, phone)
             );
             """
         )
@@ -92,18 +93,113 @@ def norm_phone(raw: str | None) -> str:
     return re.sub(r"\D", "", raw or "")
 
 
+# ---------- auth ----------
+
+class Ctx:
+    def __init__(self, user, workspace):
+        self.user = user
+        self.workspace = workspace
+        self.wid = workspace["id"]
+
+
+def get_ctx(authorization: str = Header(default="")) -> Ctx:
+    token = authorization[7:] if authorization.lower().startswith("bearer ") else authorization
+    if not token:
+        raise HTTPException(401, "authentication required")
+    with db() as conn:
+        s = conn.execute("SELECT * FROM sessions WHERE token=?", (token,)).fetchone()
+        if not s:
+            raise HTTPException(401, "invalid or expired session")
+        user = conn.execute("SELECT * FROM users WHERE id=?", (s["user_id"],)).fetchone()
+        ws = conn.execute("SELECT * FROM workspaces WHERE id=?", (user["workspace_id"],)).fetchone()
+    return Ctx(user, ws)
+
+
+class SignupIn(BaseModel):
+    email: EmailStr
+    password: str = Field(min_length=8)
+    workspace_name: str | None = None
+
+
+@app.post("/api/auth/signup")
+def signup(body: SignupIn):
+    with db() as conn:
+        if conn.execute("SELECT 1 FROM users WHERE email=?", (body.email,)).fetchone():
+            raise HTTPException(409, "email already registered")
+        wname = body.workspace_name or body.email.split("@")[0].title() + " Workspace"
+        wid = conn.execute(
+            "INSERT INTO workspaces (name, plan, created_at) VALUES (?,?,?)",
+            (wname, auth.DEFAULT_PLAN, time.time()),
+        ).lastrowid
+        uid = conn.execute(
+            "INSERT INTO users (email, pw_hash, workspace_id, created_at) VALUES (?,?,?,?)",
+            (body.email, auth.hash_password(body.password), wid, time.time()),
+        ).lastrowid
+        token = auth.new_token()
+        conn.execute("INSERT INTO sessions (token, user_id, created_at) VALUES (?,?,?)",
+                     (token, uid, time.time()))
+    return {"token": token, "email": body.email, "workspace": wname, "plan": auth.DEFAULT_PLAN}
+
+
+class LoginIn(BaseModel):
+    email: EmailStr
+    password: str
+
+
+@app.post("/api/auth/login")
+def login(body: LoginIn):
+    with db() as conn:
+        user = conn.execute("SELECT * FROM users WHERE email=?", (body.email,)).fetchone()
+        if not user or not auth.verify_password(body.password, user["pw_hash"]):
+            raise HTTPException(401, "invalid email or password")
+        token = auth.new_token()
+        conn.execute("INSERT INTO sessions (token, user_id, created_at) VALUES (?,?,?)",
+                     (token, user["id"], time.time()))
+        ws = conn.execute("SELECT * FROM workspaces WHERE id=?", (user["workspace_id"],)).fetchone()
+    return {"token": token, "email": user["email"], "workspace": ws["name"], "plan": ws["plan"]}
+
+
+@app.post("/api/auth/logout")
+def logout(ctx: Ctx = Depends(get_ctx), authorization: str = Header(default="")):
+    token = authorization[7:] if authorization.lower().startswith("bearer ") else authorization
+    with db() as conn:
+        conn.execute("DELETE FROM sessions WHERE token=?", (token,))
+    return {"ok": True}
+
+
+def usage_for(wid: int) -> dict:
+    with db() as conn:
+        ws = conn.execute("SELECT * FROM workspaces WHERE id=?", (wid,)).fetchone()
+        used = conn.execute(
+            "SELECT COUNT(*) FROM drops WHERE workspace_id=? AND created_at>=?",
+            (wid, auth.month_start()),
+        ).fetchone()[0]
+    cap = auth.PLAN_CAPS.get(ws["plan"], 0)
+    return {"plan": ws["plan"], "cap": cap, "used": used, "remaining": max(0, cap - used)}
+
+
+@app.get("/api/auth/me")
+def me(ctx: Ctx = Depends(get_ctx)):
+    return {
+        "email": ctx.user["email"],
+        "workspace": ctx.workspace["name"],
+        "usage": usage_for(ctx.wid),
+    }
+
+
+@app.get("/api/usage")
+def usage(ctx: Ctx = Depends(get_ctx)):
+    return usage_for(ctx.wid)
+
+
 # ---------- moltsets ----------
 
 def moltsets(path: str, payload: dict) -> dict:
     if not MOLTSETS_KEY:
         raise HTTPException(503, "MOLTSETS_API_KEY is not configured on the server")
-    r = requests.post(
-        f"{MOLTSETS_BASE}/{path}",
-        json=payload,
-        headers={"Authorization": f"Bearer {MOLTSETS_KEY}"},
-        timeout=60,
-    )
-    if r.status_code == 404:  # not_found responses use 404 with a JSON body
+    r = requests.post(f"{MOLTSETS_BASE}/{path}", json=payload,
+                      headers={"Authorization": f"Bearer {MOLTSETS_KEY}"}, timeout=60)
+    if r.status_code == 404:
         try:
             return r.json()
         except ValueError:
@@ -125,27 +221,21 @@ class LeadSearch(BaseModel):
 
 
 @app.post("/api/leads/search")
-def leads_search(body: LeadSearch):
+def leads_search(body: LeadSearch, ctx: Ctx = Depends(get_ctx)):
     payload = {k: v for k, v in body.model_dump().items() if v not in (None, "")}
     data = moltsets("search_people", payload)
     results = []
     for p in data.get("results", {}).get("results", []):
         company = p.get("company") or {}
-        results.append(
-            {
-                "full_name": p.get("full_name"),
-                "first_name": p.get("first_name"),
-                "last_name": p.get("last_name"),
-                "title": p.get("title"),
-                "company": company.get("name"),
-                "company_domain": (company.get("website_url") or "")
-                    .replace("https://", "").replace("http://", "").strip("/") or None,
-                "country": p.get("country"),
-                "email": p.get("business_email"),
-                "linkedin_url": p.get("linkedin_url"),
-                "linkedin_slug": p.get("linkedin_slug"),
-            }
-        )
+        results.append({
+            "full_name": p.get("full_name"), "first_name": p.get("first_name"),
+            "last_name": p.get("last_name"), "title": p.get("title"),
+            "company": company.get("name"),
+            "company_domain": (company.get("website_url") or "")
+                .replace("https://", "").replace("http://", "").strip("/") or None,
+            "country": p.get("country"), "email": p.get("business_email"),
+            "linkedin_url": p.get("linkedin_url"), "linkedin_slug": p.get("linkedin_slug"),
+        })
     return {"results": results, "total": data.get("results", {}).get("total", len(results))}
 
 
@@ -154,18 +244,16 @@ class MobileLookup(BaseModel):
 
 
 @app.post("/api/leads/mobiles")
-def leads_mobiles(body: MobileLookup):
+def leads_mobiles(body: MobileLookup, ctx: Ctx = Depends(get_ctx)):
     data = moltsets("linkedin_to_mobile_phone", {"linkedin_urls": body.linkedin_urls})
     out = []
     for row in data.get("results", []) if isinstance(data.get("results"), list) else []:
-        out.append(
-            {
-                "linkedin_url": row.get("input"),
-                "mobile": (row.get("data") or {}).get("mobile_phone"),
-                "validated_at": (row.get("data") or {}).get("last_validated_at"),
-                "found": row.get("status") == "ok",
-            }
-        )
+        out.append({
+            "linkedin_url": row.get("input"),
+            "mobile": (row.get("data") or {}).get("mobile_phone"),
+            "validated_at": (row.get("data") or {}).get("last_validated_at"),
+            "found": row.get("status") == "ok",
+        })
     return {"results": out, "found": sum(1 for r in out if r["found"]), "checked": len(out)}
 
 
@@ -194,7 +282,7 @@ class ScriptPreview(BaseModel):
 
 
 @app.post("/api/script/preview")
-def script_preview(body: ScriptPreview):
+def script_preview(body: ScriptPreview, ctx: Ctx = Depends(get_ctx)):
     text, missing = merge_script(body.script, body.contact)
     return {"text": text, "missing": missing}
 
@@ -208,47 +296,43 @@ class CampaignIn(BaseModel):
 
 
 @app.post("/api/campaigns")
-def create_campaign(body: CampaignIn):
+def create_campaign(body: CampaignIn, ctx: Ctx = Depends(get_ctx)):
     with db() as conn:
         cur = conn.execute(
-            "INSERT INTO campaigns (name, script, voice, created_at) VALUES (?,?,?,?)",
-            (body.name, body.script, body.voice, time.time()),
+            "INSERT INTO campaigns (workspace_id, name, script, voice, created_at) VALUES (?,?,?,?,?)",
+            (ctx.wid, body.name, body.script, body.voice, time.time()),
         )
         return {"id": cur.lastrowid, "name": body.name, "status": "draft"}
 
 
 @app.get("/api/campaigns")
-def list_campaigns():
+def list_campaigns(ctx: Ctx = Depends(get_ctx)):
     with db() as conn:
         rows = conn.execute(
-            """
-            SELECT c.*, COUNT(ct.id) AS contact_count,
-              SUM(CASE WHEN ct.status='delivered' THEN 1 ELSE 0 END) AS delivered_count
-            FROM campaigns c LEFT JOIN contacts ct ON ct.campaign_id = c.id
-            GROUP BY c.id ORDER BY c.created_at DESC
-            """
+            """SELECT c.*, COUNT(ct.id) AS contact_count,
+                 SUM(CASE WHEN ct.status='delivered' THEN 1 ELSE 0 END) AS delivered_count
+               FROM campaigns c LEFT JOIN contacts ct ON ct.campaign_id=c.id
+               WHERE c.workspace_id=? GROUP BY c.id ORDER BY c.created_at DESC""",
+            (ctx.wid,),
         ).fetchall()
         return {"campaigns": [dict(r) for r in rows]}
 
 
+def _owned_campaign(conn, campaign_id: int, wid: int):
+    c = conn.execute("SELECT * FROM campaigns WHERE id=? AND workspace_id=?", (campaign_id, wid)).fetchone()
+    if not c:
+        raise HTTPException(404, "campaign not found")
+    return c
+
+
 @app.get("/api/campaigns/{campaign_id}")
-def campaign_detail(campaign_id: int):
+def campaign_detail(campaign_id: int, ctx: Ctx = Depends(get_ctx)):
     with db() as conn:
-        c = conn.execute("SELECT * FROM campaigns WHERE id=?", (campaign_id,)).fetchone()
-        if not c:
-            raise HTTPException(404, "campaign not found")
-        contacts = conn.execute(
-            "SELECT * FROM contacts WHERE campaign_id=? ORDER BY id", (campaign_id,)
-        ).fetchall()
-        drops = conn.execute(
-            "SELECT status, COUNT(*) n FROM drops WHERE campaign_id=? GROUP BY status",
-            (campaign_id,),
-        ).fetchall()
-        return {
-            "campaign": dict(c),
-            "contacts": [dict(r) for r in contacts],
-            "drop_stats": {r["status"]: r["n"] for r in drops},
-        }
+        c = _owned_campaign(conn, campaign_id, ctx.wid)
+        contacts = conn.execute("SELECT * FROM contacts WHERE campaign_id=? ORDER BY id", (campaign_id,)).fetchall()
+        drops = conn.execute("SELECT status, COUNT(*) n FROM drops WHERE campaign_id=? GROUP BY status", (campaign_id,)).fetchall()
+    return {"campaign": dict(c), "contacts": [dict(r) for r in contacts],
+            "drop_stats": {r["status"]: r["n"] for r in drops}}
 
 
 class ContactsIn(BaseModel):
@@ -256,30 +340,39 @@ class ContactsIn(BaseModel):
 
 
 @app.post("/api/campaigns/{campaign_id}/contacts")
-def add_contacts(campaign_id: int, body: ContactsIn):
+def add_contacts(campaign_id: int, body: ContactsIn, ctx: Ctx = Depends(get_ctx)):
     with db() as conn:
-        if not conn.execute("SELECT 1 FROM campaigns WHERE id=?", (campaign_id,)).fetchone():
-            raise HTTPException(404, "campaign not found")
+        _owned_campaign(conn, campaign_id, ctx.wid)
         for c in body.contacts:
             conn.execute(
-                """INSERT INTO contacts
-                   (campaign_id, first_name, last_name, company, title, country,
-                    email, linkedin_url, mobile, created_at)
+                """INSERT INTO contacts (campaign_id, first_name, last_name, company, title,
+                     country, email, linkedin_url, mobile, created_at)
                    VALUES (?,?,?,?,?,?,?,?,?,?)""",
-                (
-                    campaign_id, c.get("first_name"), c.get("last_name"),
-                    c.get("company"), c.get("title"), c.get("country"),
-                    c.get("email"), c.get("linkedin_url"), c.get("mobile"),
-                    time.time(),
-                ),
+                (campaign_id, c.get("first_name"), c.get("last_name"), c.get("company"),
+                 c.get("title"), c.get("country"), c.get("email"), c.get("linkedin_url"),
+                 c.get("mobile"), time.time()),
             )
-        n = conn.execute(
-            "SELECT COUNT(*) FROM contacts WHERE campaign_id=?", (campaign_id,)
-        ).fetchone()[0]
+        n = conn.execute("SELECT COUNT(*) FROM contacts WHERE campaign_id=?", (campaign_id,)).fetchone()[0]
     return {"campaign_id": campaign_id, "contact_count": n}
 
 
-# ---------- suppression (DNC / opt-out) ----------
+@app.get("/api/campaigns/{campaign_id}/contacts.csv")
+def export_contacts_csv(campaign_id: int, ctx: Ctx = Depends(get_ctx)):
+    with db() as conn:
+        c = _owned_campaign(conn, campaign_id, ctx.wid)
+        rows = conn.execute("SELECT * FROM contacts WHERE campaign_id=? ORDER BY id", (campaign_id,)).fetchall()
+    buf = io.StringIO()
+    cols = ["first_name", "last_name", "company", "title", "country", "email", "mobile", "linkedin_url", "status"]
+    w = csv.writer(buf)
+    w.writerow(cols)
+    for r in rows:
+        w.writerow([r[c] for c in cols])
+    fname = re.sub(r"[^a-z0-9]+", "-", c["name"].lower()).strip("-") or "campaign"
+    return Response(buf.getvalue(), media_type="text/csv",
+                    headers={"Content-Disposition": f'attachment; filename="{fname}-contacts.csv"'})
+
+
+# ---------- suppression ----------
 
 class SuppressIn(BaseModel):
     phone: str
@@ -287,88 +380,77 @@ class SuppressIn(BaseModel):
 
 
 @app.post("/api/suppressions")
-def add_suppression(body: SuppressIn):
+def add_suppression(body: SuppressIn, ctx: Ctx = Depends(get_ctx)):
     phone = norm_phone(body.phone)
     if not phone:
         raise HTTPException(422, "invalid phone")
     with db() as conn:
         conn.execute(
-            "INSERT OR REPLACE INTO suppressions (phone, reason, created_at) VALUES (?,?,?)",
-            (phone, body.reason, time.time()),
+            "INSERT OR REPLACE INTO suppressions (workspace_id, phone, reason, created_at) VALUES (?,?,?,?)",
+            (ctx.wid, phone, body.reason, time.time()),
         )
     return {"phone": phone, "suppressed": True}
 
 
 @app.get("/api/suppressions")
-def list_suppressions():
+def list_suppressions(ctx: Ctx = Depends(get_ctx)):
     with db() as conn:
-        rows = conn.execute("SELECT * FROM suppressions ORDER BY created_at DESC").fetchall()
-        return {"suppressions": [dict(r) for r in rows]}
+        rows = conn.execute("SELECT phone, reason, created_at FROM suppressions WHERE workspace_id=? ORDER BY created_at DESC", (ctx.wid,)).fetchall()
+    return {"suppressions": [dict(r) for r in rows]}
 
 
 # ---------- send pipeline ----------
 
 def process_drop(drop_id: int) -> None:
-    """merge -> render voice -> send RVM. Called per drop in the background."""
     with db() as conn:
         row = conn.execute(
             """SELECT d.id, d.foreign_id, c.script, ct.*
-               FROM drops d
-               JOIN campaigns c ON c.id = d.campaign_id
-               JOIN contacts ct ON ct.id = d.contact_id
-               WHERE d.id=?""",
+               FROM drops d JOIN campaigns c ON c.id=d.campaign_id
+               JOIN contacts ct ON ct.id=d.contact_id WHERE d.id=?""",
             (drop_id,),
         ).fetchone()
     if not row:
         return
     try:
-        text, _missing = merge_script(row["script"], dict(row))
+        text, _ = merge_script(row["script"], dict(row))
         voice = providers.render_voice(text, row["foreign_id"])
         result = providers.send_rvm(norm_phone(row["mobile"]), voice["url"], row["foreign_id"])
         with db() as conn:
-            conn.execute(
-                "UPDATE drops SET audio_path=?, provider_id=?, status=?, updated_at=? WHERE id=?",
-                (voice["path"].name, result["provider_id"], result["status"], time.time(), drop_id),
-            )
-            conn.execute(
-                "UPDATE contacts SET status=? WHERE id=?", (result["status"], row["id"])
-            )
-    except Exception as exc:  # keep the batch going; record the failure
+            conn.execute("UPDATE drops SET audio_path=?, provider_id=?, status=?, updated_at=? WHERE id=?",
+                         (voice["path"].name, result["provider_id"], result["status"], time.time(), drop_id))
+            conn.execute("UPDATE contacts SET status=? WHERE id=?", (result["status"], row["id"]))
+    except Exception as exc:
         with db() as conn:
-            conn.execute(
-                "UPDATE drops SET status='failed', error=?, updated_at=? WHERE id=?",
-                (str(exc)[:300], time.time(), drop_id),
-            )
+            conn.execute("UPDATE drops SET status='failed', error=?, updated_at=? WHERE id=?",
+                         (str(exc)[:300], time.time(), drop_id))
 
 
 class SendIn(BaseModel):
-    dry_run: bool | None = None  # default: auto (dry-run unless providers configured)
+    dry_run: bool | None = None
 
 
 @app.post("/api/campaigns/{campaign_id}/send")
-def send_campaign(campaign_id: int, background: BackgroundTasks, body: SendIn | None = None):
+def send_campaign(campaign_id: int, background: BackgroundTasks,
+                  body: SendIn | None = None, ctx: Ctx = Depends(get_ctx)):
     live_ready = providers.voice_live() and providers.delivery_live()
     dry = body.dry_run if body and body.dry_run is not None else not live_ready
     if not dry and not live_ready:
-        missing = [
-            k for k in ("ELEVENLABS_API_KEY", "DROPCOWBOY_TEAM_ID", "DROPCOWBOY_SECRET")
-            if not os.environ.get(k)
-        ]
-        raise HTTPException(400, "Live send needs: " + ", ".join(missing)
-                            + ". Or pass {\"dry_run\": true}.")
+        missing = [k for k in ("ELEVENLABS_API_KEY", "TELNYX_API_KEY", "TELNYX_CONNECTION_ID",
+                               "TELNYX_FROM_NUMBER") if not os.environ.get(k)]
+        raise HTTPException(400, "Live send needs: " + ", ".join(missing) + '. Or pass {"dry_run": true}.')
+
+    u = usage_for(ctx.wid)
     with db() as conn:
-        camp = conn.execute("SELECT * FROM campaigns WHERE id=?", (campaign_id,)).fetchone()
-        if not camp:
-            raise HTTPException(404, "campaign not found")
+        camp = _owned_campaign(conn, campaign_id, ctx.wid)
         if not camp["script"].strip():
             raise HTTPException(422, "campaign script is empty")
-        suppressed = {r["phone"] for r in conn.execute("SELECT phone FROM suppressions")}
-        contacts = conn.execute(
-            "SELECT * FROM contacts WHERE campaign_id=? AND status='queued'", (campaign_id,)
-        ).fetchall()
+        suppressed = {r["phone"] for r in conn.execute("SELECT phone FROM suppressions WHERE workspace_id=?", (ctx.wid,))}
+        contacts = conn.execute("SELECT * FROM contacts WHERE campaign_id=? AND status='queued'", (campaign_id,)).fetchall()
 
         queued, no_mobile, skipped_dnc = [], 0, 0
         for ct in contacts:
+            if len(queued) >= u["remaining"]:
+                break  # respect the plan's monthly cap
             phone = norm_phone(ct["mobile"])
             if not phone:
                 no_mobile += 1
@@ -379,55 +461,27 @@ def send_campaign(campaign_id: int, background: BackgroundTasks, body: SendIn | 
                 continue
             fid = f"cd_{campaign_id}_{ct['id']}_{uuid.uuid4().hex[:8]}"
             cur = conn.execute(
-                """INSERT INTO drops (foreign_id, campaign_id, contact_id, created_at, updated_at)
-                   VALUES (?,?,?,?,?)""",
-                (fid, campaign_id, ct["id"], time.time(), time.time()),
+                """INSERT INTO drops (foreign_id, workspace_id, campaign_id, contact_id, created_at, updated_at)
+                   VALUES (?,?,?,?,?,?)""",
+                (fid, ctx.wid, campaign_id, ct["id"], time.time(), time.time()),
             )
             queued.append(cur.lastrowid)
         conn.execute("UPDATE campaigns SET status='sending' WHERE id=?", (campaign_id,))
 
     for drop_id in queued:
         background.add_task(process_drop, drop_id)
-    return {
-        "campaign_id": campaign_id,
-        "mode": "dry_run" if dry and not live_ready else ("dry_run" if dry else "live"),
-        "queued": len(queued),
-        "skipped_no_mobile": no_mobile,
-        "skipped_suppressed": skipped_dnc,
-    }
+    capped = len([c for c in contacts if norm_phone(c["mobile"]) and norm_phone(c["mobile"]) not in suppressed]) > len(queued)
+    return {"campaign_id": campaign_id,
+            "mode": "live" if (not dry and live_ready) else "dry_run",
+            "queued": len(queued), "skipped_no_mobile": no_mobile,
+            "skipped_suppressed": skipped_dnc, "hit_plan_cap": capped,
+            "usage": usage_for(ctx.wid)}
 
 
-# ---------- delivery webhooks ----------
-
-@app.post("/api/webhooks/dropcowboy")
-async def dropcowboy_webhook(payload: dict):
-    fid = payload.get("foreign_id") or payload.get("id")
-    status = (payload.get("status") or "").lower()
-    mapped = {
-        "delivered": "delivered", "success": "delivered", "completed": "delivered",
-        "failed": "failed", "error": "failed", "undeliverable": "failed",
-    }.get(status, status or "unknown")
-    if not fid:
-        raise HTTPException(422, "missing foreign_id")
-    with db() as conn:
-        row = conn.execute("SELECT * FROM drops WHERE foreign_id=?", (fid,)).fetchone()
-        if not row:
-            raise HTTPException(404, "unknown drop")
-        conn.execute(
-            "UPDATE drops SET status=?, updated_at=? WHERE id=?",
-            (mapped, time.time(), row["id"]),
-        )
-        conn.execute("UPDATE contacts SET status=? WHERE id=?", (mapped, row["contact_id"]))
-    return {"ok": True, "foreign_id": fid, "status": mapped}
-
+# ---------- delivery webhook ----------
 
 @app.post("/api/webhooks/telnyx")
 async def telnyx_webhook(payload: dict):
-    """Call Control events for self-operated delivery.
-
-    On machine detection we play the drop audio (carried on a custom header);
-    on playback end we hang up; terminal call states update the drop status.
-    """
     data = (payload.get("data") or {})
     event = data.get("event_type", "")
     p = data.get("payload", {})
@@ -440,24 +494,19 @@ async def telnyx_webhook(payload: dict):
         with db() as conn:
             row = conn.execute("SELECT * FROM drops WHERE foreign_id=?", (fid,)).fetchone()
             if row:
-                conn.execute("UPDATE drops SET status=?, updated_at=? WHERE id=?",
-                             (status, time.time(), row["id"]))
+                conn.execute("UPDATE drops SET status=?, updated_at=? WHERE id=?", (status, time.time(), row["id"]))
                 conn.execute("UPDATE contacts SET status=? WHERE id=?", (status, row["contact_id"]))
 
     if event in ("call.machine.detection.ended", "call.machine.premium.detection.ended"):
-        result = p.get("result", "")
-        if result in ("machine", "detected"):  # voicemail reached -> play the drop
-            audio = ""
-            for h in p.get("custom_headers", []) or []:
-                if h.get("name") == "X-Colddrops-Audio":
-                    audio = h.get("value", "")
+        if p.get("result", "") in ("machine", "detected"):
+            audio = next((h.get("value", "") for h in (p.get("custom_headers") or [])
+                          if h.get("name") == "X-Colddrops-Audio"), "")
             if ccid and audio and providers.TELNYX_KEY:
-                requests.post(
-                    f"https://api.telnyx.com/v2/calls/{ccid}/actions/playback_start",
-                    headers={"Authorization": f"Bearer {providers.TELNYX_KEY}"},
-                    json={"audio_url": audio}, timeout=30)
+                requests.post(f"https://api.telnyx.com/v2/calls/{ccid}/actions/playback_start",
+                              headers={"Authorization": f"Bearer {providers.TELNYX_KEY}"},
+                              json={"audio_url": audio}, timeout=30)
             set_status("delivered")
-        else:  # human answered — abandon (this is a voicemail drop, not a call)
+        else:
             if ccid and providers.TELNYX_KEY:
                 requests.post(f"https://api.telnyx.com/v2/calls/{ccid}/actions/hangup",
                               headers={"Authorization": f"Bearer {providers.TELNYX_KEY}"}, timeout=30)
@@ -487,6 +536,5 @@ def health():
     }
 
 
-# static mounts go last so /api keeps priority
 app.mount("/audio", StaticFiles(directory=providers.AUDIO_DIR), name="audio")
 app.mount("/", StaticFiles(directory=WEB_DIR, html=True), name="web")

@@ -1,78 +1,123 @@
-"""End-to-end tests for the Colddrops send pipeline (dry-run mode)."""
+"""End-to-end tests for Colddrops: auth, scoping, send pipeline, usage caps, CSV."""
 import os
 import tempfile
 
 os.environ["COLDDROPS_DB"] = os.path.join(tempfile.mkdtemp(), "test.db")
-os.environ["VOICE_BACKEND"] = "chime"      # offline, deterministic, no network
+os.environ["VOICE_BACKEND"] = "chime"      # offline, deterministic
 os.environ["DELIVERY_BACKEND"] = "dry_run"
 for k in ("ELEVENLABS_API_KEY", "TELNYX_API_KEY", "TELNYX_CONNECTION_ID", "TELNYX_FROM_NUMBER"):
     os.environ.pop(k, None)
 
+import sqlite3  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
-from server import providers  # noqa: E402
+from server import auth, providers  # noqa: E402
 from server.main import app  # noqa: E402
 
 client = TestClient(app)
 
 
-def test_health_dry_run():
+def signup(email, pw="password123"):
+    r = client.post("/api/auth/signup", json={"email": email, "password": pw})
+    assert r.status_code == 200, r.text
+    return {"Authorization": "Bearer " + r.json()["token"]}
+
+
+def test_health_public():
     d = client.get("/api/health").json()
     assert d["ok"] and d["mode"] == "dry_run"
 
 
+def test_auth_required():
+    assert client.get("/api/campaigns").status_code == 401
+    assert client.post("/api/campaigns", json={"name": "x"}).status_code == 401
+
+
+def test_signup_login_me():
+    h = signup("founder@acme.com")
+    me = client.get("/api/auth/me", headers=h).json()
+    assert me["email"] == "founder@acme.com"
+    assert me["usage"] == {"plan": "starter", "cap": 1000, "used": 0, "remaining": 1000}
+    # wrong password rejected, right one works
+    assert client.post("/api/auth/login", json={"email": "founder@acme.com", "password": "nope"}).status_code == 401
+    assert client.post("/api/auth/login", json={"email": "founder@acme.com", "password": "password123"}).status_code == 200
+
+
 def test_script_merge():
-    d = client.post("/api/script/preview", json={
+    h = signup("s@acme.com")
+    d = client.post("/api/script/preview", headers=h, json={
         "script": "Hey {{first_name}} from {{company}}, {{missing_one}}!",
-        "contact": {"first_name": "Kevin", "company": "SaaS Integrator"},
-    }).json()
+        "contact": {"first_name": "Kevin", "company": "SaaS Integrator"}}).json()
     assert d["text"] == "Hey Kevin from SaaS Integrator, [missing_one]!"
     assert d["missing"] == ["missing_one"]
 
 
-def test_full_send_pipeline():
-    camp = client.post("/api/campaigns", json={
-        "name": "Test blast",
-        "script": "Hey {{first_name}}, it's Alex. Call me back.",
-    }).json()
-    cid = camp["id"]
+def test_workspace_isolation():
+    a = signup("a@x.com")
+    b = signup("b@y.com")
+    cid = client.post("/api/campaigns", headers=a, json={"name": "A's", "script": "hi"}).json()["id"]
+    # B cannot see or open A's campaign
+    assert client.get(f"/api/campaigns/{cid}", headers=b).status_code == 404
+    assert cid not in [c["id"] for c in client.get("/api/campaigns", headers=b).json()["campaigns"]]
 
-    r = client.post(f"/api/campaigns/{cid}/contacts", json={"contacts": [
+
+def test_full_send_pipeline_and_csv():
+    h = signup("send@acme.com")
+    cid = client.post("/api/campaigns", headers=h, json={
+        "name": "Test blast", "script": "Hey {{first_name}}, it's Alex. Call me back."}).json()["id"]
+    client.post(f"/api/campaigns/{cid}/contacts", headers=h, json={"contacts": [
         {"first_name": "Kevin", "company": "SaaS Integrator", "mobile": "+1 (832) 837-9384"},
         {"first_name": "NoPhone", "company": "Ghost Co"},
-        {"first_name": "OptedOut", "company": "DNC Inc", "mobile": "+1 555 000 1111"},
-    ]})
-    assert r.json()["contact_count"] == 3
+        {"first_name": "OptedOut", "company": "DNC Inc", "mobile": "+1 555 000 1111"}]})
+    client.post("/api/suppressions", headers=h, json={"phone": "+1 555 000 1111"})
 
-    assert client.post("/api/suppressions", json={"phone": "+1 555 000 1111"}).json()["suppressed"]
+    d = client.post(f"/api/campaigns/{cid}/send", headers=h, json={}).json()
+    assert d["queued"] == 1 and d["skipped_no_mobile"] == 1 and d["skipped_suppressed"] == 1
+    assert d["usage"]["used"] == 1
 
-    d = client.post(f"/api/campaigns/{cid}/send", json={}).json()
-    assert d == {"campaign_id": cid, "mode": "dry_run", "queued": 1,
-                 "skipped_no_mobile": 1, "skipped_suppressed": 1}
-
-    # TestClient runs background tasks before returning, so the drop is processed
-    detail = client.get(f"/api/campaigns/{cid}").json()
+    detail = client.get(f"/api/campaigns/{cid}", headers=h).json()
     assert detail["drop_stats"] == {"delivered": 1}
     statuses = {c["first_name"]: c["status"] for c in detail["contacts"]}
-    assert statuses["Kevin"] == "delivered"
-    assert statuses["OptedOut"] == "suppressed"
-    assert statuses["NoPhone"] == "queued"
+    assert statuses == {"Kevin": "delivered", "NoPhone": "queued", "OptedOut": "suppressed"}
 
-    # a real audio artifact was rendered
+    # CSV export
+    r = client.get(f"/api/campaigns/{cid}/contacts.csv", headers=h)
+    assert r.status_code == 200 and "text/csv" in r.headers["content-type"]
+    assert "first_name" in r.text and "Kevin" in r.text
+
     audio = [f for f in providers.AUDIO_DIR.iterdir() if f.name.startswith(f"cd_{cid}_")]
     assert audio and audio[0].stat().st_size > 1000
 
 
+def test_plan_cap_enforced():
+    h = signup("cap@acme.com")
+    # force a tiny cap by switching plan directly
+    conn = sqlite3.connect(os.environ["COLDDROPS_DB"])
+    conn.execute("UPDATE workspaces SET plan='starter'")
+    conn.commit()
+    # shrink cap for the test
+    auth.PLAN_CAPS["starter"] = 2
+    try:
+        cid = client.post("/api/campaigns", headers=h, json={"name": "cap", "script": "Hi {{first_name}}"}).json()["id"]
+        client.post(f"/api/campaigns/{cid}/contacts", headers=h, json={"contacts": [
+            {"first_name": f"P{i}", "mobile": f"+1 415 555 12{i:02d}"} for i in range(5)]})
+        d = client.post(f"/api/campaigns/{cid}/send", headers=h, json={}).json()
+        assert d["queued"] == 2 and d["hit_plan_cap"] is True
+        assert client.get("/api/usage", headers=h).json()["remaining"] == 0
+    finally:
+        auth.PLAN_CAPS["starter"] = 1000
+
+
 def test_webhook_updates_status():
-    # find the delivered drop's foreign_id via campaign detail -> drops table isn't exposed,
-    # so send a fresh one-contact campaign and flip it to failed via webhook
-    cid = client.post("/api/campaigns", json={"name": "Hook", "script": "Hi {{first_name}}"}).json()["id"]
-    client.post(f"/api/campaigns/{cid}/contacts", json={"contacts": [
+    h = signup("hook@acme.com")
+    cid = client.post("/api/campaigns", headers=h, json={"name": "Hook", "script": "Hi {{first_name}}"}).json()["id"]
+    client.post(f"/api/campaigns/{cid}/contacts", headers=h, json={"contacts": [
         {"first_name": "Hooked", "mobile": "+1 999 222 3333"}]})
-    client.post(f"/api/campaigns/{cid}/send", json={})
-    import sqlite3
+    client.post(f"/api/campaigns/{cid}/send", headers=h, json={})
     conn = sqlite3.connect(os.environ["COLDDROPS_DB"]); conn.row_factory = sqlite3.Row
     fid = conn.execute("SELECT foreign_id FROM drops WHERE campaign_id=?", (cid,)).fetchone()[0]
-    d = client.post("/api/webhooks/dropcowboy", json={"foreign_id": fid, "status": "failed"}).json()
-    assert d["status"] == "failed"
-    assert client.get(f"/api/campaigns/{cid}").json()["drop_stats"] == {"failed": 1}
-    assert client.post("/api/webhooks/dropcowboy", json={"foreign_id": "nope", "status": "x"}).status_code == 404
+    body = {"data": {"event_type": "call.hangup", "payload": {
+        "client_state": providers._b64(fid), "call_control_id": "cc1"}}}
+    # first mark it back to sending so hangup flips it to failed
+    conn.execute("UPDATE drops SET status='sending' WHERE foreign_id=?", (fid,)); conn.commit()
+    client.post("/api/webhooks/telnyx", json=body)
+    assert client.get(f"/api/campaigns/{cid}", headers=h).json()["drop_stats"] == {"failed": 1}

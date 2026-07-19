@@ -82,6 +82,19 @@ delivery/AMD webhook, with DNC/opt-out suppression — runs end-to-end today in
 dry-run + free-voice mode. Add a paid ElevenLabs key and/or Telnyx creds
 (see .env.example) to go live, same code path. Tests: `python3 -m pytest tests/`.
 
+
+## Accounts & plans
+
+Multi-tenant: every user belongs to a **workspace**; all campaigns, contacts,
+drops and suppressions are scoped to it. Sign up / sign in at `/login.html`.
+Auth is bearer-token (`POST /api/auth/signup|login`, `GET /api/auth/me`).
+
+Plans meter **drops per calendar month** and the cap is enforced at send time:
+Starter 1,000 · Growth 5,000 · Scale 15,000 (`GET /api/usage`). Stripe will map
+to these plans later — the metering is already here.
+
+Export a campaign's contacts: `GET /api/campaigns/{id}/contacts.csv`.
+
 ## Compliance
 
 Ringless voicemail is regulated (U.S. TCPA and equivalents abroad). Do not launch

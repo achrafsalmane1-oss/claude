@@ -405,6 +405,28 @@ a{color:inherit;text-decoration:none}
 
 <script>
 (function(){
+
+  /* --- auth: token-aware fetch + gate (served mode only) --- */
+  function CDfetch(url, opts){
+    opts = opts || {}; opts.headers = opts.headers || {};
+    var t = localStorage.getItem('cd_token');
+    if (t) opts.headers['Authorization'] = 'Bearer ' + t;
+    return fetch(url, opts);
+  }
+  fetch('/api/health').then(function(r){return r.ok?r.json():null;}).then(function(h){
+    if(h && h.ok){  // served by the real server -> require auth
+      CDfetch('/api/auth/me').then(function(r){
+        if(r.status===401){ location.href='/login.html'; return null; }
+        return r.ok ? r.json() : null;
+      }).then(function(me){
+        if(me){ var av=document.querySelector('.topbar .av');
+          if(av) av.textContent=(me.email||'?')[0].toUpperCase();
+          var crumb=document.querySelector('.topbar .crumb b');
+          if(crumb && me.workspace) crumb.textContent=me.workspace; }
+      }).catch(function(){});
+    }
+  }).catch(function(){});
+
   var rows=[
     ["Coastal Bend Realty","Dallas, TX","Elena Ferris","Q3 Dallas brokers","Listened","int","Called back","4h ago"],
     ["Palmetto Building Services","Austin, TX","Dale Nunez","TX home services","Listened","int","Called back","1d ago"],
@@ -470,7 +492,7 @@ a{color:inherit;text-decoration:none}
     lgo.addEventListener('click',function(){
       var st=document.getElementById('lstatus');
       st.className='lstatus'; st.textContent='Searching…'; lgo.disabled=true;
-      fetch('/api/leads/search',{method:'POST',headers:{'Content-Type':'application/json'},
+      CDfetch('/api/leads/search',{method:'POST',headers:{'Content-Type':'application/json'},
         body:JSON.stringify({query:document.getElementById('lq').value,country:document.getElementById('lcountry').value,limit:10})})
       .then(function(r){if(!r.ok)throw 0;return r.json();})
       .then(function(d){
@@ -507,7 +529,7 @@ a{color:inherit;text-decoration:none}
   }
   (function initBuilder(){
     if(!cdEl('cd-send')) return;
-    fetch('/api/health').then(function(r){return r.ok?r.json():null;}).then(function(h){
+    CDfetch('/api/health').then(function(r){return r.ok?r.json():null;}).then(function(h){
       if(h&&h.ok){CD.live=true; var m=cdEl('cd-mode');
         m.style.background='var(--green-soft)'; m.style.color='var(--green-d)';
         m.querySelector('.d').style.background='var(--green)';
@@ -539,7 +561,7 @@ a{color:inherit;text-decoration:none}
           .forEach(function(r){CD.staged.push({first_name:r[0],last_name:r[1],company:r[2],email:r[3],mobile:''});});
         cdRender(); st.textContent='Demo leads added (run the server for live search + mobiles).'; return;
       }
-      fetch('/api/leads/search',{method:'POST',headers:{'Content-Type':'application/json'},
+      CDfetch('/api/leads/search',{method:'POST',headers:{'Content-Type':'application/json'},
         body:JSON.stringify({query:cdEl('cd-lq').value,country:cdEl('cd-lcountry').value,limit:10})})
       .then(function(r){return r.json();}).then(function(d){
         var urls=d.results.map(function(p){return p.linkedin_url;}).filter(Boolean);
@@ -547,7 +569,7 @@ a{color:inherit;text-decoration:none}
           company:p.company,title:p.title,email:p.email,linkedin_url:p.linkedin_url,mobile:''});});
         cdRender();
         if(urls.length){ st.textContent=d.results.length+' leads added · verifying mobiles…';
-          fetch('/api/leads/mobiles',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({linkedin_urls:urls})})
+          CDfetch('/api/leads/mobiles',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({linkedin_urls:urls})})
           .then(function(r){return r.json();}).then(function(mm){
             var map={}; mm.results.forEach(function(x){if(x.mobile)map[x.linkedin_url]=x.mobile;});
             CD.staged.forEach(function(c){if(c.linkedin_url&&map[c.linkedin_url])c.mobile=map[c.linkedin_url];});
@@ -566,17 +588,17 @@ a{color:inherit;text-decoration:none}
         btn.disabled=false; btn.textContent='Send campaign';
         cdEl('cd-cstatus').textContent='Demo send complete ('+withMob+' would drop). Run the server to send for real.'; return;
       }
-      fetch('/api/campaigns',{method:'POST',headers:{'Content-Type':'application/json'},
+      CDfetch('/api/campaigns',{method:'POST',headers:{'Content-Type':'application/json'},
         body:JSON.stringify({name:cdEl('cd-name').value,script:cdEl('cd-script').value})})
       .then(function(r){return r.json();}).then(function(c){
-        return fetch('/api/campaigns/'+c.id+'/contacts',{method:'POST',headers:{'Content-Type':'application/json'},
+        return CDfetch('/api/campaigns/'+c.id+'/contacts',{method:'POST',headers:{'Content-Type':'application/json'},
           body:JSON.stringify({contacts:CD.staged})}).then(function(){return c.id;});
       }).then(function(cid){
-        return fetch('/api/campaigns/'+cid+'/send',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'})
+        return CDfetch('/api/campaigns/'+cid+'/send',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'})
           .then(function(r){return r.json();}).then(function(res){
             cdEl('cd-f-skipped').textContent=(res.skipped_no_mobile+res.skipped_suppressed);
             var poll=setInterval(function(){
-              fetch('/api/campaigns/'+cid).then(function(r){return r.json();}).then(function(d){
+              CDfetch('/api/campaigns/'+cid).then(function(r){return r.json();}).then(function(d){
                 var s=d.drop_stats||{}; var tot=Object.keys(s).reduce(function(a,k){return a+s[k];},0)||1;
                 cdEl('cd-f-delivered').textContent=s.delivered||0;
                 cdEl('cd-f-failed').textContent=s.failed||0;
