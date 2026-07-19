@@ -1,6 +1,6 @@
-# Haven — Permission-based outbound
+# Colddrops — Permission-based outbound
 
-Haven is a ringless voicemail platform: it delivers a personal, personalized voice
+Colddrops is a ringless voicemail platform: it delivers a personal, personalized voice
 message straight into a prospect's voicemail inbox — **no ring, no interruption**.
 Positioning: *cold calling is the enemy; permission-based outbound is the future.*
 
