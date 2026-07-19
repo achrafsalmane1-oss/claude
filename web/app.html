@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="description" content="Colddrops workspace — drops, listens, callbacks.">
+<meta name="description" content="Colddrops workspace">
 <meta name="theme-color" content="#F4F3EE">
 <title>Colddrops — Workspace</title>
 <style>
@@ -279,13 +279,41 @@ a{color:inherit;text-decoration:none}
 
     <!-- ============ CAMPAIGNS ============ -->
     <section class="view" id="v-pipeline">
-      <div class="panel"><div class="phead"><div><h1>Campaigns</h1><p>Your drops run 24/7 — from queue to callback.</p></div><button class="btn btn-green">New campaign</button></div></div>
-      <div class="funnel">
-        <div class="fc"><div class="top"><span class="l">Queued</span></div><div class="v">1,847</div><div class="track"><i style="width:100%"></i></div><div class="d">drops scheduled this month</div></div>
-        <div class="fc"><div class="top"><span class="l">Delivered</span><span class="pct">92% of prior</span></div><div class="v">1,702</div><div class="track"><i style="width:92%"></i></div><div class="d">landed without a ring</div></div>
-        <div class="fc"><div class="top"><span class="l">Listened</span><span class="pct">73% of prior</span></div><div class="v">1,238</div><div class="track"><i style="width:73%"></i></div><div class="d">played at least once</div></div>
-        <div class="fc"><div class="top"><span class="l">Called back</span><span class="pct">4% of prior</span></div><div class="v">47</div><div class="track"><i style="width:6%"></i></div><div class="d">18 interested · 12 ask later · 17 not interested</div></div>
+      <div class="panel"><div class="phead"><div><h1>Campaigns</h1><p>Build a drop, load contacts, and send — from queue to callback.</p></div>
+        <span id="cd-mode" class="statuspill" style="background:var(--grey-soft);color:var(--muted)"><span class="d" style="background:var(--faint)"></span>demo mode</span></div></div>
+
+      <div class="panel">
+        <div class="phead" style="align-items:center;margin-bottom:8px"><div><h1 style="font-size:22px">New campaign</h1></div>
+          <button class="btn btn-green" id="cd-send">Send campaign</button></div>
+        <div class="lsearch"><input id="cd-name" placeholder="Campaign name" value="Q3 Dallas brokers"/></div>
+        <div class="editor" style="box-shadow:none;border:1px solid var(--line);margin-top:14px">
+          <div class="editor-bar"><span class="tl"><i></i><i></i><i></i></span><span class="fname">script.txt</span></div>
+          <textarea id="cd-script" class="script-area" style="width:100%;font-family:var(--sans);resize:vertical;display:block" rows="3">Hey {{first_name}}, it's Alex — keeping this short. I help teams like {{company}} book more meetings without cold calls. I'll text you my calendar. Talk soon.</textarea>
+          <div class="var-row"><span class="label">Insert</span>
+            <span class="chip cd-var" data-v="{{first_name}}">{{first_name}}</span>
+            <span class="chip cd-var" data-v="{{company}}">{{company}}</span>
+            <span class="chip cd-var" data-v="{{title}}">{{title}}</span>
+            <span class="chip cd-var" data-v="{{city}}">{{city}}</span></div>
+          <div style="margin-top:12px;font-size:13.5px;color:var(--muted)">Preview&nbsp; <span id="cd-preview" style="color:var(--slate)"></span></div>
+        </div>
+        <div class="lsearch" style="align-items:center;margin-top:16px">
+          <label class="btn btn-out" style="cursor:pointer">Import CSV<input id="cd-csv" type="file" accept=".csv" style="display:none"></label>
+          <span style="font-size:13px;color:var(--faint)">or find leads</span>
+          <input id="cd-lq" placeholder="e.g. Founder SaaS software" value="Founder SaaS software" style="flex:1;min-width:180px"/>
+          <select id="cd-lcountry"><option>Australia</option><option>United States</option><option>United Kingdom</option><option>Canada</option></select>
+          <button class="btn btn-out" id="cd-find">Find &amp; add</button>
+        </div>
+        <div class="lstatus" id="cd-cstatus">No contacts staged yet. Import a CSV (first_name, company, mobile…) or find leads.</div>
+        <div style="overflow-x:auto"><table class="tbl"><tbody id="cd-contact-rows"></tbody></table></div>
       </div>
+
+      <div class="funnel" id="cd-funnel">
+        <div class="fc"><div class="top"><span class="l">Queued</span></div><div class="v" id="cd-f-queued">0</div><div class="track"><i style="width:100%"></i></div><div class="d">staged for this send</div></div>
+        <div class="fc"><div class="top"><span class="l">Delivered</span></div><div class="v" id="cd-f-delivered">0</div><div class="track"><i id="cd-b-delivered" style="width:0%"></i></div><div class="d">landed in voicemail</div></div>
+        <div class="fc"><div class="top"><span class="l">Skipped</span></div><div class="v" id="cd-f-skipped">0</div><div class="track"><i style="width:0%;background:#CFCEC8"></i></div><div class="d">no mobile or suppressed</div></div>
+        <div class="fc"><div class="top"><span class="l">Failed</span></div><div class="v" id="cd-f-failed">0</div><div class="track"><i style="width:0%;background:#E0A03A"></i></div><div class="d">render or delivery error</div></div>
+      </div>
+
       <div class="panel" style="margin-top:16px;padding:22px 24px">
         <div class="phead" style="align-items:center;margin-bottom:6px"><div><h1 style="font-size:20px">Recent activity</h1></div><a class="link-all" href="#">Callbacks only →</a></div>
         <div style="overflow-x:auto"><table class="tbl">
@@ -453,6 +481,116 @@ a{color:inherit;text-decoration:none}
       .finally(function(){ lgo.disabled=false; });
     });
   }
+  /* cd builder — live API when served, demo otherwise */
+  var CD = {staged: [], live: false};
+  function cdEl(id){return document.getElementById(id);}
+  function cdRender(){
+    var tb=cdEl('cd-contact-rows'); if(!tb) return;
+    tb.innerHTML = CD.staged.map(function(c,i){
+      return '<tr><td class="co">'+((c.first_name||'')+' '+(c.last_name||'')).trim()+'</td>'
+        +'<td>'+(c.company||'—')+'</td>'
+        +'<td>'+(c.mobile?'<span class="opill int">'+c.mobile+'</span>':'<span class="opill no">no mobile</span>')+'</td>'
+        +'<td style="color:var(--muted)">'+(c.email||'—')+'</td>'
+        +'<td class="r"><span style="cursor:pointer;color:var(--faint)" data-i="'+i+'" class="cd-rm">remove</span></td></tr>';
+    }).join('');
+    tb.querySelectorAll('.cd-rm').forEach(function(x){x.onclick=function(){CD.staged.splice(+x.dataset.i,1);cdRender();};});
+    var withMob = CD.staged.filter(function(c){return c.mobile;}).length;
+    cdEl('cd-cstatus').textContent = CD.staged.length
+      ? (CD.staged.length+' contacts staged · '+withMob+' with a mobile (droppable)')
+      : 'No contacts staged yet. Import a CSV (first_name, company, mobile…) or find leads.';
+    cdEl('cd-f-queued').textContent = withMob;
+  }
+  function cdPreview(){
+    var p=cdEl('cd-preview'); if(!p) return;
+    var s=cdEl('cd-script').value, c=CD.staged[0]||{first_name:'Kevin',company:'SaaS Integrator',title:'Founder',city:'Austin'};
+    p.textContent = s.replace(/{{\s*(\w+)\s*}}/g,function(m,k){return c[k]||('['+k+']');});
+  }
+  (function initBuilder(){
+    if(!cdEl('cd-send')) return;
+    fetch('/api/health').then(function(r){return r.ok?r.json():null;}).then(function(h){
+      if(h&&h.ok){CD.live=true; var m=cdEl('cd-mode');
+        m.style.background='var(--green-soft)'; m.style.color='var(--green-d)';
+        m.querySelector('.d').style.background='var(--green)';
+        m.childNodes[1].nodeValue=' '+(h.mode==='live'?'live':'dry-run')+' · voice: '+h.voice_backend;}
+    }).catch(function(){});
+    cdEl('cd-script').addEventListener('input',cdPreview);
+    document.querySelectorAll('.cd-var').forEach(function(v){v.onclick=function(){
+      cdEl('cd-script').value += ' '+v.dataset.v; cdPreview();};});
+    cdEl('cd-csv').addEventListener('change',function(e){
+      var f=e.target.files[0]; if(!f) return; var rd=new FileReader();
+      rd.onload=function(){
+        var lines=rd.result.split(/\r?\n/).filter(function(l){return l.trim();});
+        if(!lines.length) return;
+        var head=lines[0].toLowerCase().split(',').map(function(s){return s.trim();});
+        var idx={}; ['first_name','last_name','company','title','email','mobile','phone','city','country'].forEach(function(k){idx[k]=head.indexOf(k);});
+        var start=(idx.first_name>-1||idx.email>-1||idx.mobile>-1||idx.phone>-1)?1:0;
+        for(var i=start;i<lines.length;i++){var col=lines[i].split(',');
+          CD.staged.push({first_name:(col[idx.first_name]||'').trim(),last_name:(col[idx.last_name]||'').trim(),
+            company:(col[idx.company]||'').trim(),title:(col[idx.title]||'').trim(),email:(col[idx.email]||'').trim(),
+            city:(col[idx.city]||'').trim(),country:(col[idx.country]||'').trim(),
+            mobile:(col[idx.mobile]||col[idx.phone]||'').trim()});}
+        cdRender(); cdPreview();
+      }; rd.readAsText(f);
+    });
+    cdEl('cd-find').addEventListener('click',function(){
+      var st=cdEl('cd-cstatus'); st.textContent='Searching leads…';
+      if(!CD.live){
+        [['Kevin','Gada','SaaS Integrator','kevin@saasintegrator.com'],['Adam','Goodyer','APG Software','adam@apgsoftwaresolutions.com']]
+          .forEach(function(r){CD.staged.push({first_name:r[0],last_name:r[1],company:r[2],email:r[3],mobile:''});});
+        cdRender(); st.textContent='Demo leads added (run the server for live search + mobiles).'; return;
+      }
+      fetch('/api/leads/search',{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({query:cdEl('cd-lq').value,country:cdEl('cd-lcountry').value,limit:10})})
+      .then(function(r){return r.json();}).then(function(d){
+        var urls=d.results.map(function(p){return p.linkedin_url;}).filter(Boolean);
+        d.results.forEach(function(p){CD.staged.push({first_name:p.first_name,last_name:p.last_name,
+          company:p.company,title:p.title,email:p.email,linkedin_url:p.linkedin_url,mobile:''});});
+        cdRender();
+        if(urls.length){ st.textContent=d.results.length+' leads added · verifying mobiles…';
+          fetch('/api/leads/mobiles',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({linkedin_urls:urls})})
+          .then(function(r){return r.json();}).then(function(mm){
+            var map={}; mm.results.forEach(function(x){if(x.mobile)map[x.linkedin_url]=x.mobile;});
+            CD.staged.forEach(function(c){if(c.linkedin_url&&map[c.linkedin_url])c.mobile=map[c.linkedin_url];});
+            cdRender(); st.textContent=d.results.length+' leads added · '+mm.found+' mobiles verified.';
+          }).catch(function(){cdRender();});
+        }
+      }).catch(function(){st.textContent='Search failed.';});
+    });
+    cdEl('cd-send').addEventListener('click',function(){
+      if(!CD.staged.length){cdEl('cd-cstatus').textContent='Add contacts first.';return;}
+      var btn=cdEl('cd-send'); btn.disabled=true; btn.textContent='Sending…';
+      if(!CD.live){
+        var withMob=CD.staged.filter(function(c){return c.mobile;}).length;
+        cdEl('cd-f-delivered').textContent=withMob; cdEl('cd-b-delivered').style.width='100%';
+        cdEl('cd-f-skipped').textContent=CD.staged.length-withMob;
+        btn.disabled=false; btn.textContent='Send campaign';
+        cdEl('cd-cstatus').textContent='Demo send complete ('+withMob+' would drop). Run the server to send for real.'; return;
+      }
+      fetch('/api/campaigns',{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({name:cdEl('cd-name').value,script:cdEl('cd-script').value})})
+      .then(function(r){return r.json();}).then(function(c){
+        return fetch('/api/campaigns/'+c.id+'/contacts',{method:'POST',headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({contacts:CD.staged})}).then(function(){return c.id;});
+      }).then(function(cid){
+        return fetch('/api/campaigns/'+cid+'/send',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'})
+          .then(function(r){return r.json();}).then(function(res){
+            cdEl('cd-f-skipped').textContent=(res.skipped_no_mobile+res.skipped_suppressed);
+            var poll=setInterval(function(){
+              fetch('/api/campaigns/'+cid).then(function(r){return r.json();}).then(function(d){
+                var s=d.drop_stats||{}; var tot=Object.keys(s).reduce(function(a,k){return a+s[k];},0)||1;
+                cdEl('cd-f-delivered').textContent=s.delivered||0;
+                cdEl('cd-f-failed').textContent=s.failed||0;
+                cdEl('cd-b-delivered').style.width=(100*(s.delivered||0)/tot)+'%';
+                if((s.queued||0)===0){clearInterval(poll);btn.disabled=false;btn.textContent='Send campaign';
+                  cdEl('cd-cstatus').textContent='Sent · '+(s.delivered||0)+' delivered, '+res.skipped_no_mobile+' no mobile, '+res.skipped_suppressed+' suppressed.';}
+              });
+            },1200);
+          });
+      }).catch(function(){btn.disabled=false;btn.textContent='Send campaign';cdEl('cd-cstatus').textContent='Send failed — is the server running?';});
+    });
+    cdPreview();
+  })();
+
 })();
 </script>
 </body>
