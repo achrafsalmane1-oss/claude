@@ -64,9 +64,14 @@ MOLTSETS_API_KEY=ms_xxx uvicorn server.main:app --reload
 
 The Lead finder in the app goes live automatically when served by this server.
 API: POST /api/leads/search · /api/leads/mobiles · /api/script/preview ·
-/api/campaigns (+/contacts, /send) · GET /api/health.
-Sending activates once ELEVENLABS_API_KEY, DROPCOWBOY_TEAM_ID, and
-DROPCOWBOY_SECRET are set.
+/api/campaigns (+/contacts, /send, detail) · /api/suppressions ·
+/api/webhooks/dropcowboy · GET /api/health.
+
+The send pipeline (script merge → personalized voice render → RVM drop →
+delivery webhook, with DNC/opt-out suppression) runs end-to-end in **dry-run
+mode** out of the box — placeholder audio, simulated delivery. Set
+ELEVENLABS_API_KEY + DROPCOWBOY_TEAM_ID + DROPCOWBOY_SECRET (see .env.example)
+and the same pipeline goes live. Tests: `python3 -m pytest tests/`.
 
 ## Compliance
 
