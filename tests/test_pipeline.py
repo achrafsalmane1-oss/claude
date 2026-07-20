@@ -107,6 +107,27 @@ def test_plan_cap_enforced():
         auth.PLAN_CAPS["starter"] = 1000
 
 
+def test_ab_variants_and_analytics():
+    h = signup("ab@acme.com")
+    cid = client.post("/api/campaigns", headers=h, json={
+        "name": "A/B test", "script": "Variant A {{first_name}}",
+        "variants": ["Variant B {{first_name}}"]}).json()["id"]
+    client.post(f"/api/campaigns/{cid}/contacts", headers=h, json={"contacts": [
+        {"first_name": f"P{i}", "mobile": f"+1 415 555 70{i:02d}"} for i in range(4)]})
+    client.post(f"/api/campaigns/{cid}/send", headers=h, json={})
+    # contacts alternate between variant 0 and 1
+    detail = client.get(f"/api/campaigns/{cid}", headers=h).json()
+    variants_assigned = sorted(c["variant"] for c in detail["contacts"])
+    assert variants_assigned == [0, 0, 1, 1]
+    # mark one B-variant contact as called back
+    b_contact = [c for c in detail["contacts"] if c["variant"] == 1][0]["id"]
+    client.post(f"/api/contacts/{b_contact}/callback", headers=h)
+    a = client.get(f"/api/campaigns/{cid}/analytics", headers=h).json()
+    assert [v["variant"] for v in a["variants"]] == ["A", "B"]
+    assert a["variants"][0]["sent"] == 2 and a["variants"][1]["callbacks"] == 1
+    assert a["winner"] == "B"
+
+
 def test_team_invite_and_join():
     owner = signup("owner@team.com")
     inv = client.post("/api/team/invite", headers=owner, json={"email": "mate@team.com"}).json()

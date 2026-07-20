@@ -302,6 +302,8 @@ a{color:inherit;text-decoration:none}
             <span class="chip cd-var" data-v="{{company}}">{{company}}</span>
             <span class="chip cd-var" data-v="{{title}}">{{title}}</span>
             <span class="chip cd-var" data-v="{{city}}">{{city}}</span></div>
+          <div style="margin-top:10px"><span id="cd-vb-toggle" style="cursor:pointer;color:var(--green-d);font-weight:600;font-size:13px">+ Add A/B variant</span></div>
+          <div id="cd-vb-wrap" style="display:none;margin-top:10px"><div style="font-size:12px;color:var(--muted);margin-bottom:6px">Variant B — contacts split 50/50, callbacks tracked per variant</div><textarea id="cd-script-b" class="script-area" style="width:100%;font-family:var(--sans);resize:vertical;display:block" rows="2" placeholder="Alternate script…"></textarea></div>
           <div style="margin-top:12px;font-size:13.5px;color:var(--muted)">Preview&nbsp; <span id="cd-preview" style="color:var(--slate)"></span></div>
         </div>
         <div class="lsearch" style="align-items:center;margin-top:16px">
@@ -564,6 +566,7 @@ a{color:inherit;text-decoration:none}
         m.childNodes[1].nodeValue=' '+(h.mode==='live'?'live':'dry-run')+' · voice: '+h.voice_backend;}
     }).catch(function(){});
     cdEl('cd-script').addEventListener('input',cdPreview);
+    var vbt=cdEl('cd-vb-toggle'); if(vbt) vbt.onclick=function(){cdEl('cd-vb-wrap').style.display='block';vbt.style.display='none';};
     document.querySelectorAll('.cd-var').forEach(function(v){v.onclick=function(){
       cdEl('cd-script').value += ' '+v.dataset.v; cdPreview();};});
     cdEl('cd-csv').addEventListener('change',function(e){
@@ -617,7 +620,7 @@ a{color:inherit;text-decoration:none}
         cdEl('cd-cstatus').textContent='Demo send complete ('+withMob+' would drop). Run the server to send for real.'; return;
       }
       CDfetch('/api/campaigns',{method:'POST',headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({name:cdEl('cd-name').value,script:cdEl('cd-script').value})})
+        body:JSON.stringify({name:cdEl('cd-name').value,script:cdEl('cd-script').value,variants:(cdEl('cd-script-b')&&cdEl('cd-script-b').value.trim())?[cdEl('cd-script-b').value]:undefined})})
       .then(function(r){return r.json();}).then(function(c){
         return CDfetch('/api/campaigns/'+c.id+'/contacts',{method:'POST',headers:{'Content-Type':'application/json'},
           body:JSON.stringify({contacts:CD.staged})}).then(function(){return c.id;});
@@ -735,6 +738,19 @@ a{color:inherit;text-decoration:none}
       var u=URL.createObjectURL(b),a=document.createElement('a');a.href=u;a.download=(name||'campaign')+'-contacts.csv';
       document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(u);});
   }
+
+  function showAnalytics(id){
+    var box=document.getElementById('cd-analytics'); if(!box) return;
+    box.innerHTML='<div style="color:var(--muted);font-size:13px">Loading A/B results…</div>';
+    CDfetch('/api/campaigns/'+id+'/analytics').then(function(r){return r.json();}).then(function(d){
+      box.innerHTML='<div style="font-weight:600;margin:6px 0 10px">A/B results — '+d.campaign
+        +(d.winner?(' · <span style="color:var(--green-d)">winner: Variant '+d.winner+'</span>'):'')+'</div>'
+        +'<table class="tbl"><thead><tr><th>Variant</th><th>Sent</th><th>Delivered</th><th>Callbacks</th><th class="r">Callback rate</th></tr></thead><tbody>'
+        +d.variants.map(function(v){return '<tr><td class="co">Variant '+v.variant+(v.variant===d.winner?' \ud83c\udfc6':'')+'</td><td>'+v.sent+'</td><td>'+v.delivered+'</td><td>'+v.callbacks+'</td><td class="r">'+(v.callback_rate*100).toFixed(1)+'%</td></tr>';}).join('')
+        +'</tbody></table>';
+    });
+  }
+
   function loadCampaignsList(){
     if(!localStorage.getItem('cd_token')) return;
     CDfetch('/api/campaigns').then(function(r){return r.ok?r.json():null;}).then(function(d){
@@ -746,9 +762,11 @@ a{color:inherit;text-decoration:none}
         +d.campaigns.map(function(c){
           return '<tr><td class="co">'+c.name+'</td><td>'+(c.contact_count||0)+'</td><td>'+(c.delivered_count||0)+'</td>'
             +'<td><span class="spill">'+c.status+'</span></td>'
-            +'<td class="r"><span class="cd-csv" data-id="'+c.id+'" data-n="'+encodeURIComponent(c.name)+'" style="cursor:pointer;color:var(--green-d);font-weight:600">CSV \u2193</span></td></tr>';
+            +'<td class="r"><span class="cd-ab" data-id="'+c.id+'" style="cursor:pointer;color:var(--green-d);font-weight:600;margin-right:14px">A/B</span><span class="cd-csv" data-id="'+c.id+'" data-n="'+encodeURIComponent(c.name)+'" style="cursor:pointer;color:var(--green-d);font-weight:600">CSV \u2193</span></td></tr>';
         }).join('')+'</tbody></table></div>';
       el.querySelectorAll('.cd-csv').forEach(function(x){x.onclick=function(){cdCsv(x.dataset.id,decodeURIComponent(x.dataset.n));};});
+      el.querySelectorAll('.cd-ab').forEach(function(x){x.onclick=function(){showAnalytics(x.dataset.id);};});
+      if(!document.getElementById('cd-analytics')){var ad=document.createElement('div');ad.id='cd-analytics';ad.style.marginTop='14px';el.appendChild(ad);}
     });
   }
   function loadCallbacks(){

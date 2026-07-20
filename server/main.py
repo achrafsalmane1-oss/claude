@@ -11,6 +11,7 @@ Run:  MOLTSETS_API_KEY=ms_xxx uvicorn server.main:app --reload
 """
 import io
 import csv
+import json
 import os
 import re
 import sqlite3
@@ -91,6 +92,13 @@ def init_db() -> None:
             );
             """
         )
+        # lightweight migrations (safe to re-run)
+        for stmt in ("ALTER TABLE campaigns ADD COLUMN variants TEXT",
+                     "ALTER TABLE contacts ADD COLUMN variant INTEGER NOT NULL DEFAULT 0"):
+            try:
+                conn.execute(stmt)
+            except sqlite3.OperationalError:
+                pass
 
 
 init_db()
@@ -404,16 +412,18 @@ class CampaignIn(BaseModel):
     name: str
     script: str = ""
     voice: str = "ava"
+    variants: list[str] | None = None  # A/B: extra script variants (script is variant A)
 
 
 @app.post("/api/campaigns")
 def create_campaign(body: CampaignIn, ctx: Ctx = Depends(get_ctx)):
+    variants = [body.script] + [v for v in (body.variants or []) if v.strip()]
     with db() as conn:
         cur = conn.execute(
-            "INSERT INTO campaigns (workspace_id, name, script, voice, created_at) VALUES (?,?,?,?,?)",
-            (ctx.wid, body.name, body.script, body.voice, time.time()),
+            "INSERT INTO campaigns (workspace_id, name, script, voice, variants, created_at) VALUES (?,?,?,?,?,?)",
+            (ctx.wid, body.name, body.script, body.voice, json.dumps(variants), time.time()),
         )
-        return {"id": cur.lastrowid, "name": body.name, "status": "draft"}
+        return {"id": cur.lastrowid, "name": body.name, "status": "draft", "variant_count": len(variants)}
 
 
 @app.get("/api/campaigns")
@@ -491,6 +501,38 @@ def list_callbacks(ctx: Ctx = Depends(get_ctx)):
     return {"callbacks": [dict(r) for r in rows], "count": len(rows)}
 
 
+@app.get("/api/campaigns/{campaign_id}/analytics")
+def campaign_analytics(campaign_id: int, ctx: Ctx = Depends(get_ctx)):
+    with db() as conn:
+        c = _owned_campaign(conn, campaign_id, ctx.wid)
+        try:
+            variants = json.loads(c["variants"]) if c["variants"] else [c["script"]]
+        except Exception:
+            variants = [c["script"]]
+        rows = conn.execute(
+            """SELECT variant,
+                      COUNT(*) AS total,
+                      SUM(CASE WHEN status IN ('delivered','called_back') THEN 1 ELSE 0 END) AS delivered,
+                      SUM(CASE WHEN status='called_back' THEN 1 ELSE 0 END) AS callbacks
+               FROM contacts WHERE campaign_id=? GROUP BY variant""", (campaign_id,)).fetchall()
+    by_variant = {r["variant"]: r for r in rows}
+    out = []
+    for i, script in enumerate(variants):
+        r = by_variant.get(i)
+        delivered = (r["delivered"] if r else 0) or 0
+        callbacks = (r["callbacks"] if r else 0) or 0
+        out.append({
+            "variant": chr(65 + i),  # A, B, C…
+            "script": script,
+            "sent": (r["total"] if r else 0) or 0,
+            "delivered": delivered,
+            "callbacks": callbacks,
+            "callback_rate": round(callbacks / delivered, 3) if delivered else 0.0,
+        })
+    winner = max(out, key=lambda v: v["callback_rate"])["variant"] if any(v["delivered"] for v in out) else None
+    return {"campaign": c["name"], "variants": out, "winner": winner}
+
+
 @app.get("/api/campaigns/{campaign_id}/contacts.csv")
 def export_contacts_csv(campaign_id: int, ctx: Ctx = Depends(get_ctx)):
     with db() as conn:
@@ -539,7 +581,7 @@ def list_suppressions(ctx: Ctx = Depends(get_ctx)):
 def process_drop(drop_id: int) -> None:
     with db() as conn:
         row = conn.execute(
-            """SELECT d.id, d.foreign_id, c.script, ct.*
+            """SELECT d.id, d.foreign_id, c.script, c.variants, ct.*
                FROM drops d JOIN campaigns c ON c.id=d.campaign_id
                JOIN contacts ct ON ct.id=d.contact_id WHERE d.id=?""",
             (drop_id,),
@@ -547,7 +589,15 @@ def process_drop(drop_id: int) -> None:
     if not row:
         return
     try:
-        text, _ = merge_script(row["script"], dict(row))
+        script = row["script"]
+        if row["variants"]:
+            try:
+                vs = json.loads(row["variants"])
+                if vs:
+                    script = vs[(row["variant"] or 0) % len(vs)]
+            except Exception:
+                pass
+        text, _ = merge_script(script, dict(row))
         voice = providers.render_voice(text, row["foreign_id"])
         result = providers.send_rvm(norm_phone(row["mobile"]), voice["url"], row["foreign_id"])
         with db() as conn:
@@ -582,6 +632,10 @@ def send_campaign(campaign_id: int, background: BackgroundTasks,
         suppressed = {r["phone"] for r in conn.execute("SELECT phone FROM suppressions WHERE workspace_id=?", (ctx.wid,))}
         contacts = conn.execute("SELECT * FROM contacts WHERE campaign_id=? AND status='queued'", (campaign_id,)).fetchall()
 
+        try:
+            nvariants = max(1, len(json.loads(camp["variants"]))) if camp["variants"] else 1
+        except Exception:
+            nvariants = 1
         queued, no_mobile, skipped_dnc = [], 0, 0
         for ct in contacts:
             if len(queued) >= u["remaining"]:
@@ -594,6 +648,7 @@ def send_campaign(campaign_id: int, background: BackgroundTasks,
                 skipped_dnc += 1
                 conn.execute("UPDATE contacts SET status='suppressed' WHERE id=?", (ct["id"],))
                 continue
+            conn.execute("UPDATE contacts SET variant=? WHERE id=?", (len(queued) % nvariants, ct["id"]))
             fid = f"cd_{campaign_id}_{ct['id']}_{uuid.uuid4().hex[:8]}"
             cur = conn.execute(
                 """INSERT INTO drops (foreign_id, workspace_id, campaign_id, contact_id, created_at, updated_at)
