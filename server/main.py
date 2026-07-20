@@ -112,11 +112,18 @@ def init_db() -> None:
                      "ALTER TABLE campaigns ADD COLUMN window_start INTEGER",
                      "ALTER TABLE campaigns ADD COLUMN window_end INTEGER",
                      "ALTER TABLE campaigns ADD COLUMN tz_offset_min INTEGER NOT NULL DEFAULT 0",
-                     "ALTER TABLE contacts ADD COLUMN variant INTEGER NOT NULL DEFAULT 0"):
+                     "ALTER TABLE contacts ADD COLUMN variant INTEGER NOT NULL DEFAULT 0",
+                     "ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT 'member'"):
             try:
                 conn.execute(stmt)
             except sqlite3.OperationalError:
                 pass
+        # backfill: the earliest user in each workspace is the owner
+        try:
+            conn.execute("UPDATE users SET role='owner' WHERE id IN "
+                         "(SELECT MIN(id) FROM users GROUP BY workspace_id)")
+        except sqlite3.OperationalError:
+            pass
 
 
 init_db()
@@ -133,6 +140,10 @@ class Ctx:
         self.user = user
         self.workspace = workspace
         self.wid = workspace["id"]
+        try:
+            self.role = user["role"]
+        except Exception:
+            self.role = "owner"  # API-key context has full access
 
 
 def get_ctx(authorization: str = Header(default=""),
@@ -157,6 +168,12 @@ def get_ctx(authorization: str = Header(default=""),
         user = conn.execute("SELECT * FROM users WHERE id=?", (s["user_id"],)).fetchone()
         ws = conn.execute("SELECT * FROM workspaces WHERE id=?", (user["workspace_id"],)).fetchone()
     return Ctx(user, ws)
+
+
+def require_owner(ctx: Ctx = Depends(get_ctx)) -> Ctx:
+    if ctx.role != "owner":
+        raise HTTPException(403, "owner permission required for this action")
+    return ctx
 
 
 def notify_workspace(wid: int, kind: str, title: str, body: str) -> None:
@@ -201,9 +218,10 @@ def signup(body: SignupIn):
                 "INSERT INTO workspaces (name, plan, created_at) VALUES (?,?,?)",
                 (wname, plan, time.time()),
             ).lastrowid
+        role = "member" if invite else "owner"
         uid = conn.execute(
-            "INSERT INTO users (email, pw_hash, workspace_id, created_at) VALUES (?,?,?,?)",
-            (body.email, auth.hash_password(body.password), wid, time.time()),
+            "INSERT INTO users (email, pw_hash, workspace_id, role, created_at) VALUES (?,?,?,?,?)",
+            (body.email, auth.hash_password(body.password), wid, role, time.time()),
         ).lastrowid
         token = auth.new_token()
         conn.execute("INSERT INTO sessions (token, user_id, created_at) VALUES (?,?,?)",
@@ -253,6 +271,7 @@ def me(ctx: Ctx = Depends(get_ctx)):
     return {
         "email": ctx.user["email"],
         "workspace": ctx.workspace["name"],
+        "role": ctx.role,
         "usage": usage_for(ctx.wid),
     }
 
@@ -269,7 +288,7 @@ class InviteIn(BaseModel):
 
 
 @app.post("/api/team/invite")
-def team_invite(body: InviteIn, ctx: Ctx = Depends(get_ctx)):
+def team_invite(body: InviteIn, ctx: Ctx = Depends(require_owner)):
     with db() as conn:
         if conn.execute("SELECT 1 FROM users WHERE email=? AND workspace_id=?", (body.email, ctx.wid)).fetchone():
             raise HTTPException(409, "already a member")
@@ -287,7 +306,7 @@ def team_invite(body: InviteIn, ctx: Ctx = Depends(get_ctx)):
 def team(ctx: Ctx = Depends(get_ctx)):
     with db() as conn:
         members = conn.execute(
-            "SELECT email, created_at FROM users WHERE workspace_id=? ORDER BY created_at", (ctx.wid,)).fetchall()
+            "SELECT email, role, created_at FROM users WHERE workspace_id=? ORDER BY created_at", (ctx.wid,)).fetchall()
         pending = conn.execute(
             "SELECT email, created_at FROM invites WHERE workspace_id=? AND accepted_at IS NULL ORDER BY created_at",
             (ctx.wid,)).fetchall()
@@ -383,7 +402,7 @@ class CheckoutIn(BaseModel):
 
 
 @app.post("/api/billing/checkout")
-def billing_checkout(body: CheckoutIn, ctx: Ctx = Depends(get_ctx)):
+def billing_checkout(body: CheckoutIn, ctx: Ctx = Depends(require_owner)):
     if body.plan not in billing.PLANS:
         raise HTTPException(422, "unknown plan")
     result = billing.create_checkout(ctx.wid, body.plan, ctx.user["email"])
@@ -690,7 +709,7 @@ class ApiKeyIn(BaseModel):
 
 
 @app.post("/api/keys")
-def create_api_key(body: ApiKeyIn, ctx: Ctx = Depends(get_ctx)):
+def create_api_key(body: ApiKeyIn, ctx: Ctx = Depends(require_owner)):
     key = "cd_live_" + auth.new_token()[:32]
     with db() as conn:
         conn.execute("INSERT INTO api_keys (key, workspace_id, name, created_at) VALUES (?,?,?,?)",

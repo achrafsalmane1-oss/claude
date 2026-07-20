@@ -231,6 +231,27 @@ def test_ab_variants_and_analytics():
     assert a["winner"] == "B"
 
 
+def test_roles_and_permissions():
+    owner = signup("boss@team2.com")
+    assert client.get("/api/auth/me", headers=owner).json()["role"] == "owner"
+    inv = client.post("/api/team/invite", headers=owner, json={"email": "worker@team2.com"}).json()
+    r = client.post("/api/auth/signup", json={
+        "email": "worker@team2.com", "password": "password123", "invite_token": inv["invite_token"]}).json()
+    member = {"Authorization": "Bearer " + r["token"]}
+    assert client.get("/api/auth/me", headers=member).json()["role"] == "member"
+    # members can build/send campaigns
+    assert client.post("/api/campaigns", headers=member, json={"name": "m", "script": "hi"}).status_code == 200
+    # but NOT billing, invites, or API keys
+    assert client.post("/api/billing/checkout", headers=member, json={"plan": "growth"}).status_code == 403
+    assert client.post("/api/team/invite", headers=member, json={"email": "x@y.com"}).status_code == 403
+    assert client.post("/api/keys", headers=member, json={"name": "k"}).status_code == 403
+    # owner still can
+    assert client.post("/api/keys", headers=owner, json={"name": "k"}).status_code == 200
+    # team lists roles
+    roles = {m["email"]: m["role"] for m in client.get("/api/team", headers=owner).json()["members"]}
+    assert roles == {"boss@team2.com": "owner", "worker@team2.com": "member"}
+
+
 def test_team_invite_and_join():
     owner = signup("owner@team.com")
     inv = client.post("/api/team/invite", headers=owner, json={"email": "mate@team.com"}).json()
