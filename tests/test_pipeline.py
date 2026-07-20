@@ -107,6 +107,21 @@ def test_plan_cap_enforced():
         auth.PLAN_CAPS["starter"] = 1000
 
 
+def test_analytics_view():
+    h = signup("analytics@acme.com")
+    cid = client.post("/api/campaigns", headers=h, json={"name": "Perf", "script": "hi {{first_name}}"}).json()["id"]
+    client.post(f"/api/campaigns/{cid}/contacts", headers=h, json={"contacts": [
+        {"first_name": f"P{i}", "mobile": f"+1 415 555 40{i:02d}"} for i in range(3)]})
+    client.post(f"/api/campaigns/{cid}/send", headers=h, json={})
+    ct = client.get(f"/api/campaigns/{cid}", headers=h).json()["contacts"][0]["id"]
+    client.post(f"/api/contacts/{ct}/callback", headers=h)
+    a = client.get("/api/analytics", headers=h).json()
+    assert a["totals"]["drops_sent"] == 3 and a["totals"]["delivered"] == 3
+    assert a["totals"]["callbacks"] == 1
+    assert len(a["series"]) == 14 and a["series"][-1]["sent"] == 3   # today
+    assert a["campaigns"][0]["name"] == "Perf" and a["campaigns"][0]["callback_rate"] > 0
+
+
 def test_dedupe_and_validation_on_import():
     h = signup("dedupe@acme.com")
     cid = client.post("/api/campaigns", headers=h, json={"name": "dd", "script": "hi {{first_name}}"}).json()["id"]

@@ -294,6 +294,58 @@ def team(ctx: Ctx = Depends(get_ctx)):
     return {"members": [dict(m) for m in members], "pending": [dict(p) for p in pending]}
 
 
+@app.get("/api/analytics")
+def analytics(days: int = 14, ctx: Ctx = Depends(get_ctx)):
+    days = max(7, min(90, days))
+    import datetime as dt
+    cutoff = time.time() - days * 86400
+    with db() as conn:
+        drops_sent = conn.execute("SELECT COUNT(*) FROM drops WHERE workspace_id=?", (ctx.wid,)).fetchone()[0]
+        delivered = conn.execute("SELECT COUNT(*) FROM drops WHERE workspace_id=? AND status='delivered'", (ctx.wid,)).fetchone()[0]
+        failed = conn.execute("SELECT COUNT(*) FROM drops WHERE workspace_id=? AND status='failed'", (ctx.wid,)).fetchone()[0]
+        callbacks = conn.execute(
+            "SELECT COUNT(*) FROM contacts ct JOIN campaigns c ON c.id=ct.campaign_id "
+            "WHERE c.workspace_id=? AND ct.status='called_back'", (ctx.wid,)).fetchone()[0]
+        rows = conn.execute(
+            "SELECT CAST(created_at AS INT)/86400 AS day, COUNT(*) n, "
+            "SUM(CASE WHEN status='delivered' THEN 1 ELSE 0 END) d "
+            "FROM drops WHERE workspace_id=? AND created_at>=? GROUP BY day", (ctx.wid, cutoff)).fetchall()
+        by_camp = conn.execute(
+            """SELECT c.id, c.name,
+                      COUNT(ct.id) contacts,
+                      SUM(CASE WHEN ct.status IN ('delivered','called_back') THEN 1 ELSE 0 END) delivered,
+                      SUM(CASE WHEN ct.status='called_back' THEN 1 ELSE 0 END) callbacks
+               FROM campaigns c LEFT JOIN contacts ct ON ct.campaign_id=c.id
+               WHERE c.workspace_id=? GROUP BY c.id ORDER BY c.created_at DESC LIMIT 12""",
+            (ctx.wid,)).fetchall()
+    # dense daily series (fill gaps with 0)
+    by_day = {r["day"]: r for r in rows}
+    today = int(time.time()) // 86400
+    series = []
+    for d in range(today - days + 1, today + 1):
+        r = by_day.get(d)
+        series.append({
+            "date": dt.datetime.utcfromtimestamp(d * 86400).strftime("%b %d"),
+            "sent": (r["n"] if r else 0) or 0,
+            "delivered": (r["d"] if r else 0) or 0,
+        })
+    campaigns = []
+    for r in by_camp:
+        dv = (r["delivered"] or 0)
+        cb = (r["callbacks"] or 0)
+        campaigns.append({"id": r["id"], "name": r["name"], "contacts": r["contacts"] or 0,
+                          "delivered": dv, "callbacks": cb,
+                          "callback_rate": round(cb / dv, 3) if dv else 0.0})
+    return {
+        "totals": {"drops_sent": drops_sent, "delivered": delivered, "failed": failed,
+                   "callbacks": callbacks,
+                   "delivery_rate": round(delivered / drops_sent, 3) if drops_sent else 0.0,
+                   "callback_rate": round(callbacks / delivered, 3) if delivered else 0.0},
+        "series": series,
+        "campaigns": campaigns,
+    }
+
+
 @app.get("/api/dashboard")
 def dashboard(ctx: Ctx = Depends(get_ctx)):
     with db() as conn:

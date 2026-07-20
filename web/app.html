@@ -231,6 +231,7 @@ a{color:inherit;text-decoration:none}
     <div class="nav-i" data-v="pipeline"><svg viewBox="0 0 24 24"><path d="M3 5h18l-7 8v5l-4 2v-7z"/></svg>Campaigns</div>
     <div class="nav-i" data-v="leads"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.2"/><path d="M3 20a6.2 6.2 0 0 1 12 0M16 5.5a3 3 0 0 1 0 6M21 20a6.2 6.2 0 0 0-4.2-5.8"/></svg>Leads</div>
     <div class="nav-i" data-v="interested"><svg viewBox="0 0 24 24"><path d="M5 4h4l2 5-2.5 1.5a12 12 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z"/></svg>Callbacks<span class="bdg">4</span></div>
+    <div class="nav-i" data-v="analytics"><svg viewBox="0 0 24 24"><path d="M4 20V4M4 20h16M8 16l4-5 3 3 5-7"/></svg>Analytics</div>
     <div class="nav-i" data-v="buybox"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3.2"/></svg>Audience</div>
     <div class="nav-i" data-v="settings"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2"/></svg>Settings</div>
     <div class="foot"><div class="t">Drops run 24/7</div><div class="d">Delivered silently in TCPA-safe local windows. Callbacks ring your line and land here.</div></div>
@@ -435,6 +436,21 @@ a{color:inherit;text-decoration:none}
           <thead><tr><th>Name</th><th>Title</th><th>Company</th><th>Country</th><th>Email</th><th class="r">LinkedIn</th></tr></thead>
           <tbody id="lead-rows"></tbody>
         </table></div>
+      </div>
+    </section>
+
+    <!-- ============ ANALYTICS ============ -->
+    <section class="view" id="v-analytics">
+      <div class="panel"><div class="phead"><div><h1>Analytics</h1><p>Delivery and callback performance across your campaigns.</p></div></div>
+        <div class="stats" id="an-tiles"></div>
+      </div>
+      <div class="panel">
+        <div class="phead" style="align-items:baseline;margin-bottom:4px"><div><h1 style="font-size:20px">Drops over time</h1></div><span style="font-size:12.5px;color:var(--faint)">last 14 days</span></div>
+        <div id="an-chart" style="margin-top:8px"></div>
+      </div>
+      <div class="panel">
+        <div class="phead" style="margin-bottom:4px"><div><h1 style="font-size:20px">Campaign performance</h1></div></div>
+        <div style="overflow-x:auto"><table class="tbl"><thead><tr><th>Campaign</th><th>Contacts</th><th>Delivered</th><th>Callbacks</th><th style="width:200px">Callback rate</th></tr></thead><tbody id="an-rows"></tbody></table></div>
       </div>
     </section>
 
@@ -868,6 +884,53 @@ a{color:inherit;text-decoration:none}
   };
   document.querySelectorAll('.nav-i').forEach(function(it){ if(it.getAttribute('data-v')==='settings') it.addEventListener('click',loadTeam); });
   setTimeout(loadTeam, 1050);
+
+  /* ---- analytics ---- */
+  function anChart(series){
+    var W=720,H=230,pad=34, n=series.length;
+    var max=Math.max(1, Math.max.apply(null, series.map(function(s){return s.sent;})));
+    function x(i){ return pad + i*(W-pad-8)/(n-1); }
+    function y(v){ return H-24 - v*(H-24-14)/max; }
+    function path(key){ return series.map(function(s,i){return (i?'L':'M')+x(i).toFixed(1)+' '+y(s[key]).toFixed(1);}).join(' '); }
+    var area = path('sent')+' L'+x(n-1).toFixed(1)+' '+(H-24)+' L'+x(0).toFixed(1)+' '+(H-24)+' Z';
+    var grid='';[0,0.25,0.5,0.75,1].forEach(function(f){var yy=(14+(H-24-14)*f).toFixed(0);grid+='<line x1="'+pad+'" y1="'+yy+'" x2="'+(W-8)+'" y2="'+yy+'" stroke="#ECEBE6" stroke-width="1"/>';});
+    var labels='';[0,Math.floor(n/2),n-1].forEach(function(i){labels+='<text x="'+x(i).toFixed(0)+'" y="'+(H-6)+'" fill="#B8BCB6" font-size="11" font-family="Inter" text-anchor="middle">'+series[i].date+'</text>';});
+    var ex=x(n-1).toFixed(1), ey=y(series[n-1].sent).toFixed(1);
+    return '<svg viewBox="0 0 '+W+' '+H+'" width="100%" height="230" preserveAspectRatio="none">'
+      +'<defs><linearGradient id="anG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#34C05A" stop-opacity=".2"/><stop offset="1" stop-color="#34C05A" stop-opacity="0"/></linearGradient></defs>'
+      +grid+'<path d="'+area+'" fill="url(#anG)"/>'
+      +'<path d="'+path('delivered')+'" fill="none" stroke="#9CC7A8" stroke-width="1.6" stroke-dasharray="4 4"/>'
+      +'<path d="'+path('sent')+'" fill="none" stroke="#2E9E52" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>'
+      +'<circle cx="'+ex+'" cy="'+ey+'" r="4" fill="#2E9E52" stroke="#fff" stroke-width="2"/>'
+      +labels+'</svg>'
+      +'<div style="display:flex;gap:18px;margin-top:8px;font-size:12.5px;color:var(--muted)"><span><span style="display:inline-block;width:10px;height:3px;background:#2E9E52;vertical-align:middle;margin-right:6px"></span>Drops sent</span><span><span style="display:inline-block;width:10px;height:2px;background:#9CC7A8;vertical-align:middle;margin-right:6px"></span>Delivered</span></div>';
+  }
+  function anTile(label,val,sub){ return '<div class="stat"><div class="l">'+label+'</div><div class="b"><span class="v">'+val+'</span></div><div class="d">'+(sub||'')+'</div></div>'; }
+  function renderAnalytics(d){
+    document.getElementById('an-tiles').innerHTML =
+      anTile('Drops sent',(d.totals.drops_sent||0).toLocaleString(),'all time')
+      +anTile('Delivered',(d.totals.delivered||0).toLocaleString(),Math.round(d.totals.delivery_rate*100)+'% delivery rate')
+      +anTile('Callbacks',(d.totals.callbacks||0).toLocaleString(),Math.round(d.totals.callback_rate*100)+'% callback rate')
+      +anTile('Failed',(d.totals.failed||0).toLocaleString(),'render or delivery errors');
+    document.getElementById('an-chart').innerHTML = anChart(d.series);
+    document.getElementById('an-rows').innerHTML = d.campaigns.length ? d.campaigns.map(function(c){
+      var pct=Math.round(c.callback_rate*100);
+      return '<tr><td class="co">'+c.name+'</td><td>'+c.contacts+'</td><td>'+c.delivered+'</td><td>'+c.callbacks+'</td>'
+        +'<td><div style="display:flex;align-items:center;gap:10px"><div style="flex:1;height:7px;background:#ECEBE6;border-radius:99px;overflow:hidden"><i style="display:block;height:100%;width:'+pct+'%;background:var(--green);border-radius:99px"></i></div><span style="font-variant-numeric:tabular-nums;font-size:13px;color:var(--slate)">'+pct+'%</span></div></td></tr>';
+    }).join('') : '<tr><td style="color:var(--faint)">No campaigns yet.</td></tr>';
+  }
+  function anDemo(){
+    var days=[],base=40; for(var i=13;i>=0;i--){var dd=new Date(Date.now()-i*86400000);base+=Math.round((Math.random()-0.3)*30);base=Math.max(20,base);days.push({date:dd.toLocaleDateString('en',{month:'short',day:'numeric'}),sent:base,delivered:Math.round(base*0.92)});}
+    return {totals:{drops_sent:2642,delivered:2431,failed:38,callbacks:118,delivery_rate:0.92,callback_rate:0.049},series:days,
+      campaigns:[{name:'Q3 Dallas brokers',contacts:420,delivered:388,callbacks:22,callback_rate:0.057},{name:'TX home services',contacts:360,delivered:330,callbacks:12,callback_rate:0.036},{name:'Southeast services',contacts:280,delivered:255,callbacks:9,callback_rate:0.035}]};
+  }
+  function loadAnalytics(){
+    if(!localStorage.getItem('cd_token')){ renderAnalytics(anDemo()); return; }
+    CDfetch('/api/analytics').then(function(r){return r.ok?r.json():null;}).then(function(d){ renderAnalytics(d||anDemo()); }).catch(function(){ renderAnalytics(anDemo()); });
+  }
+  document.querySelectorAll('.nav-i').forEach(function(it){ if(it.getAttribute('data-v')==='analytics') it.addEventListener('click',loadAnalytics); });
+  renderAnalytics(anDemo());
+
 
   /* ---- notifications bell ---- */
   function loadNotifs(open){
