@@ -579,6 +579,15 @@ def list_audiences(ctx: Ctx = Depends(get_ctx)):
         for r in rows]}
 
 
+@app.get("/api/audiences/{audience_id}/contacts")
+def audience_contacts(audience_id: int, ctx: Ctx = Depends(get_ctx)):
+    with db() as conn:
+        a = conn.execute("SELECT * FROM audiences WHERE id=? AND workspace_id=?", (audience_id, ctx.wid)).fetchone()
+        if not a:
+            raise HTTPException(404, "audience not found")
+    return {"id": audience_id, "name": a["name"], "contacts": json.loads(a["contacts"])}
+
+
 @app.post("/api/campaigns/{campaign_id}/contacts/from_audience")
 def add_from_audience(campaign_id: int, audience_id: int, ctx: Ctx = Depends(get_ctx)):
     with db() as conn:

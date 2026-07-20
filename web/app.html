@@ -223,12 +223,14 @@ a{color:inherit;text-decoration:none}
       <span class="crumb">Workspace&nbsp; / &nbsp;<b>Northstar Consulting</b></span>
       <span class="sp">
         <span class="search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg>Search campaigns</span>
-        <span class="bell"><svg viewBox="0 0 24 24" style="width:17px;height:17px;stroke:currentColor;fill:none;stroke-width:1.7"><path d="M18 8a6 6 0 10-12 0c0 7-3 8-3 8h18s-3-1-3-8"/><path d="M10 20a2 2 0 004 0"/></svg><span class="dot"></span></span>
+        <span class="bell" id="cd-bell" style="cursor:pointer"><svg viewBox="0 0 24 24" style="width:17px;height:17px;stroke:currentColor;fill:none;stroke-width:1.7"><path d="M18 8a6 6 0 10-12 0c0 7-3 8-3 8h18s-3-1-3-8"/><path d="M10 20a2 2 0 004 0"/></svg><span class="dot"></span></span>
         <span class="av">A</span>
       </span>
     </div>
 
-    <!-- ============ DASHBOARD ============ -->
+<div id="cd-notif" style="display:none;position:fixed;right:26px;top:64px;z-index:60;width:340px;background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:0 30px 60px -30px rgba(20,35,25,.4);padding:8px"></div>
+
+        <!-- ============ DASHBOARD ============ -->
     <section class="view on" id="v-dashboard">
       <div class="panel" id="cd-onboard" style="display:none;background:linear-gradient(180deg,var(--green-soft),var(--panel) 60%)">
         <div class="phead" style="align-items:center"><div><h1 style="font-size:22px">Welcome to Colddrops &#128075;</h1><p>Three steps to your first callback.</p></div><button class="btn btn-green" id="cd-onb-go">Start a campaign</button></div>
@@ -311,7 +313,8 @@ a{color:inherit;text-decoration:none}
           <span style="font-size:13px;color:var(--faint)">or find leads</span>
           <input id="cd-lq" placeholder="e.g. Founder SaaS software" value="Founder SaaS software" style="flex:1;min-width:180px"/>
           <select id="cd-lcountry"><option>Australia</option><option>United States</option><option>United Kingdom</option><option>Canada</option></select>
-          <button class="btn btn-out" id="cd-find">Find &amp; add</button>
+          <button class="btn btn-out" id="cd-find">Find &amp; add</button></div>
+        <div class="lsearch" style="align-items:center;margin-top:10px"><button class="btn btn-out" id="cd-save-aud">Save staged as audience</button><span style="font-size:13px;color:var(--faint)">or load</span><select id="cd-aud-select" style="flex:1"><option value="">Saved audiences…</option></select><button class="btn btn-out" id="cd-load-aud">Load</button>
         </div>
         <div class="lstatus" id="cd-cstatus">No contacts staged yet. Import a CSV (first_name, company, mobile…) or find leads.</div>
         <div style="overflow-x:auto"><table class="tbl"><tbody id="cd-contact-rows"></tbody></table></div>
@@ -428,6 +431,11 @@ a{color:inherit;text-decoration:none}
         <div class="lsearch"><input id="team-email" type="email" placeholder="teammate@company.com" style="flex:1"/><button class="btn btn-out" id="team-invite">Send invite</button></div>
         <div class="lstatus" id="team-status"></div>
         <div style="overflow-x:auto"><table class="tbl"><tbody id="team-rows"></tbody></table></div>
+      </div>
+          <div class="panel" style="margin-top:16px">
+        <div class="phead" style="align-items:center;margin-bottom:8px"><div><h1 style="font-size:20px">Developer</h1><p>Public API for your workspace. <a href="/docs.html" target="_blank" style="color:var(--green-d);font-weight:600">Read the docs &#8599;</a></p></div><button class="btn btn-out" id="key-create">Create API key</button></div>
+        <div class="lstatus" id="key-status"></div>
+        <div style="overflow-x:auto"><table class="tbl"><tbody id="key-rows"></tbody></table></div>
       </div>
     </section>
   </main>
@@ -815,6 +823,83 @@ a{color:inherit;text-decoration:none}
   };
   document.querySelectorAll('.nav-i').forEach(function(it){ if(it.getAttribute('data-v')==='settings') it.addEventListener('click',loadTeam); });
   setTimeout(loadTeam, 1050);
+
+  /* ---- notifications bell ---- */
+  function loadNotifs(open){
+    if(!localStorage.getItem('cd_token')) return;
+    CDfetch('/api/notifications').then(function(r){return r.ok?r.json():null;}).then(function(d){
+      if(!d) return;
+      var dot=document.querySelector('#cd-bell .dot');
+      if(dot) dot.style.display = d.unread>0 ? 'block' : 'none';
+      var box=document.getElementById('cd-notif'); if(!box) return;
+      box.innerHTML = '<div style="padding:10px 12px;font-weight:600;border-bottom:1px solid var(--line)">Notifications</div>'
+        + (d.notifications.length ? d.notifications.map(function(n){
+            return '<div style="padding:11px 12px;border-bottom:1px solid var(--line-2)">'
+              +'<div style="font-weight:600;font-size:14px">'+(n.title||'')+'</div>'
+              +'<div style="font-size:12.5px;color:var(--muted);margin-top:2px">'+(n.body||'')+'</div></div>';
+          }).join('') : '<div style="padding:16px 12px;color:var(--faint);font-size:13px">Nothing yet. Callbacks will show up here.</div>');
+      if(open && d.unread>0){ CDfetch('/api/notifications/read',{method:'POST'}).then(function(){ if(dot)dot.style.display='none'; }); }
+    });
+  }
+  var bell=document.getElementById('cd-bell');
+  if(bell) bell.onclick=function(e){ e.stopPropagation();
+    var box=document.getElementById('cd-notif'); var vis=box.style.display==='block';
+    box.style.display=vis?'none':'block'; if(!vis) loadNotifs(true); };
+  document.addEventListener('click',function(){ var b=document.getElementById('cd-notif'); if(b) b.style.display='none'; });
+  setTimeout(function(){loadNotifs(false);}, 1100);
+
+  /* ---- API keys ---- */
+  function loadKeys(){
+    if(!localStorage.getItem('cd_token')) return;
+    CDfetch('/api/keys').then(function(r){return r.ok?r.json():null;}).then(function(d){
+      if(!d) return;
+      document.getElementById('key-rows').innerHTML = d.keys.length ? d.keys.map(function(k){
+        return '<tr><td class="co" style="font-family:ui-monospace,Menlo,monospace">'+k.key+'</td><td style="color:var(--muted)">'+(k.name||'')+'</td><td class="r" style="color:var(--faint);font-size:12px">'+(k.last_used?'used':'never used')+'</td></tr>';
+      }).join('') : '<tr><td style="color:var(--faint)">No API keys yet.</td></tr>';
+    });
+  }
+  var kc=document.getElementById('key-create');
+  if(kc) kc.onclick=function(){
+    CDfetch('/api/keys',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:'API key'})})
+    .then(function(r){return r.json();}).then(function(d){
+      var st=document.getElementById('key-status'); st.className='lstatus live';
+      st.textContent='Copy it now — shown once: '+d.key; loadKeys();
+    });
+  };
+
+  /* ---- audiences ---- */
+  function loadAudiences(){
+    if(!localStorage.getItem('cd_token')) return;
+    CDfetch('/api/audiences').then(function(r){return r.ok?r.json():null;}).then(function(d){
+      if(!d) return; var sel=document.getElementById('cd-aud-select'); if(!sel) return;
+      sel.innerHTML='<option value="">Saved audiences…</option>'+d.audiences.map(function(a){
+        return '<option value="'+a.id+'">'+a.name+' ('+a.count+')</option>';}).join('');
+    });
+  }
+  var sa=document.getElementById('cd-save-aud');
+  if(sa) sa.onclick=function(){
+    if(!window.CD || !CD.staged.length){ cdEl('cd-cstatus').textContent='Stage some contacts first.'; return; }
+    var name=prompt('Name this audience:','My audience'); if(!name) return;
+    CDfetch('/api/audiences',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:name,contacts:CD.staged})})
+    .then(function(r){return r.json();}).then(function(){ cdEl('cd-cstatus').textContent='Saved audience "'+name+'".'; loadAudiences(); });
+  };
+  var la=document.getElementById('cd-load-aud');
+  if(la) la.onclick=function(){
+    var id=document.getElementById('cd-aud-select').value; if(!id) return;
+    CDfetch('/api/audiences').then(function(r){return r.json();}).then(function(){
+      // fetch the campaign-free audience contacts by creating a temp? simpler: audiences list has counts only,
+      // so pull full contacts via a lightweight endpoint reuse: we stored them, re-fetch through from_audience needs a campaign.
+      // Instead, load into staging by asking the server for the audience contacts.
+      CDfetch('/api/audiences').then(function(){});
+    });
+    // direct: fetch audience contacts
+    CDfetch('/api/audiences/'+id+'/contacts').then(function(r){return r.ok?r.json():null;}).then(function(d){
+      if(d && d.contacts){ d.contacts.forEach(function(c){CD.staged.push(c);}); cdRender(); cdPreview(); }
+    });
+  };
+  document.querySelectorAll('.nav-i').forEach(function(it){ if(it.getAttribute('data-v')==='settings'){ it.addEventListener('click',loadKeys); } });
+  setTimeout(function(){loadKeys();loadAudiences();}, 1150);
+
   var onbGo=document.getElementById('cd-onb-go');
   if(onbGo) onbGo.onclick=function(){ var c=document.querySelector('.nav-i[data-v="pipeline"]'); if(c) c.click(); };
 
