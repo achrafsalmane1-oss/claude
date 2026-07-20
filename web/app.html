@@ -203,6 +203,24 @@ a{color:inherit;text-decoration:none}
 .lsearch input{flex:1;min-width:220px}
 .lstatus{font-size:13px;color:var(--faint);margin-top:12px}
 .lstatus.live{color:var(--green-d)}
+
+  /* ===== clean campaign builder ===== */
+  .cd-builder .field{margin-top:20px}
+  .cd-builder label{display:block;font-size:12.5px;font-weight:600;color:var(--muted);margin-bottom:8px}
+  .cd-builder label .hint{font-weight:400;color:var(--faint);margin-left:8px}
+  .cd-builder .inp,.cd-builder .ta{width:100%;background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px 14px;font-family:var(--sans);font-size:15px;color:var(--ink);display:block}
+  .cd-builder .ta{resize:vertical;line-height:1.55;min-height:104px}
+  .cd-builder .inp:focus,.cd-builder .ta:focus{outline:2px solid rgba(46,125,91,.35);outline-offset:1px}
+  .cd-builder .chips-row{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:12px}
+  .cd-builder .chips-row .mut,.cd-builder .preview .mut{font-size:12.5px;color:var(--faint);font-weight:600}
+  .cd-builder .preview{margin-top:14px;background:var(--bg);border:1px solid var(--line-2);border-radius:10px;padding:12px 14px;font-size:14px;color:var(--slate);line-height:1.55}
+  .cd-builder .preview .mut{margin-right:8px}
+  .cd-builder .link{cursor:pointer;color:var(--green-d);font-weight:600;font-size:13px;display:inline-block;margin-top:14px}
+  .cd-builder .toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:10px}
+  .cd-builder .findgrp{display:flex;gap:8px;flex:1;min-width:280px}
+  .cd-builder .findgrp input,.cd-builder .findgrp select{background:#fff;border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-family:var(--sans);font-size:14px;color:var(--ink)}
+  .cd-builder .findgrp input{flex:1;min-width:120px}
+  .cd-builder .findgrp select{max-width:210px}
 </style>
 </head>
 <body>
@@ -292,32 +310,37 @@ a{color:inherit;text-decoration:none}
       <div class="panel"><div class="phead"><div><h1>Campaigns</h1><p>Build a drop, load contacts, and send — from queue to callback.</p></div>
         <span id="cd-mode" class="statuspill" style="background:var(--grey-soft);color:var(--muted)"><span class="d" style="background:var(--faint)"></span>demo mode</span></div></div>
 
-      <div class="panel">
-        <div class="phead" style="align-items:center;margin-bottom:8px"><div><h1 style="font-size:22px">New campaign</h1></div>
-          <button class="btn btn-green" id="cd-send">Send campaign</button></div>
-        <div class="lsearch"><input id="cd-name" placeholder="Campaign name" value="Q3 Dallas brokers"/></div>
-        <div class="editor" style="box-shadow:none;border:1px solid var(--line);margin-top:14px">
-          <div class="editor-bar"><span class="tl"><i></i><i></i><i></i></span><span class="fname">script.txt</span></div>
-          <textarea id="cd-script" class="script-area" style="width:100%;font-family:var(--sans);resize:vertical;display:block" rows="3">Hey {{first_name}}, it's Alex — keeping this short. I help teams like {{company}} book more meetings without cold calls. I'll text you my calendar. Talk soon.</textarea>
-          <div class="var-row"><span class="label">Insert</span>
+      <div class="panel cd-builder">
+        <div class="phead" style="align-items:center"><div><h1 style="font-size:22px">New campaign</h1></div><button class="btn btn-green" id="cd-send">Send campaign</button></div>
+
+        <div class="field"><label>Campaign name</label>
+          <input id="cd-name" class="inp" placeholder="Campaign name" value="Q3 Dallas brokers"/></div>
+
+        <div class="field"><label>Message script <span class="hint">personalize with the variables below</span></label>
+          <textarea id="cd-script" class="ta" rows="4">Hey {{first_name}}, it's Alex — keeping this short. I help teams like {{company}} book more meetings without cold calls. I'll text you my calendar. Talk soon.</textarea>
+          <div class="chips-row"><span class="mut">Insert</span>
             <span class="chip cd-var" data-v="{{first_name}}">{{first_name}}</span>
             <span class="chip cd-var" data-v="{{company}}">{{company}}</span>
             <span class="chip cd-var" data-v="{{title}}">{{title}}</span>
             <span class="chip cd-var" data-v="{{city}}">{{city}}</span></div>
-          <div style="margin-top:10px"><span id="cd-vb-toggle" style="cursor:pointer;color:var(--green-d);font-weight:600;font-size:13px">+ Add A/B variant</span></div>
-          <div id="cd-vb-wrap" style="display:none;margin-top:10px"><div style="font-size:12px;color:var(--muted);margin-bottom:6px">Variant B — contacts split 50/50, callbacks tracked per variant</div><textarea id="cd-script-b" class="script-area" style="width:100%;font-family:var(--sans);resize:vertical;display:block" rows="2" placeholder="Alternate script…"></textarea></div>
-          <div style="margin-top:12px;font-size:13.5px;color:var(--muted)">Preview&nbsp; <span id="cd-preview" style="color:var(--slate)"></span></div>
+          <div class="preview"><span class="mut">Preview</span><span id="cd-preview"></span></div>
+          <span id="cd-vb-toggle" class="link">+ Add A/B variant</span>
+          <div id="cd-vb-wrap" class="field" style="display:none"><label>Variant B <span class="hint">contacts split 50/50 · callbacks tracked per variant</span></label>
+            <textarea id="cd-script-b" class="ta" rows="3" placeholder="Alternate script…"></textarea></div>
         </div>
-        <div class="lsearch" style="align-items:center;margin-top:16px">
-          <label class="btn btn-out" style="cursor:pointer">Import CSV<input id="cd-csv" type="file" accept=".csv" style="display:none"></label>
-          <span style="font-size:13px;color:var(--faint)">or find leads</span>
-          <input id="cd-lq" placeholder="e.g. Founder SaaS software" value="Founder SaaS software" style="flex:1;min-width:180px"/>
-          <select id="cd-lcountry"><option>Australia</option><option>United States</option><option>United Kingdom</option><option>Canada</option></select>
-          <button class="btn btn-out" id="cd-find">Find &amp; add</button></div>
-        <div class="lsearch" style="align-items:center;margin-top:10px"><button class="btn btn-out" id="cd-save-aud">Save staged as audience</button><span style="font-size:13px;color:var(--faint)">or load</span><select id="cd-aud-select" style="flex:1"><option value="">Saved audiences…</option></select><button class="btn btn-out" id="cd-load-aud">Load</button>
+
+        <div class="field"><label>Contacts</label>
+          <div class="toolbar">
+            <label class="btn btn-out" style="cursor:pointer">Import CSV<input id="cd-csv" type="file" accept=".csv" style="display:none"></label>
+            <div class="findgrp"><input id="cd-lq" placeholder="Find leads — e.g. Founder SaaS software" value="Founder SaaS software"/><select id="cd-lcountry"><option>Australia</option><option>United States</option><option>United Kingdom</option><option>Canada</option></select><button class="btn btn-out" id="cd-find">Find &amp; add</button></div>
+          </div>
+          <div class="toolbar">
+            <button class="btn btn-out" id="cd-save-aud">Save as audience</button>
+            <div class="findgrp"><select id="cd-aud-select"><option value="">Load a saved audience…</option></select><button class="btn btn-out" id="cd-load-aud">Load</button></div>
+          </div>
+          <div class="lstatus" id="cd-cstatus" style="margin-top:14px">No contacts staged yet. Import a CSV (first_name, company, mobile…) or find leads.</div>
+          <div style="overflow-x:auto"><table class="tbl"><tbody id="cd-contact-rows"></tbody></table></div>
         </div>
-        <div class="lstatus" id="cd-cstatus">No contacts staged yet. Import a CSV (first_name, company, mobile…) or find leads.</div>
-        <div style="overflow-x:auto"><table class="tbl"><tbody id="cd-contact-rows"></tbody></table></div>
       </div>
 
       <div class="panel" id="cd-camp-list" style="display:none"></div>
