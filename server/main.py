@@ -27,7 +27,7 @@ from pydantic import BaseModel, EmailStr, Field
 
 from fastapi import Request
 
-from . import auth, billing, providers
+from . import auth, billing, notifications, providers
 
 MOLTSETS_BASE = "https://api.moltsets.com/api/v1/tools"
 MOLTSETS_KEY = os.environ.get("MOLTSETS_API_KEY", "")
@@ -90,10 +90,25 @@ def init_db() -> None:
               email TEXT NOT NULL, invited_by TEXT, created_at REAL NOT NULL,
               accepted_at REAL
             );
+            CREATE TABLE IF NOT EXISTS audiences (
+              id INTEGER PRIMARY KEY, workspace_id INTEGER NOT NULL,
+              name TEXT NOT NULL, contacts TEXT NOT NULL DEFAULT '[]', created_at REAL NOT NULL
+            );
+            CREATE TABLE IF NOT EXISTS api_keys (
+              key TEXT PRIMARY KEY, workspace_id INTEGER NOT NULL,
+              name TEXT, created_at REAL NOT NULL, last_used REAL
+            );
+            CREATE TABLE IF NOT EXISTS notifications (
+              id INTEGER PRIMARY KEY, workspace_id INTEGER NOT NULL,
+              kind TEXT NOT NULL, title TEXT, body TEXT,
+              email_to TEXT, delivered INTEGER NOT NULL DEFAULT 0,
+              read INTEGER NOT NULL DEFAULT 0, created_at REAL NOT NULL
+            );
             """
         )
         # lightweight migrations (safe to re-run)
         for stmt in ("ALTER TABLE campaigns ADD COLUMN variants TEXT",
+                     "ALTER TABLE campaigns ADD COLUMN scheduled_at REAL",
                      "ALTER TABLE contacts ADD COLUMN variant INTEGER NOT NULL DEFAULT 0"):
             try:
                 conn.execute(stmt)
@@ -117,7 +132,18 @@ class Ctx:
         self.wid = workspace["id"]
 
 
-def get_ctx(authorization: str = Header(default="")) -> Ctx:
+def get_ctx(authorization: str = Header(default=""),
+            x_api_key: str = Header(default="")) -> Ctx:
+    # API key (for customers' programmatic access) takes priority
+    if x_api_key:
+        with db() as conn:
+            k = conn.execute("SELECT * FROM api_keys WHERE key=?", (x_api_key,)).fetchone()
+            if not k:
+                raise HTTPException(401, "invalid API key")
+            conn.execute("UPDATE api_keys SET last_used=? WHERE key=?", (time.time(), x_api_key))
+            ws = conn.execute("SELECT * FROM workspaces WHERE id=?", (k["workspace_id"],)).fetchone()
+            user = conn.execute("SELECT * FROM users WHERE workspace_id=? ORDER BY id LIMIT 1", (k["workspace_id"],)).fetchone()
+        return Ctx(user or {"email": "api@key"}, ws)
     token = authorization[7:] if authorization.lower().startswith("bearer ") else authorization
     if not token:
         raise HTTPException(401, "authentication required")
@@ -128,6 +154,17 @@ def get_ctx(authorization: str = Header(default="")) -> Ctx:
         user = conn.execute("SELECT * FROM users WHERE id=?", (s["user_id"],)).fetchone()
         ws = conn.execute("SELECT * FROM workspaces WHERE id=?", (user["workspace_id"],)).fetchone()
     return Ctx(user, ws)
+
+
+def notify_workspace(wid: int, kind: str, title: str, body: str) -> None:
+    """Record a workspace notification and email members (SMTP if configured, else stub)."""
+    with db() as conn:
+        emails = [r["email"] for r in conn.execute("SELECT email FROM users WHERE workspace_id=?", (wid,))]
+        to = ",".join(emails)
+        delivered = notifications.send_email(emails, title, body)
+        conn.execute(
+            "INSERT INTO notifications (workspace_id, kind, title, body, email_to, delivered, created_at) VALUES (?,?,?,?,?,?,?)",
+            (wid, kind, title, body, to, 1 if delivered else 0, time.time()))
 
 
 class SignupIn(BaseModel):
@@ -481,12 +518,110 @@ def add_contacts(campaign_id: int, body: ContactsIn, ctx: Ctx = Depends(get_ctx)
 def mark_callback(contact_id: int, ctx: Ctx = Depends(get_ctx)):
     with db() as conn:
         row = conn.execute(
-            """SELECT ct.id FROM contacts ct JOIN campaigns c ON c.id=ct.campaign_id
+            """SELECT ct.id, ct.first_name, ct.last_name, ct.company, ct.mobile
+               FROM contacts ct JOIN campaigns c ON c.id=ct.campaign_id
                WHERE ct.id=? AND c.workspace_id=?""", (contact_id, ctx.wid)).fetchone()
         if not row:
             raise HTTPException(404, "contact not found")
         conn.execute("UPDATE contacts SET status='called_back' WHERE id=?", (contact_id,))
+    nm = ((row["first_name"] or "") + " " + (row["last_name"] or "")).strip() or "A prospect"
+    notify_workspace(ctx.wid, "callback", f"📞 {nm} called back",
+                     f"{nm}{(' at ' + row['company']) if row['company'] else ''} just called back "
+                     f"({row['mobile'] or 'unknown number'}). Follow up in Colddrops → Callbacks.")
     return {"contact_id": contact_id, "status": "called_back"}
+
+
+# ---------- notifications ----------
+
+@app.get("/api/notifications")
+def list_notifications(ctx: Ctx = Depends(get_ctx)):
+    with db() as conn:
+        rows = conn.execute(
+            "SELECT id, kind, title, body, delivered, read, created_at FROM notifications "
+            "WHERE workspace_id=? ORDER BY created_at DESC LIMIT 50", (ctx.wid,)).fetchall()
+        unread = conn.execute(
+            "SELECT COUNT(*) FROM notifications WHERE workspace_id=? AND read=0", (ctx.wid,)).fetchone()[0]
+    return {"notifications": [dict(r) for r in rows], "unread": unread,
+            "email_configured": notifications.configured()}
+
+
+@app.post("/api/notifications/read")
+def mark_notifications_read(ctx: Ctx = Depends(get_ctx)):
+    with db() as conn:
+        conn.execute("UPDATE notifications SET read=1 WHERE workspace_id=?", (ctx.wid,))
+    return {"ok": True}
+
+
+# ---------- saved audiences ----------
+
+class AudienceIn(BaseModel):
+    name: str
+    contacts: list[dict] = Field(..., min_length=1)
+
+
+@app.post("/api/audiences")
+def create_audience(body: AudienceIn, ctx: Ctx = Depends(get_ctx)):
+    with db() as conn:
+        cur = conn.execute(
+            "INSERT INTO audiences (workspace_id, name, contacts, created_at) VALUES (?,?,?,?)",
+            (ctx.wid, body.name, json.dumps(body.contacts), time.time()))
+    return {"id": cur.lastrowid, "name": body.name, "count": len(body.contacts)}
+
+
+@app.get("/api/audiences")
+def list_audiences(ctx: Ctx = Depends(get_ctx)):
+    with db() as conn:
+        rows = conn.execute(
+            "SELECT id, name, contacts, created_at FROM audiences WHERE workspace_id=? ORDER BY created_at DESC",
+            (ctx.wid,)).fetchall()
+    return {"audiences": [
+        {"id": r["id"], "name": r["name"], "count": len(json.loads(r["contacts"])), "created_at": r["created_at"]}
+        for r in rows]}
+
+
+@app.post("/api/campaigns/{campaign_id}/contacts/from_audience")
+def add_from_audience(campaign_id: int, audience_id: int, ctx: Ctx = Depends(get_ctx)):
+    with db() as conn:
+        _owned_campaign(conn, campaign_id, ctx.wid)
+        a = conn.execute("SELECT * FROM audiences WHERE id=? AND workspace_id=?", (audience_id, ctx.wid)).fetchone()
+        if not a:
+            raise HTTPException(404, "audience not found")
+        contacts = json.loads(a["contacts"])
+        for c in contacts:
+            conn.execute(
+                """INSERT INTO contacts (campaign_id, first_name, last_name, company, title,
+                     country, email, linkedin_url, mobile, created_at)
+                   VALUES (?,?,?,?,?,?,?,?,?,?)""",
+                (campaign_id, c.get("first_name"), c.get("last_name"), c.get("company"),
+                 c.get("title"), c.get("country"), c.get("email"), c.get("linkedin_url"),
+                 c.get("mobile"), time.time()))
+    return {"campaign_id": campaign_id, "added": len(contacts)}
+
+
+# ---------- API keys (public API) ----------
+
+class ApiKeyIn(BaseModel):
+    name: str | None = None
+
+
+@app.post("/api/keys")
+def create_api_key(body: ApiKeyIn, ctx: Ctx = Depends(get_ctx)):
+    key = "cd_live_" + auth.new_token()[:32]
+    with db() as conn:
+        conn.execute("INSERT INTO api_keys (key, workspace_id, name, created_at) VALUES (?,?,?,?)",
+                     (key, ctx.wid, body.name or "API key", time.time()))
+    return {"key": key, "name": body.name or "API key"}
+
+
+@app.get("/api/keys")
+def list_api_keys(ctx: Ctx = Depends(get_ctx)):
+    with db() as conn:
+        rows = conn.execute(
+            "SELECT key, name, created_at, last_used FROM api_keys WHERE workspace_id=? ORDER BY created_at DESC",
+            (ctx.wid,)).fetchall()
+    # mask all but the last 4 chars
+    return {"keys": [{"key": "cd_live_…" + r["key"][-4:], "name": r["name"],
+                      "created_at": r["created_at"], "last_used": r["last_used"]} for r in rows]}
 
 
 @app.get("/api/callbacks")
@@ -614,24 +749,17 @@ class SendIn(BaseModel):
     dry_run: bool | None = None
 
 
-@app.post("/api/campaigns/{campaign_id}/send")
-def send_campaign(campaign_id: int, background: BackgroundTasks,
-                  body: SendIn | None = None, ctx: Ctx = Depends(get_ctx)):
-    live_ready = providers.voice_live() and providers.delivery_live()
-    dry = body.dry_run if body and body.dry_run is not None else not live_ready
-    if not dry and not live_ready:
-        missing = [k for k in ("ELEVENLABS_API_KEY", "TELNYX_API_KEY", "TELNYX_CONNECTION_ID",
-                               "TELNYX_FROM_NUMBER") if not os.environ.get(k)]
-        raise HTTPException(400, "Live send needs: " + ", ".join(missing) + '. Or pass {"dry_run": true}.')
-
-    u = usage_for(ctx.wid)
+def _queue_campaign(campaign_id: int, wid: int) -> dict:
+    """Queue drops for a campaign's pending contacts. Returns counts + drop ids."""
+    u = usage_for(wid)
     with db() as conn:
-        camp = _owned_campaign(conn, campaign_id, ctx.wid)
+        camp = conn.execute("SELECT * FROM campaigns WHERE id=? AND workspace_id=?", (campaign_id, wid)).fetchone()
+        if not camp:
+            raise HTTPException(404, "campaign not found")
         if not camp["script"].strip():
             raise HTTPException(422, "campaign script is empty")
-        suppressed = {r["phone"] for r in conn.execute("SELECT phone FROM suppressions WHERE workspace_id=?", (ctx.wid,))}
+        suppressed = {r["phone"] for r in conn.execute("SELECT phone FROM suppressions WHERE workspace_id=?", (wid,))}
         contacts = conn.execute("SELECT * FROM contacts WHERE campaign_id=? AND status='queued'", (campaign_id,)).fetchall()
-
         try:
             nvariants = max(1, len(json.loads(camp["variants"]))) if camp["variants"] else 1
         except Exception:
@@ -639,7 +767,7 @@ def send_campaign(campaign_id: int, background: BackgroundTasks,
         queued, no_mobile, skipped_dnc = [], 0, 0
         for ct in contacts:
             if len(queued) >= u["remaining"]:
-                break  # respect the plan's monthly cap
+                break
             phone = norm_phone(ct["mobile"])
             if not phone:
                 no_mobile += 1
@@ -651,21 +779,62 @@ def send_campaign(campaign_id: int, background: BackgroundTasks,
             conn.execute("UPDATE contacts SET variant=? WHERE id=?", (len(queued) % nvariants, ct["id"]))
             fid = f"cd_{campaign_id}_{ct['id']}_{uuid.uuid4().hex[:8]}"
             cur = conn.execute(
-                """INSERT INTO drops (foreign_id, workspace_id, campaign_id, contact_id, created_at, updated_at)
-                   VALUES (?,?,?,?,?,?)""",
-                (fid, ctx.wid, campaign_id, ct["id"], time.time(), time.time()),
-            )
+                "INSERT INTO drops (foreign_id, workspace_id, campaign_id, contact_id, created_at, updated_at) VALUES (?,?,?,?,?,?)",
+                (fid, wid, campaign_id, ct["id"], time.time(), time.time()))
             queued.append(cur.lastrowid)
-        conn.execute("UPDATE campaigns SET status='sending' WHERE id=?", (campaign_id,))
+        conn.execute("UPDATE campaigns SET status='sending', scheduled_at=NULL WHERE id=?", (campaign_id,))
+    droppable = len([c for c in contacts if norm_phone(c["mobile"]) and norm_phone(c["mobile"]) not in suppressed])
+    return {"queued": queued, "skipped_no_mobile": no_mobile,
+            "skipped_suppressed": skipped_dnc, "hit_plan_cap": droppable > len(queued)}
 
-    for drop_id in queued:
+
+@app.post("/api/campaigns/{campaign_id}/send")
+def send_campaign(campaign_id: int, background: BackgroundTasks,
+                  body: SendIn | None = None, ctx: Ctx = Depends(get_ctx)):
+    live_ready = providers.voice_live() and providers.delivery_live()
+    dry = body.dry_run if body and body.dry_run is not None else not live_ready
+    if not dry and not live_ready:
+        missing = [k for k in ("ELEVENLABS_API_KEY", "TELNYX_API_KEY", "TELNYX_CONNECTION_ID",
+                               "TELNYX_FROM_NUMBER") if not os.environ.get(k)]
+        raise HTTPException(400, "Live send needs: " + ", ".join(missing) + '. Or pass {"dry_run": true}.')
+    r = _queue_campaign(campaign_id, ctx.wid)
+    for drop_id in r["queued"]:
         background.add_task(process_drop, drop_id)
-    capped = len([c for c in contacts if norm_phone(c["mobile"]) and norm_phone(c["mobile"]) not in suppressed]) > len(queued)
     return {"campaign_id": campaign_id,
             "mode": "live" if (not dry and live_ready) else "dry_run",
-            "queued": len(queued), "skipped_no_mobile": no_mobile,
-            "skipped_suppressed": skipped_dnc, "hit_plan_cap": capped,
+            "queued": len(r["queued"]), "skipped_no_mobile": r["skipped_no_mobile"],
+            "skipped_suppressed": r["skipped_suppressed"], "hit_plan_cap": r["hit_plan_cap"],
             "usage": usage_for(ctx.wid)}
+
+
+class ScheduleIn(BaseModel):
+    at: float  # unix timestamp
+
+
+@app.post("/api/campaigns/{campaign_id}/schedule")
+def schedule_campaign(campaign_id: int, body: ScheduleIn, ctx: Ctx = Depends(get_ctx)):
+    with db() as conn:
+        _owned_campaign(conn, campaign_id, ctx.wid)
+        conn.execute("UPDATE campaigns SET status='scheduled', scheduled_at=? WHERE id=?",
+                     (body.at, campaign_id))
+    return {"campaign_id": campaign_id, "status": "scheduled", "scheduled_at": body.at}
+
+
+def process_scheduled() -> int:
+    """Send any scheduled campaigns whose time has arrived. Returns count sent."""
+    now = time.time()
+    with db() as conn:
+        due = conn.execute(
+            "SELECT id, workspace_id FROM campaigns WHERE status='scheduled' AND scheduled_at IS NOT NULL AND scheduled_at<=?",
+            (now,)).fetchall()
+    for c in due:
+        try:
+            r = _queue_campaign(c["id"], c["workspace_id"])
+            for drop_id in r["queued"]:
+                process_drop(drop_id)
+        except Exception:
+            pass
+    return len(due)
 
 
 # ---------- delivery webhook ----------
@@ -737,6 +906,21 @@ def health():
         "delivery_live": providers.delivery_live(),
         "mode": "live" if providers.voice_live() and providers.delivery_live() else "dry_run",
     }
+
+
+@app.on_event("startup")
+async def _start_scheduler():
+    import asyncio
+
+    async def loop():
+        while True:
+            await asyncio.sleep(30)
+            try:
+                process_scheduled()
+            except Exception:
+                pass
+
+    asyncio.create_task(loop())
 
 
 app.mount("/audio", StaticFiles(directory=providers.AUDIO_DIR), name="audio")

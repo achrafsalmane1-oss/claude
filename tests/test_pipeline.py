@@ -107,6 +107,59 @@ def test_plan_cap_enforced():
         auth.PLAN_CAPS["starter"] = 1000
 
 
+def test_saved_audiences():
+    h = signup("aud@acme.com")
+    a = client.post("/api/audiences", headers=h, json={"name": "TX brokers", "contacts": [
+        {"first_name": "Amy", "mobile": "+1 214 555 0001"},
+        {"first_name": "Bo", "mobile": "+1 214 555 0002"}]}).json()
+    assert a["count"] == 2
+    assert client.get("/api/audiences", headers=h).json()["audiences"][0]["name"] == "TX brokers"
+    cid = client.post("/api/campaigns", headers=h, json={"name": "c", "script": "hi {{first_name}}"}).json()["id"]
+    r = client.post(f"/api/campaigns/{cid}/contacts/from_audience?audience_id={a['id']}", headers=h).json()
+    assert r["added"] == 2
+    assert len(client.get(f"/api/campaigns/{cid}", headers=h).json()["contacts"]) == 2
+
+
+def test_scheduled_send():
+    import time as _t
+    from server import main as _m
+    h = signup("sched@acme.com")
+    cid = client.post("/api/campaigns", headers=h, json={"name": "later", "script": "hi {{first_name}}"}).json()["id"]
+    client.post(f"/api/campaigns/{cid}/contacts", headers=h, json={"contacts": [
+        {"first_name": "Zoe", "mobile": "+1 415 555 8000"}]})
+    # schedule 1 hour ago (already due) -> processor should send it
+    client.post(f"/api/campaigns/{cid}/schedule", headers=h, json={"at": _t.time() - 3600})
+    assert client.get(f"/api/campaigns/{cid}", headers=h).json()["campaign"]["status"] == "scheduled"
+    assert _m.process_scheduled() >= 1
+    assert client.get(f"/api/campaigns/{cid}", headers=h).json()["drop_stats"] == {"delivered": 1}
+
+
+def test_callback_notification():
+    h = signup("notif@acme.com")
+    cid = client.post("/api/campaigns", headers=h, json={"name": "n", "script": "hi {{first_name}}"}).json()["id"]
+    client.post(f"/api/campaigns/{cid}/contacts", headers=h, json={"contacts": [
+        {"first_name": "Rae", "company": "Rae Co", "mobile": "+1 415 555 6000"}]})
+    ct = client.get(f"/api/campaigns/{cid}", headers=h).json()["contacts"][0]["id"]
+    assert client.get("/api/notifications", headers=h).json()["unread"] == 0
+    client.post(f"/api/contacts/{ct}/callback", headers=h)
+    n = client.get("/api/notifications", headers=h).json()
+    assert n["unread"] == 1 and "called back" in n["notifications"][0]["title"]
+    client.post("/api/notifications/read", headers=h)
+    assert client.get("/api/notifications", headers=h).json()["unread"] == 0
+
+
+def test_public_api_key():
+    h = signup("api@acme.com")
+    key = client.post("/api/keys", headers=h, json={"name": "prod"}).json()["key"]
+    assert key.startswith("cd_live_")
+    # the key authenticates API calls (no bearer token)
+    cid = client.post("/api/campaigns", headers={"X-API-Key": key}, json={"name": "via-key", "script": "hi"}).json()["id"]
+    assert cid in [c["id"] for c in client.get("/api/campaigns", headers=h).json()["campaigns"]]
+    # bad key rejected; listed keys are masked
+    assert client.get("/api/campaigns", headers={"X-API-Key": "cd_live_bogus"}).status_code == 401
+    assert client.get("/api/keys", headers=h).json()["keys"][0]["key"].startswith("cd_live_…")
+
+
 def test_ab_variants_and_analytics():
     h = signup("ab@acme.com")
     cid = client.post("/api/campaigns", headers=h, json={
