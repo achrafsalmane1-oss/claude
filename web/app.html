@@ -230,6 +230,14 @@ a{color:inherit;text-decoration:none}
 
     <!-- ============ DASHBOARD ============ -->
     <section class="view on" id="v-dashboard">
+      <div class="panel" id="cd-onboard" style="display:none;background:linear-gradient(180deg,var(--green-soft),var(--panel) 60%)">
+        <div class="phead" style="align-items:center"><div><h1 style="font-size:22px">Welcome to Colddrops &#128075;</h1><p>Three steps to your first callback.</p></div><button class="btn btn-green" id="cd-onb-go">Start a campaign</button></div>
+        <div class="ownlist" style="margin-top:16px">
+          <div class="own"><span class="av">1</span><div><div class="nm">Write your script &amp; pick a voice</div><div class="role">Personalize with {{first_name}} and {{company}}.</div></div></div>
+          <div class="own"><span class="av">2</span><div><div class="nm">Load your contacts</div><div class="role">Import a CSV or find leads with verified mobiles.</div></div></div>
+          <div class="own"><span class="av">3</span><div><div class="nm">Send &amp; watch callbacks land</div><div class="role">Drops go silently to voicemail; replies show under Callbacks.</div></div></div>
+        </div>
+      </div>
       <div class="panel">
         <div class="phead">
           <div><h1>Dashboard</h1><p><b style="color:var(--slate)">Welcome,</b> track drops, listens, and callbacks in one place.</p></div>
@@ -412,6 +420,12 @@ a{color:inherit;text-decoration:none}
         <div class="lsearch"><input id="set-dnc-num" placeholder="+1 555 123 4567" style="flex:1"/><button class="btn btn-out" id="set-dnc-add">Suppress</button></div>
         <div class="lstatus" id="set-dnc-status"></div>
         <div style="overflow-x:auto"><table class="tbl"><tbody id="set-dnc-rows"></tbody></table></div>
+      </div>
+          <div class="panel" style="margin-top:16px">
+        <div class="phead" style="align-items:center;margin-bottom:8px"><div><h1 style="font-size:20px">Team</h1><p>Invite teammates to your workspace.</p></div></div>
+        <div class="lsearch"><input id="team-email" type="email" placeholder="teammate@company.com" style="flex:1"/><button class="btn btn-out" id="team-invite">Send invite</button></div>
+        <div class="lstatus" id="team-status"></div>
+        <div style="overflow-x:auto"><table class="tbl"><tbody id="team-rows"></tbody></table></div>
       </div>
     </section>
   </main>
@@ -700,6 +714,13 @@ a{color:inherit;text-decoration:none}
             +'<div class="right"><div class="rev" style="text-transform:capitalize">'+(c.status||'')+'</div></div></div>';
         }).join('') : '<div class="own"><div><div class="nm">No drops yet</div><div class="role">Build a campaign under Campaigns to get started.</div></div></div>';
       }
+      var onb=document.getElementById('cd-onboard'); if(onb) onb.style.display=(d.stats.campaigns===0)?'block':'none';
+      // real callbacks block (replaces demo numbers)
+      var blks=document.querySelectorAll('#v-dashboard .grid2 .blk');
+      if(blks[1]){ var rh=blks[1].querySelector('h3'); if(rh) rh.textContent=(d.stats.callbacks||0)+' Prospects Called Back';
+        blks[1].querySelectorAll('.rep-row').forEach(function(r,i){ var n=r.querySelector('.n'); var bar=r.querySelector('.bar i');
+          if(i===0){ if(n)n.textContent=d.stats.callbacks||0; if(bar)bar.style.width=(d.stats.callbacks?100:0)+'%'; }
+          else { if(n)n.textContent=0; if(bar)bar.style.width='0%'; } }); }
       var h=document.querySelector('#v-dashboard .blk h3'); // reply-growth headline number
       if(h) h.textContent=(d.stats.drops_sent||0).toLocaleString()+' Drops Sent';
     });
@@ -751,6 +772,34 @@ a{color:inherit;text-decoration:none}
     if(v==='interested') it.addEventListener('click',loadCallbacks);
   });
   setTimeout(function(){loadCampaignsList();loadCallbacks();}, 1000);
+
+  /* ---- team + onboarding (served only) ---- */
+  function loadTeam(){
+    if(!localStorage.getItem('cd_token')) return;
+    CDfetch('/api/team').then(function(r){return r.ok?r.json():null;}).then(function(d){
+      if(!d) return; var rows='';
+      d.members.forEach(function(m){rows+='<tr><td class="co">'+m.email+'</td><td class="r"><span class="opill int">member</span></td></tr>';});
+      d.pending.forEach(function(m){rows+='<tr><td>'+m.email+'</td><td class="r"><span class="opill now">pending</span></td></tr>';});
+      document.getElementById('team-rows').innerHTML=rows;
+    });
+  }
+  var ti=document.getElementById('team-invite');
+  if(ti) ti.onclick=function(){
+    var em=document.getElementById('team-email').value.trim(); if(!em) return;
+    var st=document.getElementById('team-status'); st.textContent='Creating invite…';
+    CDfetch('/api/team/invite',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:em})})
+    .then(function(r){return r.json().then(function(d){return {ok:r.ok,d:d};});}).then(function(res){
+      if(!res.ok){st.textContent=res.d.detail||'Could not invite';return;}
+      document.getElementById('team-email').value='';
+      st.className='lstatus live'; st.textContent='Invite link: '+ (location.origin+'/login.html?invite='+res.d.invite_token);
+      loadTeam();
+    });
+  };
+  document.querySelectorAll('.nav-i').forEach(function(it){ if(it.getAttribute('data-v')==='settings') it.addEventListener('click',loadTeam); });
+  setTimeout(loadTeam, 1050);
+  var onbGo=document.getElementById('cd-onb-go');
+  if(onbGo) onbGo.onclick=function(){ var c=document.querySelector('.nav-i[data-v="pipeline"]'); if(c) c.click(); };
+
 
 
   document.querySelectorAll('.nav-i').forEach(function(it){ if(it.getAttribute('data-v')==='settings') it.addEventListener('click',loadSettings); });

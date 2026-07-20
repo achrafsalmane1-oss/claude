@@ -59,11 +59,13 @@ function set(m){mode=m;
   document.getElementById('swap').onclick=function(){set(m==='login'?'signup':'login');};
 }
 document.getElementById('swap').onclick=function(){set('signup');};
+if(new URLSearchParams(location.search).get('invite')){set('signup');document.getElementById('title').textContent='Join your team';document.getElementById('sub').textContent='You were invited to a Colddrops workspace';document.getElementById('nameRow').style.display='none';}
 document.getElementById('go').addEventListener('click',function(){
   var b=document.getElementById('go'), err=document.getElementById('err');
   err.textContent=''; b.disabled=true; b.textContent='…';
   var body={email:document.getElementById('email').value,password:document.getElementById('pw').value};
   if(mode==='signup') body.workspace_name=document.getElementById('ws').value||undefined;
+  var inv=new URLSearchParams(location.search).get('invite'); if(inv){body.invite_token=inv;}
   fetch('/api/auth/'+mode,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})
     .then(function(r){return r.json().then(function(d){return {ok:r.ok,d:d};});})
     .then(function(res){

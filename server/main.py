@@ -84,6 +84,11 @@ def init_db() -> None:
               reason TEXT NOT NULL DEFAULT 'opt_out', created_at REAL NOT NULL,
               PRIMARY KEY (workspace_id, phone)
             );
+            CREATE TABLE IF NOT EXISTS invites (
+              token TEXT PRIMARY KEY, workspace_id INTEGER NOT NULL,
+              email TEXT NOT NULL, invited_by TEXT, created_at REAL NOT NULL,
+              accepted_at REAL
+            );
             """
         )
 
@@ -121,6 +126,7 @@ class SignupIn(BaseModel):
     email: EmailStr
     password: str = Field(min_length=8)
     workspace_name: str | None = None
+    invite_token: str | None = None
 
 
 @app.post("/api/auth/signup")
@@ -128,11 +134,25 @@ def signup(body: SignupIn):
     with db() as conn:
         if conn.execute("SELECT 1 FROM users WHERE email=?", (body.email,)).fetchone():
             raise HTTPException(409, "email already registered")
-        wname = body.workspace_name or body.email.split("@")[0].title() + " Workspace"
-        wid = conn.execute(
-            "INSERT INTO workspaces (name, plan, created_at) VALUES (?,?,?)",
-            (wname, auth.DEFAULT_PLAN, time.time()),
-        ).lastrowid
+        invite = None
+        if body.invite_token:
+            invite = conn.execute(
+                "SELECT * FROM invites WHERE token=? AND accepted_at IS NULL", (body.invite_token,)
+            ).fetchone()
+            if not invite:
+                raise HTTPException(400, "invite is invalid or already used")
+        if invite:  # join the inviting workspace
+            wid = invite["workspace_id"]
+            ws = conn.execute("SELECT * FROM workspaces WHERE id=?", (wid,)).fetchone()
+            wname, plan = ws["name"], ws["plan"]
+            conn.execute("UPDATE invites SET accepted_at=? WHERE token=?", (time.time(), body.invite_token))
+        else:  # create a new workspace
+            wname = body.workspace_name or body.email.split("@")[0].title() + " Workspace"
+            plan = auth.DEFAULT_PLAN
+            wid = conn.execute(
+                "INSERT INTO workspaces (name, plan, created_at) VALUES (?,?,?)",
+                (wname, plan, time.time()),
+            ).lastrowid
         uid = conn.execute(
             "INSERT INTO users (email, pw_hash, workspace_id, created_at) VALUES (?,?,?,?)",
             (body.email, auth.hash_password(body.password), wid, time.time()),
@@ -140,7 +160,7 @@ def signup(body: SignupIn):
         token = auth.new_token()
         conn.execute("INSERT INTO sessions (token, user_id, created_at) VALUES (?,?,?)",
                      (token, uid, time.time()))
-    return {"token": token, "email": body.email, "workspace": wname, "plan": auth.DEFAULT_PLAN}
+    return {"token": token, "email": body.email, "workspace": wname, "plan": plan}
 
 
 class LoginIn(BaseModel):
@@ -194,6 +214,38 @@ def usage(ctx: Ctx = Depends(get_ctx)):
     return usage_for(ctx.wid)
 
 
+# ---------- team ----------
+
+class InviteIn(BaseModel):
+    email: EmailStr
+
+
+@app.post("/api/team/invite")
+def team_invite(body: InviteIn, ctx: Ctx = Depends(get_ctx)):
+    with db() as conn:
+        if conn.execute("SELECT 1 FROM users WHERE email=? AND workspace_id=?", (body.email, ctx.wid)).fetchone():
+            raise HTTPException(409, "already a member")
+        token = auth.new_token()
+        conn.execute(
+            "INSERT INTO invites (token, workspace_id, email, invited_by, created_at) VALUES (?,?,?,?,?)",
+            (token, ctx.wid, body.email, ctx.user["email"], time.time()),
+        )
+    base = os.environ.get("PUBLIC_BASE_URL", "").rstrip("/")
+    return {"email": body.email, "invite_token": token,
+            "invite_url": f"{base}/login.html?invite={token}"}
+
+
+@app.get("/api/team")
+def team(ctx: Ctx = Depends(get_ctx)):
+    with db() as conn:
+        members = conn.execute(
+            "SELECT email, created_at FROM users WHERE workspace_id=? ORDER BY created_at", (ctx.wid,)).fetchall()
+        pending = conn.execute(
+            "SELECT email, created_at FROM invites WHERE workspace_id=? AND accepted_at IS NULL ORDER BY created_at",
+            (ctx.wid,)).fetchall()
+    return {"members": [dict(m) for m in members], "pending": [dict(p) for p in pending]}
+
+
 @app.get("/api/dashboard")
 def dashboard(ctx: Ctx = Depends(get_ctx)):
     with db() as conn:
@@ -203,14 +255,17 @@ def dashboard(ctx: Ctx = Depends(get_ctx)):
         contacts = conn.execute(
             "SELECT COUNT(*) FROM contacts ct JOIN campaigns c ON c.id=ct.campaign_id WHERE c.workspace_id=?",
             (ctx.wid,)).fetchone()[0]
+        callbacks = conn.execute(
+            "SELECT COUNT(*) FROM contacts ct JOIN campaigns c ON c.id=ct.campaign_id "
+            "WHERE c.workspace_id=? AND ct.status='called_back'", (ctx.wid,)).fetchone()[0]
         latest = conn.execute(
             """SELECT ct.first_name, ct.last_name, ct.company, ct.country, ct.status, ct.mobile
                FROM contacts ct JOIN campaigns c ON c.id=ct.campaign_id
-               WHERE c.workspace_id=? AND ct.status IN ('delivered','sent')
+               WHERE c.workspace_id=? AND ct.status IN ('delivered','sent','called_back')
                ORDER BY ct.id DESC LIMIT 5""", (ctx.wid,)).fetchall()
     return {
         "stats": {"drops_sent": drops_sent, "delivered": delivered,
-                  "campaigns": campaigns, "contacts": contacts},
+                  "campaigns": campaigns, "contacts": contacts, "callbacks": callbacks},
         "usage": usage_for(ctx.wid),
         "latest": [dict(r) for r in latest],
     }
@@ -576,6 +631,19 @@ async def telnyx_webhook(payload: dict):
             if row:
                 conn.execute("UPDATE drops SET status=?, updated_at=? WHERE id=?", (status, time.time(), row["id"]))
                 conn.execute("UPDATE contacts SET status=? WHERE id=?", (status, row["contact_id"]))
+
+    # inbound: a prospect calling the number back -> log a callback
+    if event == "call.initiated" and p.get("direction") in ("incoming", "inbound"):
+        caller = norm_phone(p.get("from"))
+        if caller:
+            with db() as conn:
+                row = conn.execute(
+                    """SELECT ct.id FROM contacts ct JOIN campaigns c ON c.id=ct.campaign_id
+                       WHERE REPLACE(REPLACE(REPLACE(REPLACE(ct.mobile,'+',''),'-',''),' ',''),'(','') LIKE ?
+                       ORDER BY ct.id DESC LIMIT 1""", ("%" + caller[-10:],)).fetchone()
+                if row:
+                    conn.execute("UPDATE contacts SET status='called_back' WHERE id=?", (row["id"],))
+        return {"ok": True, "handled": "inbound_callback"}
 
     if event in ("call.machine.detection.ended", "call.machine.premium.detection.ended"):
         if p.get("result", "") in ("machine", "detected"):

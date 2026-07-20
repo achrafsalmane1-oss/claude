@@ -107,6 +107,26 @@ def test_plan_cap_enforced():
         auth.PLAN_CAPS["starter"] = 1000
 
 
+def test_team_invite_and_join():
+    owner = signup("owner@team.com")
+    inv = client.post("/api/team/invite", headers=owner, json={"email": "mate@team.com"}).json()
+    assert "invite_token" in inv and inv["email"] == "mate@team.com"
+    # pending invite shows for the workspace
+    t = client.get("/api/team", headers=owner).json()
+    assert len(t["members"]) == 1 and t["pending"][0]["email"] == "mate@team.com"
+    # teammate signs up with the invite -> joins the SAME workspace
+    r = client.post("/api/auth/signup", json={
+        "email": "mate@team.com", "password": "password123", "invite_token": inv["invite_token"]}).json()
+    assert r["workspace"] == client.get("/api/auth/me", headers=owner).json()["workspace"]
+    mate = {"Authorization": "Bearer " + r["token"]}
+    # both users now see the same workspace + shared campaigns
+    cid = client.post("/api/campaigns", headers=owner, json={"name": "shared", "script": "hi"}).json()["id"]
+    assert cid in [c["id"] for c in client.get("/api/campaigns", headers=mate).json()["campaigns"]]
+    # invite can't be reused
+    assert client.post("/api/auth/signup", json={
+        "email": "third@team.com", "password": "password123", "invite_token": inv["invite_token"]}).status_code == 400
+
+
 def test_callbacks_flow():
     h = signup("cb@acme.com")
     cid = client.post("/api/campaigns", headers=h, json={"name": "cb", "script": "Hi {{first_name}}"}).json()["id"]
