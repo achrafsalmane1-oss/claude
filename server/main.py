@@ -109,6 +109,9 @@ def init_db() -> None:
         # lightweight migrations (safe to re-run)
         for stmt in ("ALTER TABLE campaigns ADD COLUMN variants TEXT",
                      "ALTER TABLE campaigns ADD COLUMN scheduled_at REAL",
+                     "ALTER TABLE campaigns ADD COLUMN window_start INTEGER",
+                     "ALTER TABLE campaigns ADD COLUMN window_end INTEGER",
+                     "ALTER TABLE campaigns ADD COLUMN tz_offset_min INTEGER NOT NULL DEFAULT 0",
                      "ALTER TABLE contacts ADD COLUMN variant INTEGER NOT NULL DEFAULT 0"):
             try:
                 conn.execute(stmt)
@@ -497,11 +500,30 @@ class ContactsIn(BaseModel):
     contacts: list[dict] = Field(..., min_length=1)
 
 
+def valid_mobile(raw: str | None) -> bool:
+    """A droppable mobile: 8–15 digits (E.164-ish). Empty is allowed (staged w/o number)."""
+    d = norm_phone(raw)
+    return d == "" or 8 <= len(d) <= 15
+
+
 @app.post("/api/campaigns/{campaign_id}/contacts")
 def add_contacts(campaign_id: int, body: ContactsIn, ctx: Ctx = Depends(get_ctx)):
+    added = invalid = duplicate = 0
     with db() as conn:
         _owned_campaign(conn, campaign_id, ctx.wid)
+        seen = {norm_phone(r["mobile"]) for r in conn.execute(
+            "SELECT mobile FROM contacts WHERE campaign_id=? AND mobile IS NOT NULL", (campaign_id,))
+            if norm_phone(r["mobile"])}
         for c in body.contacts:
+            mob = norm_phone(c.get("mobile"))
+            if c.get("mobile") and not valid_mobile(c.get("mobile")):
+                invalid += 1
+                continue
+            if mob and mob in seen:  # dedupe within the campaign by mobile
+                duplicate += 1
+                continue
+            if mob:
+                seen.add(mob)
             conn.execute(
                 """INSERT INTO contacts (campaign_id, first_name, last_name, company, title,
                      country, email, linkedin_url, mobile, created_at)
@@ -510,8 +532,10 @@ def add_contacts(campaign_id: int, body: ContactsIn, ctx: Ctx = Depends(get_ctx)
                  c.get("title"), c.get("country"), c.get("email"), c.get("linkedin_url"),
                  c.get("mobile"), time.time()),
             )
+            added += 1
         n = conn.execute("SELECT COUNT(*) FROM contacts WHERE campaign_id=?", (campaign_id,)).fetchone()[0]
-    return {"campaign_id": campaign_id, "contact_count": n}
+    return {"campaign_id": campaign_id, "contact_count": n,
+            "added": added, "skipped_duplicate": duplicate, "skipped_invalid": invalid}
 
 
 @app.post("/api/contacts/{contact_id}/callback")
@@ -818,32 +842,51 @@ def send_campaign(campaign_id: int, background: BackgroundTasks,
 
 class ScheduleIn(BaseModel):
     at: float  # unix timestamp
+    window_start: int | None = Field(None, ge=0, le=23)   # local hour drops may start
+    window_end: int | None = Field(None, ge=1, le=24)     # local hour drops must stop
+    tz_offset_min: int = 0                                 # minutes from UTC (recipient/campaign tz)
 
 
 @app.post("/api/campaigns/{campaign_id}/schedule")
 def schedule_campaign(campaign_id: int, body: ScheduleIn, ctx: Ctx = Depends(get_ctx)):
     with db() as conn:
         _owned_campaign(conn, campaign_id, ctx.wid)
-        conn.execute("UPDATE campaigns SET status='scheduled', scheduled_at=? WHERE id=?",
-                     (body.at, campaign_id))
-    return {"campaign_id": campaign_id, "status": "scheduled", "scheduled_at": body.at}
+        conn.execute(
+            "UPDATE campaigns SET status='scheduled', scheduled_at=?, window_start=?, window_end=?, tz_offset_min=? WHERE id=?",
+            (body.at, body.window_start, body.window_end, body.tz_offset_min, campaign_id))
+    return {"campaign_id": campaign_id, "status": "scheduled", "scheduled_at": body.at,
+            "window": [body.window_start, body.window_end], "tz_offset_min": body.tz_offset_min}
+
+
+def in_send_window(camp, now: float | None = None) -> bool:
+    """True if a campaign may send right now, given its quiet-hours window (if any)."""
+    ws, we = camp["window_start"], camp["window_end"]
+    if ws is None or we is None:
+        return True
+    local = (now or time.time()) + (camp["tz_offset_min"] or 0) * 60
+    hour = int(time.gmtime(local).tm_hour)
+    return ws <= hour < we if ws < we else (hour >= ws or hour < we)
 
 
 def process_scheduled() -> int:
-    """Send any scheduled campaigns whose time has arrived. Returns count sent."""
+    """Send scheduled campaigns whose time has arrived AND that are inside their send window."""
     now = time.time()
     with db() as conn:
         due = conn.execute(
-            "SELECT id, workspace_id FROM campaigns WHERE status='scheduled' AND scheduled_at IS NOT NULL AND scheduled_at<=?",
+            "SELECT * FROM campaigns WHERE status='scheduled' AND scheduled_at IS NOT NULL AND scheduled_at<=?",
             (now,)).fetchall()
+    sent = 0
     for c in due:
+        if not in_send_window(c, now):
+            continue  # outside quiet-hours window — try again next tick
         try:
             r = _queue_campaign(c["id"], c["workspace_id"])
             for drop_id in r["queued"]:
                 process_drop(drop_id)
+            sent += 1
         except Exception:
             pass
-    return len(due)
+    return sent
 
 
 # ---------- delivery webhook ----------

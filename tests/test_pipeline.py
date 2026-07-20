@@ -107,6 +107,41 @@ def test_plan_cap_enforced():
         auth.PLAN_CAPS["starter"] = 1000
 
 
+def test_dedupe_and_validation_on_import():
+    h = signup("dedupe@acme.com")
+    cid = client.post("/api/campaigns", headers=h, json={"name": "dd", "script": "hi {{first_name}}"}).json()["id"]
+    r = client.post(f"/api/campaigns/{cid}/contacts", headers=h, json={"contacts": [
+        {"first_name": "A", "mobile": "+1 (415) 555-1212"},
+        {"first_name": "A2", "mobile": "14155551212"},   # same number, different format -> duplicate
+        {"first_name": "Bad", "mobile": "123"},          # too short -> invalid
+        {"first_name": "Good", "mobile": "+44 7700 900123"},
+    ]}).json()
+    assert r["added"] == 2 and r["skipped_duplicate"] == 1 and r["skipped_invalid"] == 1
+    assert r["contact_count"] == 2
+
+
+def test_send_window_quiet_hours():
+    import time as _t
+    from server import main as _m
+    h = signup("window@acme.com")
+    cid = client.post("/api/campaigns", headers=h, json={"name": "win", "script": "hi {{first_name}}"}).json()["id"]
+    client.post(f"/api/campaigns/{cid}/contacts", headers=h, json={"contacts": [{"first_name": "W", "mobile": "+1 415 555 9111"}]})
+    now = _t.time()
+    cur_hour = _t.gmtime(now).tm_hour
+    # window that EXCLUDES the current hour -> scheduler must not send
+    excl_start = (cur_hour + 2) % 24
+    excl_end = (cur_hour + 3) % 24 or 24
+    client.post(f"/api/campaigns/{cid}/schedule", headers=h,
+                json={"at": now - 60, "window_start": excl_start, "window_end": max(excl_start + 1, excl_end)})
+    _m.process_scheduled()
+    assert client.get(f"/api/campaigns/{cid}", headers=h).json()["campaign"]["status"] == "scheduled"
+    # window that INCLUDES the current hour -> sends
+    client.post(f"/api/campaigns/{cid}/schedule", headers=h,
+                json={"at": now - 60, "window_start": 0, "window_end": 24})
+    _m.process_scheduled()
+    assert client.get(f"/api/campaigns/{cid}", headers=h).json()["drop_stats"].get("delivered") == 1
+
+
 def test_saved_audiences():
     h = signup("aud@acme.com")
     a = client.post("/api/audiences", headers=h, json={"name": "TX brokers", "contacts": [

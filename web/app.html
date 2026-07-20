@@ -329,6 +329,14 @@ a{color:inherit;text-decoration:none}
             <textarea id="cd-script-b" class="ta" rows="3" placeholder="Alternate script…"></textarea></div>
         </div>
 
+        <div class="field"><label>Delivery</label>
+          <div class="toolbar">
+            <label style="display:flex;align-items:center;gap:8px;font-size:14px;color:var(--ink-soft);cursor:pointer"><input type="checkbox" id="cd-sched-on"> Schedule for later</label>
+            <input type="datetime-local" id="cd-sched-at" class="inp" style="max-width:240px;display:none">
+            <label id="cd-quiet-lbl" style="display:none;align-items:center;gap:8px;font-size:13.5px;color:var(--muted);cursor:pointer"><input type="checkbox" id="cd-quiet" checked> Only 9am–6pm recipient local time</label>
+          </div>
+        </div>
+
         <div class="field"><label>Contacts</label>
           <div class="toolbar">
             <label class="btn btn-out" style="cursor:pointer">Import CSV<input id="cd-csv" type="file" accept=".csv" style="display:none"></label>
@@ -569,6 +577,7 @@ a{color:inherit;text-decoration:none}
   function cdEl(id){return document.getElementById(id);}
   function cdRender(){
     var tb=cdEl('cd-contact-rows'); if(!tb) return;
+    var seen={},uniq=[]; CD.staged.forEach(function(c){var m=(c.mobile||'').replace(/\D/g,''); if(m&&seen[m])return; if(m)seen[m]=1; uniq.push(c);}); CD.staged=uniq;
     tb.innerHTML = CD.staged.map(function(c,i){
       return '<tr><td class="co">'+((c.first_name||'')+' '+(c.last_name||'')).trim()+'</td>'
         +'<td>'+(c.company||'—')+'</td>'
@@ -597,6 +606,7 @@ a{color:inherit;text-decoration:none}
         m.childNodes[1].nodeValue=' '+(h.mode==='live'?'live':'dry-run')+' · voice: '+h.voice_backend;}
     }).catch(function(){});
     cdEl('cd-script').addEventListener('input',cdPreview);
+    var son=cdEl('cd-sched-on'); if(son) son.addEventListener('change',function(){var v=son.checked?'':'none';cdEl('cd-sched-at').style.display=son.checked?'block':'none';cdEl('cd-quiet-lbl').style.display=son.checked?'flex':'none';});
     var vbt=cdEl('cd-vb-toggle'); if(vbt) vbt.onclick=function(){cdEl('cd-vb-wrap').style.display='block';vbt.style.display='none';};
     document.querySelectorAll('.cd-var').forEach(function(v){v.onclick=function(){
       cdEl('cd-script').value += ' '+v.dataset.v; cdPreview();};});
@@ -642,6 +652,18 @@ a{color:inherit;text-decoration:none}
     });
     cdEl('cd-send').addEventListener('click',function(){
       if(!CD.staged.length){cdEl('cd-cstatus').textContent='Add contacts first.';return;}
+      if(cdEl('cd-sched-on')&&cdEl('cd-sched-on').checked&&cdEl('cd-sched-at').value){
+        if(!CD.live){cdEl('cd-cstatus').textContent='Demo: would schedule for '+cdEl('cd-sched-at').value+'.';return;}
+        var at=Math.floor(new Date(cdEl('cd-sched-at').value).getTime()/1000);
+        var quiet=cdEl('cd-quiet')&&cdEl('cd-quiet').checked; var tz=-new Date().getTimezoneOffset();
+        var sb=cdEl('cd-send'); sb.disabled=true; sb.textContent='Scheduling…';
+        CDfetch('/api/campaigns',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:cdEl('cd-name').value,script:cdEl('cd-script').value,variants:(cdEl('cd-script-b')&&cdEl('cd-script-b').value.trim())?[cdEl('cd-script-b').value]:undefined})})
+        .then(function(r){return r.json();}).then(function(c){return CDfetch('/api/campaigns/'+c.id+'/contacts',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({contacts:CD.staged})}).then(function(){return c.id;});})
+        .then(function(cid){return CDfetch('/api/campaigns/'+cid+'/schedule',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({at:at,window_start:quiet?9:null,window_end:quiet?18:null,tz_offset_min:tz})});})
+        .then(function(){sb.disabled=false;sb.textContent='Send campaign';cdEl('cd-cstatus').textContent='Scheduled for '+new Date(at*1000).toLocaleString()+(quiet?' · quiet hours 9am–6pm local':'')+'.';loadCampaignsList();})
+        .catch(function(){sb.disabled=false;sb.textContent='Send campaign';cdEl('cd-cstatus').textContent='Scheduling failed.';});
+        return;
+      }
       var btn=cdEl('cd-send'); btn.disabled=true; btn.textContent='Sending…';
       if(!CD.live){
         var withMob=CD.staged.filter(function(c){return c.mobile;}).length;
