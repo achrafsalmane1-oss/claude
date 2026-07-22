@@ -167,21 +167,41 @@ function routeAfterAuth(){
     }).catch(function(){ show('step-auth'); });
 }
 
+// Turn a FastAPI/Pydantic error payload into a sentence a human can act on.
+function friendlyError(d){
+  if(!d) return 'Something went wrong. Please try again.';
+  var det=d.detail;
+  if(typeof det==='string') return det;
+  if(Array.isArray(det) && det.length){
+    var m=det[0]||{};
+    var field=(m.loc&&m.loc[m.loc.length-1])||'';
+    if(/password/i.test(field)) return 'Password must be at least 8 characters.';
+    if(/email/i.test(field)) return 'Please enter a valid email address.';
+    return (m.msg||'Please check your details.').replace(/^String should have/,'Must have');
+  }
+  return 'Something went wrong. Please try again.';
+}
 $('go').addEventListener('click',function(){
   var b=$('go'), err=$('err');
-  err.textContent=''; b.disabled=true; b.textContent='…';
-  var body={email:$('email').value,password:$('pw').value};
+  var label=mode==='login'?'Sign in':'Create account';
+  err.textContent='';
+  var em=$('email').value.trim(), pw=$('pw').value;
+  // friendly client-side checks first — no confusing server error for basic mistakes
+  if(!em || em.indexOf('@')<1 || em.indexOf('.')<0){ err.textContent='Please enter a valid email address.'; $('email').focus(); return; }
+  if(pw.length<8){ err.textContent='Password must be at least 8 characters.'; $('pw').focus(); return; }
+  b.disabled=true; b.textContent='…';
+  var body={email:em,password:pw};
   if(mode==='signup') body.workspace_name=$('ws').value||undefined;
   if(invite){body.invite_token=invite;}
   fetch('/api/auth/'+mode,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})
     .then(function(r){return r.json().then(function(d){return {ok:r.ok,d:d};});})
     .then(function(res){
-      if(!res.ok){err.textContent=(res.d.detail||'Something went wrong');b.disabled=false;b.textContent=mode==='login'?'Sign in':'Create account';return;}
+      if(!res.ok){err.textContent=friendlyError(res.d);b.disabled=false;b.textContent=label;return;}
       TOKEN=res.d.token;
       localStorage.setItem('cd_token',TOKEN);
       localStorage.setItem('cd_workspace',res.d.workspace||'');
       routeAfterAuth();
-    }).catch(function(){err.textContent='Network error — is the server running?';b.disabled=false;b.textContent='Sign in';});
+    }).catch(function(){err.textContent='Network error — please try again.';b.disabled=false;b.textContent=label;});
 });
 $('pw').addEventListener('keydown',function(e){if(e.key==='Enter')$('go').click();});
 

@@ -595,7 +595,8 @@ async def stripe_webhook(request: Request):
 
 def moltsets(path: str, payload: dict) -> dict:
     if not MOLTSETS_KEY:
-        raise HTTPException(503, "MOLTSETS_API_KEY is not configured on the server")
+        raise HTTPException(503, "Lead finder isn't connected yet — add a Moltsets API key "
+                                 "(MOLTSETS_API_KEY) to search live. You can still import a CSV.")
     r = requests.post(f"{MOLTSETS_BASE}/{path}", json=payload,
                       headers={"Authorization": f"Bearer {MOLTSETS_KEY}"}, timeout=60)
     if r.status_code == 404:
@@ -675,6 +676,20 @@ def merge_script(script: str, contact: dict) -> tuple[str, list[str]]:
     return VAR_RE.sub(sub, script), sorted(missing)
 
 
+PAUSE_RE = re.compile(r"\[\s*(long\s*pause|pause)\s*\]", re.I)
+
+
+def voice_text(text: str) -> str:
+    """Turn [pause] / [long pause] tokens into spoken silence. Punctuation-based
+    so it works with both gTTS and ElevenLabs without extra dependencies."""
+    return PAUSE_RE.sub(lambda m: " . . . " if "long" in m.group(1).lower() else " . ", text)
+
+
+def display_text(text: str) -> str:
+    """Readable preview: render pause tokens as an ellipsis."""
+    return PAUSE_RE.sub(lambda m: "…", text)
+
+
 class ScriptPreview(BaseModel):
     script: str
     contact: dict = {}
@@ -683,7 +698,23 @@ class ScriptPreview(BaseModel):
 @app.post("/api/script/preview")
 def script_preview(body: ScriptPreview, ctx: Ctx = Depends(get_ctx)):
     text, missing = merge_script(body.script, body.contact)
-    return {"text": text, "missing": missing}
+    return {"text": display_text(text), "missing": missing}
+
+
+class VoicePreview(BaseModel):
+    script: str
+    contact: dict = {}
+
+
+@app.post("/api/voice/preview")
+def voice_preview(body: VoicePreview, ctx: Ctx = Depends(get_ctx)):
+    """Render the script to audio with the active voice backend so the user can
+    hear exactly what a prospect would hear."""
+    text, _ = merge_script(body.script, body.contact or {})
+    if not text.strip():
+        raise HTTPException(422, "Write a script first, then preview the voice.")
+    voice = providers.render_voice(voice_text(text), f"preview_ws{ctx.wid}")
+    return {"url": "/audio/" + voice["path"].name, "backend": voice["backend"]}
 
 
 # ---------- campaigns ----------
@@ -1006,7 +1037,7 @@ def process_drop(drop_id: int) -> None:
             except Exception:
                 pass
         text, _ = merge_script(script, dict(row))
-        voice = providers.render_voice(text, row["foreign_id"])
+        voice = providers.render_voice(voice_text(text), row["foreign_id"])
         result = providers.send_rvm(norm_phone(row["mobile"]), voice["url"], row["foreign_id"])
         with db() as conn:
             conn.execute("UPDATE drops SET audio_path=?, provider_id=?, status=?, updated_at=? WHERE id=?",

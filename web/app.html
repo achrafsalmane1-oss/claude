@@ -324,8 +324,15 @@ a{color:inherit;text-decoration:none}
             <span class="chip cd-var" data-v="{{first_name}}">{{first_name}}</span>
             <span class="chip cd-var" data-v="{{company}}">{{company}}</span>
             <span class="chip cd-var" data-v="{{title}}">{{title}}</span>
-            <span class="chip cd-var" data-v="{{city}}">{{city}}</span></div>
+            <span class="chip cd-var" data-v="{{city}}">{{city}}</span>
+            <span class="chip cd-var" data-v=" [pause] " title="A brief pause in the voice">＋ pause</span>
+            <span class="chip cd-var" data-v=" [long pause] " title="A longer pause in the voice">＋ long pause</span></div>
           <div class="preview"><span class="mut">Preview</span><span id="cd-preview"></span></div>
+          <div class="toolbar" style="margin-top:10px;align-items:center">
+            <button type="button" class="btn btn-out" id="cd-play">▶ Hear the voice</button>
+            <span class="mut" id="cd-play-note" style="font-size:12.5px"></span>
+          </div>
+          <audio id="cd-audio" controls style="display:none;width:100%;margin-top:10px"></audio>
           <span id="cd-vb-toggle" class="link">+ Add A/B variant</span>
           <div id="cd-vb-wrap" class="field" style="display:none"><label>Variant B <span class="hint">contacts split 50/50 · callbacks tracked per variant</span></label>
             <textarea id="cd-script-b" class="ta" rows="3" placeholder="Alternate script…"></textarea></div>
@@ -612,19 +619,24 @@ a{color:inherit;text-decoration:none}
     } else { renderLeads(DEMO); }
     lgo.addEventListener('click',function(){
       var st=document.getElementById('lstatus');
+      if(!document.getElementById('lq').value.trim()){ st.className='lstatus'; st.textContent='Type what to search for — e.g. “Founder SaaS software”.'; return; }
       st.className='lstatus'; st.textContent='Searching…'; lgo.disabled=true;
       CDfetch('/api/leads/search',{method:'POST',headers:{'Content-Type':'application/json'},
         body:JSON.stringify({query:document.getElementById('lq').value,country:document.getElementById('lcountry').value,limit:10})})
-      .then(function(r){if(!r.ok)throw 0;return r.json();})
-      .then(function(d){
+      .then(function(r){return r.json().then(function(d){return {ok:r.ok,d:d};});})
+      .then(function(res){
+        lgo.disabled=false;
+        if(!res.ok){
+          if(localStorage.getItem('cd_token')){ document.getElementById('lead-rows').innerHTML='<tr><td colspan="6" style="color:var(--faint);padding:20px 10px">'+((res.d&&res.d.detail)||'Lead search is unavailable right now.')+'</td></tr>'; st.textContent=(res.d&&res.d.detail)?res.d.detail:'Unavailable.'; }
+          else { renderLeads(DEMO); st.textContent='Demo data — run the Colddrops server (see README) to search live.'; }
+          return;
+        }
+        var d=res.d;
+        if(!d.results||!d.results.length){ document.getElementById('lead-rows').innerHTML='<tr><td colspan="6" style="color:var(--faint);padding:20px 10px">No matches — try different words or country.</td></tr>'; st.textContent='No results.'; return; }
         renderLeads(d.results.map(function(p){return [p.full_name||'—',p.title||'—',p.company||'—',p.country||'—',p.email||'—',p.linkedin_slug?('in/'+p.linkedin_slug):'—'];}));
-        st.className='lstatus live'; st.textContent='Live — '+d.total.toLocaleString()+' total matches. Showing '+d.results.length+'.';
+        st.className='lstatus live'; st.textContent='Live — '+(d.total||d.results.length).toLocaleString()+' total matches. Showing '+d.results.length+'.';
       })
-      .catch(function(){
-        if(localStorage.getItem('cd_token')){ document.getElementById('lead-rows').innerHTML='<tr><td colspan="6" style="color:var(--faint);padding:20px 10px">No matches — try a different search.</td></tr>'; st.textContent='No results.'; }
-        else { renderLeads(DEMO); st.textContent='Demo data — run the Colddrops server (see README) to search live.'; }
-      })
-      .finally(function(){ lgo.disabled=false; });
+      .catch(function(){ lgo.disabled=false; st.textContent='Lead search is unavailable right now — you can still import a CSV.'; });
     });
   }
   /* cd builder — live API when served, demo otherwise */
@@ -633,13 +645,16 @@ a{color:inherit;text-decoration:none}
   function cdRender(){
     var tb=cdEl('cd-contact-rows'); if(!tb) return;
     var seen={},uniq=[]; CD.staged.forEach(function(c){var m=(c.mobile||'').replace(/\D/g,''); if(m&&seen[m])return; if(m)seen[m]=1; uniq.push(c);}); CD.staged=uniq;
-    tb.innerHTML = CD.staged.map(function(c,i){
+    var MAXROWS=6, shown=CD.staged.slice(0,MAXROWS);
+    tb.innerHTML = shown.map(function(c,i){
       return '<tr><td class="co">'+((c.first_name||'')+' '+(c.last_name||'')).trim()+'</td>'
         +'<td>'+(c.company||'—')+'</td>'
         +'<td>'+(c.mobile?'<span class="opill int">'+c.mobile+'</span>':'<span class="opill no">no mobile</span>')+'</td>'
         +'<td style="color:var(--muted)">'+(c.email||'—')+'</td>'
         +'<td class="r"><span style="cursor:pointer;color:var(--faint)" data-i="'+i+'" class="cd-rm">remove</span></td></tr>';
-    }).join('');
+    }).join('') + (CD.staged.length>MAXROWS
+        ? '<tr><td colspan="5" style="color:var(--faint);padding:11px 10px">+ '+(CD.staged.length-MAXROWS)+' more staged (showing first '+MAXROWS+') — all '+CD.staged.length+' will be sent</td></tr>'
+        : '');
     tb.querySelectorAll('.cd-rm').forEach(function(x){x.onclick=function(){CD.staged.splice(+x.dataset.i,1);cdRender();};});
     var withMob = CD.staged.filter(function(c){return c.mobile;}).length;
     cdEl('cd-cstatus').textContent = CD.staged.length
@@ -650,7 +665,8 @@ a{color:inherit;text-decoration:none}
   function cdPreview(){
     var p=cdEl('cd-preview'); if(!p) return;
     var s=cdEl('cd-script').value, c=CD.staged[0]||{first_name:'Kevin',company:'SaaS Integrator',title:'Founder',city:'Austin'};
-    p.textContent = s.replace(/{{\s*(\w+)\s*}}/g,function(m,k){return c[k]||('['+k+']');});
+    p.textContent = s.replace(/{{\s*(\w+)\s*}}/g,function(m,k){return c[k]||('['+k+']');})
+                     .replace(/\[\s*(long\s*pause|pause)\s*\]/gi,'…');
   }
   (function initBuilder(){
     if(!cdEl('cd-send')) return;
@@ -661,6 +677,24 @@ a{color:inherit;text-decoration:none}
         m.childNodes[1].nodeValue=' '+(h.mode==='live'?'live':'dry-run')+' · voice: '+h.voice_backend;}
     }).catch(function(){});
     cdEl('cd-script').addEventListener('input',cdPreview);
+    var play=cdEl('cd-play');
+    if(play) play.onclick=function(){
+      var note=cdEl('cd-play-note'); note.textContent='';
+      var s=cdEl('cd-script').value;
+      if(!s.trim()){ note.textContent='Write a script first.'; return; }
+      if(!localStorage.getItem('cd_token')){ note.textContent='Run the app (signed in) to hear the voice.'; return; }
+      play.disabled=true; play.textContent='Generating…';
+      var sample=CD.staged[0]||{first_name:'Kevin',company:'Acme',title:'Founder',city:'Austin'};
+      CDfetch('/api/voice/preview',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({script:s,contact:sample})})
+      .then(function(r){return r.json().then(function(d){return {ok:r.ok,d:d};});})
+      .then(function(res){
+        play.disabled=false; play.textContent='▶ Hear the voice';
+        if(!res.ok){ note.textContent=(res.d&&res.d.detail)?res.d.detail:'Could not generate the preview.'; return; }
+        var a=cdEl('cd-audio'); a.src=res.d.url+'?t='+Date.now(); a.style.display='block';
+        note.textContent=res.d.backend==='chime'?'(placeholder tone — add an ElevenLabs key for a real voice)':'';
+        a.play().catch(function(){ note.textContent='Tap play on the audio bar to listen.'; });
+      }).catch(function(){ play.disabled=false; play.textContent='▶ Hear the voice'; note.textContent='Could not generate the preview.'; });
+    };
     var son=cdEl('cd-sched-on'); if(son) son.addEventListener('change',function(){var v=son.checked?'':'none';cdEl('cd-sched-at').style.display=son.checked?'block':'none';cdEl('cd-quiet-lbl').style.display=son.checked?'flex':'none';});
     var vbt=cdEl('cd-vb-toggle'); if(vbt) vbt.onclick=function(){cdEl('cd-vb-wrap').style.display='block';vbt.style.display='none';};
     document.querySelectorAll('.cd-var').forEach(function(v){v.onclick=function(){
@@ -688,9 +722,13 @@ a{color:inherit;text-decoration:none}
           .forEach(function(r){CD.staged.push({first_name:r[0],last_name:r[1],company:r[2],email:r[3],mobile:''});});
         cdRender(); st.textContent='Demo leads added (run the server for live search + mobiles).'; return;
       }
+      if(!cdEl('cd-lq').value.trim()){ st.textContent='Type what to search for — e.g. “Founder SaaS software”.'; return; }
       CDfetch('/api/leads/search',{method:'POST',headers:{'Content-Type':'application/json'},
         body:JSON.stringify({query:cdEl('cd-lq').value,country:cdEl('cd-lcountry').value,limit:10})})
-      .then(function(r){return r.json();}).then(function(d){
+      .then(function(r){return r.json().then(function(d){return {ok:r.ok,d:d};});}).then(function(res){
+        if(!res.ok){ st.textContent=(res.d&&res.d.detail)?res.d.detail:'Lead search is unavailable right now.'; return; }
+        var d=res.d;
+        if(!d.results||!d.results.length){ st.textContent='No matches for that search — try different words or country.'; return; }
         var urls=d.results.map(function(p){return p.linkedin_url;}).filter(Boolean);
         d.results.forEach(function(p){CD.staged.push({first_name:p.first_name,last_name:p.last_name,
           company:p.company,title:p.title,email:p.email,linkedin_url:p.linkedin_url,mobile:''});});
@@ -702,8 +740,8 @@ a{color:inherit;text-decoration:none}
             CD.staged.forEach(function(c){if(c.linkedin_url&&map[c.linkedin_url])c.mobile=map[c.linkedin_url];});
             cdRender(); st.textContent=d.results.length+' leads added · '+mm.found+' mobiles verified.';
           }).catch(function(){cdRender();});
-        }
-      }).catch(function(){st.textContent='Search failed.';});
+        } else { st.textContent=d.results.length+' leads added.'; }
+      }).catch(function(){st.textContent='Lead search is unavailable right now — you can still import a CSV.';});
     });
     cdEl('cd-send').addEventListener('click',function(){
       if(!CD.staged.length){cdEl('cd-cstatus').textContent='Add contacts first.';return;}

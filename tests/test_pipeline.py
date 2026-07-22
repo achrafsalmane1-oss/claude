@@ -388,3 +388,44 @@ def test_onboarding_complete():
     # completing again does not duplicate the starter
     client.post("/api/onboarding/complete", headers=h, json={"goal": "real_estate"})
     assert len(client.get("/api/campaigns", headers=h).json()["campaigns"]) == 1
+
+
+# ---- voice preview + pause tokens ----
+
+def test_voice_preview_renders_audio():
+    h = signup("voice@acme.com")
+    r = client.post("/api/voice/preview", headers=h,
+                    json={"script": "Hi {{first_name}}, quick one. [pause] Call me back.",
+                          "contact": {"first_name": "Sam"}})
+    assert r.status_code == 200, r.text
+    d = r.json()
+    assert d["url"].startswith("/audio/")
+    assert d["backend"] in ("chime", "gtts", "elevenlabs")
+
+
+def test_voice_preview_rejects_empty():
+    h = signup("voice2@acme.com")
+    assert client.post("/api/voice/preview", headers=h, json={"script": "   "}).status_code == 422
+
+
+def test_pause_tokens_convert():
+    from server.main import voice_text, display_text
+    assert voice_text("Hi [pause] there") == "Hi  .  there"
+    assert voice_text("Wait [long pause] now") == "Wait  . . .  now"
+    assert display_text("Hi [pause] there [long pause] bye") == "Hi … there … bye"
+
+
+def test_script_preview_shows_pause_as_ellipsis():
+    h = signup("prev@acme.com")
+    d = client.post("/api/script/preview", headers=h,
+                    json={"script": "Hey {{first_name}} [pause] you there?",
+                          "contact": {"first_name": "Jo"}}).json()
+    assert d["text"] == "Hey Jo … you there?"
+
+
+def test_lead_search_friendly_when_unconfigured():
+    # no MOLTSETS_API_KEY in tests -> 503 with an actionable message, not a raw stack
+    h = signup("lead@acme.com")
+    r = client.post("/api/leads/search", headers=h, json={"query": "founder", "limit": 5})
+    assert r.status_code == 503
+    assert "Moltsets" in r.json()["detail"]
