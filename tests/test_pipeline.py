@@ -326,3 +326,57 @@ def test_webhook_updates_status():
     conn.execute("UPDATE drops SET status='sending' WHERE foreign_id=?", (fid,)); conn.commit()
     client.post("/api/webhooks/telnyx", json=body)
     assert client.get(f"/api/campaigns/{cid}", headers=h).json()["drop_stats"] == {"failed": 1}
+
+
+# ---- phone verification / onboarding ----
+
+def test_new_signup_needs_phone_and_onboarding():
+    h = signup("newbie@acme.com")
+    me = client.get("/api/auth/me", headers=h).json()
+    assert me["phone_verified"] is False
+    assert me["onboarded"] is False
+    assert me["phone"] is None
+
+
+def test_otp_request_and_verify_flow():
+    h = signup("otp@acme.com")
+    # request a code — dev backend surfaces it so the flow works with no paid number
+    r = client.post("/api/auth/request-otp", headers=h, json={"phone": "(415) 555-0100"})
+    assert r.status_code == 200, r.text
+    d = r.json()
+    assert d["phone"] == "+14155550100"
+    assert d["channel"] == "dev"
+    code = d["dev_code"]
+    # wrong code is rejected
+    assert client.post("/api/auth/verify-otp", headers=h, json={"code": "000000"}).status_code == 400
+    # right code verifies and stamps the workspace number
+    v = client.post("/api/auth/verify-otp", headers=h, json={"code": code})
+    assert v.status_code == 200, v.text
+    me = client.get("/api/auth/me", headers=h).json()
+    assert me["phone_verified"] is True
+    assert me["phone"] == "+14155550100"
+
+
+def test_otp_invalid_phone_rejected():
+    h = signup("badphone@acme.com")
+    assert client.post("/api/auth/request-otp", headers=h, json={"phone": "123"}).status_code == 422
+
+
+def test_otp_expiry():
+    h = signup("expire@acme.com")
+    client.post("/api/auth/request-otp", headers=h, json={"phone": "+14155550111"})
+    conn = sqlite3.connect(os.environ["COLDDROPS_DB"]); conn.row_factory = sqlite3.Row
+    wid = conn.execute("SELECT workspace_id FROM users WHERE email=?", ("expire@acme.com",)).fetchone()[0]
+    conn.execute("UPDATE otps SET expires_at=0 WHERE workspace_id=?", (wid,)); conn.commit()
+    row = conn.execute("SELECT code FROM otps WHERE workspace_id=?", (wid,)).fetchone()
+    assert client.post("/api/auth/verify-otp", headers=h, json={"code": row["code"]}).status_code == 400
+
+
+def test_onboarding_complete():
+    h = signup("onb@acme.com")
+    # verify phone first
+    d = client.post("/api/auth/request-otp", headers=h, json={"phone": "+14155550122"}).json()
+    client.post("/api/auth/verify-otp", headers=h, json={"code": d["dev_code"]})
+    assert client.post("/api/onboarding/complete", headers=h, json={"goal": "real_estate"}).status_code == 200
+    me = client.get("/api/auth/me", headers=h).json()
+    assert me["onboarded"] is True

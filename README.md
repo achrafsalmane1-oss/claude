@@ -12,12 +12,13 @@ doing outbound.
 | Piece | State |
 |---|---|
 | Landing page (`web/index.html`) | ✅ Premium light redesign, live |
+| Login → phone → SMS → onboarding → dashboard | ✅ End-to-end, $0 dev mode (no paid number needed) |
 | Lead data (Moltsets) | ✅ Integration verified end-to-end |
-| Voice (ElevenLabs) | ⏳ Planned — needs API key |
-| Delivery (Drop Cowboy → Twilio BYOC) | ⏳ Planned — needs account |
-| Live demo callback (Vapi / Twilio) | ⏳ Planned |
-| Auth + billing (Stripe) + dashboard | ⏳ Planned |
-| Sending engine (queue) + compliance (DNC/TCPA) | ⏳ Planned |
+| Voice | ✅ ElevenLabs (paid) → gTTS (free) → chime fallback |
+| Delivery (Telnyx BYOC + AMD) | ✅ Live when keyed, else dry-run |
+| SMS verification (Telnyx) | ✅ Live when keyed, else dev code shown in-app |
+| Auth + billing (Stripe) + dashboard | ✅ Stub billing works keyless; dashboard live |
+| Sending engine (queue) + compliance (DNC/TCPA) | ✅ Metered send, suppression list, quiet hours |
 
 ## Architecture (planned)
 

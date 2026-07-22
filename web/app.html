@@ -504,7 +504,10 @@ a{color:inherit;text-decoration:none}
         if(r.status===401){ location.href='/login.html'; return null; }
         return r.ok ? r.json() : null;
       }).then(function(me){
-        if(me){ var av=document.querySelector('.topbar .av');
+        if(me){
+          // finish onboarding before the workspace is usable
+          if(!me.phone_verified || !me.onboarded){ location.href='/login.html'; return; }
+          var av=document.querySelector('.topbar .av');
           if(av) av.textContent=(me.email||'?')[0].toUpperCase();
           var crumb=document.querySelector('.topbar .crumb b');
           if(crumb && me.workspace) crumb.textContent=me.workspace; window.CDrole=me.role; try{loadSettings();}catch(e){} try{loadDashboard();}catch(e){} }

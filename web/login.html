@@ -32,49 +32,230 @@ button:hover{background:#2FB050} button:disabled{opacity:.6;cursor:default}
 .toggle a{color:var(--green-d);font-weight:600;cursor:pointer}
 .err{color:#C0492E;font-size:13px;text-align:center;margin-top:12px;min-height:16px}
 .foot{text-align:center;margin-top:18px;font-size:12px;color:#9AA0A6}
+.step{display:none} .step.on{display:block}
+.steps{display:flex;gap:6px;justify-content:center;margin:14px 0 20px}
+.steps i{width:26px;height:4px;border-radius:3px;background:rgba(24,26,22,.13);transition:background .25s}
+.steps i.done{background:var(--green-d)} .steps i.now{background:var(--green)}
+.hint{font-size:12.5px;color:var(--muted);text-align:center;margin-top:10px;line-height:1.5}
+.otp{display:flex;gap:8px;justify-content:center;margin-top:6px}
+.otp input{width:46px;text-align:center;font-size:22px;font-weight:600;padding:12px 0;font-variant-numeric:tabular-nums}
+.devcode{background:#EAF3EE;border:1px dashed rgba(46,125,91,.4);border-radius:11px;padding:11px 13px;
+  margin-top:14px;font-size:13px;color:#2b4a3a;text-align:center;line-height:1.5}
+.devcode b{font-family:ui-monospace,Menlo,monospace;font-size:17px;letter-spacing:.15em;color:#1c3d2c}
+.goals{display:grid;gap:9px;margin-top:6px}
+.goal{border:1px solid var(--line);border-radius:12px;padding:13px 14px;cursor:pointer;font-size:14px;
+  display:flex;align-items:center;gap:11px;transition:border-color .15s,background .15s}
+.goal:hover{border-color:rgba(46,125,91,.5)} .goal.sel{border-color:var(--green-d);background:#F0F7F2}
+.goal .em{font-size:19px} .goal .tt{font-weight:600} .goal .ds{font-size:12px;color:var(--muted)}
+.linkbtn{background:none;color:var(--muted);font-weight:600;font-size:13px;width:auto;margin:12px auto 0;padding:0;display:block}
+.linkbtn:hover{background:none;color:var(--green-d)}
+.chip{display:inline-flex;align-items:center;gap:6px;background:#F0F7F2;color:#2b4a3a;border-radius:999px;
+  padding:5px 12px;font-size:12.5px;font-weight:600;margin:0 auto 4px}
 </style></head>
 <body>
   <div class="card">
     <div style="text-align:center"><span class="wm">c<svg viewBox="0 0 24 30" class="dropo" aria-hidden="true"><path d="M13.6 1.2 C13.6 1.2 3.2 12.4 3.2 19 a9.4 9.4 0 0 0 18.8 0 C22 12.4 13.6 1.2 13.6 1.2 Z" fill="#22B573"/><ellipse cx="9.4" cy="21" rx="2.7" ry="2.2" fill="#fff" transform="rotate(-18 9.4 21)"/></svg>ld drops</span></div>
-    <h1 id="title">Welcome back</h1>
-    <p class="sub" id="sub">Sign in to your workspace</p>
-    <div id="nameRow" style="display:none"><label>Workspace name</label><input id="ws" placeholder="Acme Capital"/></div>
-    <label>Email</label><input id="email" type="email" placeholder="you@company.com" autocomplete="email"/>
-    <label>Password</label><input id="pw" type="password" placeholder="••••••••" autocomplete="current-password"/>
-    <button id="go">Sign in</button>
-    <div class="err" id="err"></div>
-    <div class="toggle" id="tg">New to Colddrops? <a id="swap">Create an account</a></div>
+    <div class="steps" id="steps" style="display:none"><i id="s1"></i><i id="s2"></i><i id="s3"></i></div>
+
+    <!-- STEP 0: credentials -->
+    <div class="step on" id="step-auth">
+      <h1 id="title">Welcome back</h1>
+      <p class="sub" id="sub">Sign in to your workspace</p>
+      <div id="nameRow" style="display:none"><label>Workspace name</label><input id="ws" placeholder="Acme Capital"/></div>
+      <label>Email</label><input id="email" type="email" placeholder="you@company.com" autocomplete="email"/>
+      <label>Password</label><input id="pw" type="password" placeholder="••••••••" autocomplete="current-password"/>
+      <button id="go">Sign in</button>
+      <div class="err" id="err"></div>
+      <div class="toggle" id="tg">New to Colddrops? <a id="swap">Create an account</a></div>
+    </div>
+
+    <!-- STEP 1: phone -->
+    <div class="step" id="step-phone">
+      <h1>Verify your number</h1>
+      <p class="sub">We'll text you a code. This becomes your caller ID for callbacks.</p>
+      <label>Mobile number</label>
+      <input id="phone" type="tel" inputmode="tel" placeholder="+1 (415) 555-0100" autocomplete="tel"/>
+      <button id="sendCode">Send code</button>
+      <div class="err" id="phoneErr"></div>
+      <div class="hint">Standard message rates apply. One-time verification only — no marketing.</div>
+    </div>
+
+    <!-- STEP 2: code -->
+    <div class="step" id="step-code">
+      <h1>Enter the code</h1>
+      <p class="sub">Sent to <b id="phoneEcho"></b>. <a id="editPhone" style="color:var(--green-d);font-weight:600;cursor:pointer">Change</a></p>
+      <div class="otp" id="otp">
+        <input maxlength="1" inputmode="numeric"/><input maxlength="1" inputmode="numeric"/><input maxlength="1" inputmode="numeric"/>
+        <input maxlength="1" inputmode="numeric"/><input maxlength="1" inputmode="numeric"/><input maxlength="1" inputmode="numeric"/>
+      </div>
+      <div id="devcode" class="devcode" style="display:none"></div>
+      <button id="verifyCode">Verify</button>
+      <div class="err" id="codeErr"></div>
+      <button class="linkbtn" id="resend">Resend code</button>
+    </div>
+
+    <!-- STEP 3: onboarding -->
+    <div class="step" id="step-onboard">
+      <div class="chip">✓ Number verified</div>
+      <h1>You're in. One quick thing.</h1>
+      <p class="sub">What are you dropping voicemails for? Helps us tailor your workspace.</p>
+      <div class="goals" id="goals">
+        <div class="goal" data-goal="real_estate"><span class="em">🏠</span><span><span class="tt">Real estate</span><br><span class="ds">Listings, buyers, expired &amp; FSBO</span></span></div>
+        <div class="goal" data-goal="agency"><span class="em">📈</span><span><span class="tt">Agency / lead gen</span><br><span class="ds">Booking calls for clients</span></span></div>
+        <div class="goal" data-goal="sales"><span class="em">💼</span><span><span class="tt">B2B sales</span><br><span class="ds">Outbound to a prospect list</span></span></div>
+        <div class="goal" data-goal="other"><span class="em">✨</span><span><span class="tt">Something else</span><br><span class="ds">I'll set it up myself</span></span></div>
+      </div>
+      <button id="finish">Go to dashboard</button>
+      <div class="err" id="onbErr"></div>
+    </div>
+
     <div class="foot">Permission-based outbound · use responsibly &amp; within the law</div>
   </div>
 <script>
+var $=function(id){return document.getElementById(id);};
+var TOKEN=null, GOAL=null;
+function authHdr(){return {'Content-Type':'application/json','Authorization':'Bearer '+TOKEN};}
+
+/* ---- step machine ---- */
+function show(id){
+  ['step-auth','step-phone','step-code','step-onboard'].forEach(function(s){
+    $(s).classList.toggle('on', s===id);
+  });
+  var steps=$('steps');
+  if(id==='step-auth'){steps.style.display='none';return;}
+  steps.style.display='flex';
+  var map={'step-phone':1,'step-code':2,'step-onboard':3};
+  var n=map[id];
+  [['s1',1],['s2',2],['s3',3]].forEach(function(p){
+    var el=$(p[0]); el.className = p[1]<n?'done':(p[1]===n?'now':'');
+  });
+  window.scrollTo(0,0);
+}
+
+/* ---- 0: credentials ---- */
 var mode='login';
 function set(m){mode=m;
-  document.getElementById('title').textContent = m==='login'?'Welcome back':'Create your workspace';
-  document.getElementById('sub').textContent = m==='login'?'Sign in to your workspace':'Start dropping in minutes';
-  document.getElementById('go').textContent = m==='login'?'Sign in':'Create account';
-  document.getElementById('nameRow').style.display = m==='login'?'none':'block';
-  document.getElementById('tg').innerHTML = m==='login'
+  $('title').textContent = m==='login'?'Welcome back':'Create your workspace';
+  $('sub').textContent = m==='login'?'Sign in to your workspace':'Start dropping in minutes';
+  $('go').textContent = m==='login'?'Sign in':'Create account';
+  $('nameRow').style.display = m==='login'?'none':'block';
+  $('tg').innerHTML = m==='login'
     ? 'New to Colddrops? <a id="swap">Create an account</a>'
     : 'Already have an account? <a id="swap">Sign in</a>';
-  document.getElementById('swap').onclick=function(){set(m==='login'?'signup':'login');};
+  $('swap').onclick=function(){set(m==='login'?'signup':'login');};
 }
-document.getElementById('swap').onclick=function(){set('signup');};
-if(new URLSearchParams(location.search).get('invite')){set('signup');document.getElementById('title').textContent='Join your team';document.getElementById('sub').textContent='You were invited to a Colddrops workspace';document.getElementById('nameRow').style.display='none';}
-document.getElementById('go').addEventListener('click',function(){
-  var b=document.getElementById('go'), err=document.getElementById('err');
+$('swap').onclick=function(){set('signup');};
+var invite=new URLSearchParams(location.search).get('invite');
+if(invite){set('signup');$('title').textContent='Join your team';$('sub').textContent='You were invited to a Colddrops workspace';$('nameRow').style.display='none';}
+
+/* Route a fresh session to the right step based on what's left to do. */
+function routeAfterAuth(){
+  fetch('/api/auth/me',{headers:{'Authorization':'Bearer '+TOKEN}})
+    .then(function(r){return r.ok?r.json():null;})
+    .then(function(me){
+      if(!me){location.href='/app.html';return;}
+      if(!me.phone_verified){ show('step-phone'); setTimeout(function(){$('phone').focus();},60); return; }
+      if(!me.onboarded){ show('step-onboard'); return; }
+      location.href='/app.html';
+    }).catch(function(){location.href='/app.html';});
+}
+
+$('go').addEventListener('click',function(){
+  var b=$('go'), err=$('err');
   err.textContent=''; b.disabled=true; b.textContent='…';
-  var body={email:document.getElementById('email').value,password:document.getElementById('pw').value};
-  if(mode==='signup') body.workspace_name=document.getElementById('ws').value||undefined;
-  var inv=new URLSearchParams(location.search).get('invite'); if(inv){body.invite_token=inv;}
+  var body={email:$('email').value,password:$('pw').value};
+  if(mode==='signup') body.workspace_name=$('ws').value||undefined;
+  if(invite){body.invite_token=invite;}
   fetch('/api/auth/'+mode,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})
     .then(function(r){return r.json().then(function(d){return {ok:r.ok,d:d};});})
     .then(function(res){
       if(!res.ok){err.textContent=(res.d.detail||'Something went wrong');b.disabled=false;b.textContent=mode==='login'?'Sign in':'Create account';return;}
-      localStorage.setItem('cd_token',res.d.token);
+      TOKEN=res.d.token;
+      localStorage.setItem('cd_token',TOKEN);
       localStorage.setItem('cd_workspace',res.d.workspace||'');
-      location.href='/app.html';
+      routeAfterAuth();
     }).catch(function(){err.textContent='Network error — is the server running?';b.disabled=false;b.textContent='Sign in';});
 });
-document.getElementById('pw').addEventListener('keydown',function(e){if(e.key==='Enter')document.getElementById('go').click();});
+$('pw').addEventListener('keydown',function(e){if(e.key==='Enter')$('go').click();});
+
+/* ---- 1: phone -> request code ---- */
+function requestCode(){
+  var b=$('sendCode'), err=$('phoneErr'); err.textContent='';
+  var phone=$('phone').value.trim();
+  if(phone.replace(/\D/g,'').length<10){err.textContent='Enter a valid mobile number.';return;}
+  b.disabled=true; b.textContent='Sending…';
+  fetch('/api/auth/request-otp',{method:'POST',headers:authHdr(),body:JSON.stringify({phone:phone})})
+    .then(function(r){return r.json().then(function(d){return {ok:r.ok,d:d};});})
+    .then(function(res){
+      b.disabled=false; b.textContent='Send code';
+      if(!res.ok){err.textContent=res.d.detail||'Could not send the code.';return;}
+      $('phoneEcho').textContent=res.d.phone;
+      var dc=$('devcode');
+      if(res.d.dev_code){
+        dc.style.display='block';
+        dc.innerHTML='Demo mode — your code is <b>'+res.d.dev_code+'</b><br><span style="opacity:.8">Live SMS turns on once a number is connected.</span>';
+        // prefill for a frictionless demo
+        var digs=res.d.dev_code.split(''); otpInputs.forEach(function(inp,i){inp.value=digs[i]||'';});
+      } else { dc.style.display='none'; }
+      show('step-code');
+      setTimeout(function(){ (res.d.dev_code?$('verifyCode'):otpInputs[0]).focus(); },60);
+    }).catch(function(){b.disabled=false;b.textContent='Send code';err.textContent='Network error.';});
+}
+$('sendCode').addEventListener('click',requestCode);
+$('phone').addEventListener('keydown',function(e){if(e.key==='Enter')requestCode();});
+$('resend').addEventListener('click',function(){ show('step-phone'); });
+$('editPhone').addEventListener('click',function(){ show('step-phone'); });
+
+/* ---- 2: OTP inputs + verify ---- */
+var otpInputs=Array.prototype.slice.call($('otp').querySelectorAll('input'));
+otpInputs.forEach(function(inp,i){
+  inp.addEventListener('input',function(){
+    inp.value=inp.value.replace(/\D/g,'').slice(0,1);
+    if(inp.value && i<otpInputs.length-1) otpInputs[i+1].focus();
+    if(otpInputs.every(function(x){return x.value;})) verifyCode();
+  });
+  inp.addEventListener('keydown',function(e){
+    if(e.key==='Backspace' && !inp.value && i>0) otpInputs[i-1].focus();
+    if(e.key==='Enter') verifyCode();
+  });
+  inp.addEventListener('paste',function(e){
+    var t=(e.clipboardData||window.clipboardData).getData('text').replace(/\D/g,'');
+    if(t){e.preventDefault(); otpInputs.forEach(function(x,j){x.value=t[j]||'';}); if(t.length>=6) verifyCode();}
+  });
+});
+function verifyCode(){
+  var b=$('verifyCode'), err=$('codeErr'); err.textContent='';
+  var code=otpInputs.map(function(x){return x.value;}).join('');
+  if(code.length<6){err.textContent='Enter the 6-digit code.';return;}
+  b.disabled=true; b.textContent='Verifying…';
+  fetch('/api/auth/verify-otp',{method:'POST',headers:authHdr(),body:JSON.stringify({code:code})})
+    .then(function(r){return r.json().then(function(d){return {ok:r.ok,d:d};});})
+    .then(function(res){
+      b.disabled=false; b.textContent='Verify';
+      if(!res.ok){err.textContent=res.d.detail||'Verification failed.';otpInputs.forEach(function(x){x.value='';});otpInputs[0].focus();return;}
+      show('step-onboard');
+    }).catch(function(){b.disabled=false;b.textContent='Verify';err.textContent='Network error.';});
+}
+$('verifyCode').addEventListener('click',verifyCode);
+
+/* ---- 3: onboarding ---- */
+document.querySelectorAll('#goals .goal').forEach(function(g){
+  g.addEventListener('click',function(){
+    document.querySelectorAll('#goals .goal').forEach(function(x){x.classList.remove('sel');});
+    g.classList.add('sel'); GOAL=g.getAttribute('data-goal');
+  });
+});
+$('finish').addEventListener('click',function(){
+  var b=$('finish'); b.disabled=true; b.textContent='Setting up…';
+  fetch('/api/onboarding/complete',{method:'POST',headers:authHdr(),body:JSON.stringify({goal:GOAL})})
+    .then(function(){ if(GOAL) localStorage.setItem('cd_goal',GOAL); location.href='/app.html'; })
+    .catch(function(){ location.href='/app.html'; });
+});
+
+/* Already-signed-in visitor landing on /login: resume where they left off. */
+(function(){
+  var t=localStorage.getItem('cd_token');
+  if(t && !invite){ TOKEN=t; routeAfterAuth(); }
+})();
 </script>
 </body></html>

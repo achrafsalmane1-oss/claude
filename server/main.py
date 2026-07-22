@@ -14,6 +14,7 @@ import csv
 import json
 import os
 import re
+import secrets
 import sqlite3
 import time
 import uuid
@@ -27,7 +28,7 @@ from pydantic import BaseModel, EmailStr, Field
 
 from fastapi import Request
 
-from . import auth, billing, notifications, providers
+from . import auth, billing, notifications, providers, sms
 
 MOLTSETS_BASE = "https://api.moltsets.com/api/v1/tools"
 MOLTSETS_KEY = os.environ.get("MOLTSETS_API_KEY", "")
@@ -104,6 +105,11 @@ def init_db() -> None:
               email_to TEXT, delivered INTEGER NOT NULL DEFAULT 0,
               read INTEGER NOT NULL DEFAULT 0, created_at REAL NOT NULL
             );
+            CREATE TABLE IF NOT EXISTS otps (
+              workspace_id INTEGER PRIMARY KEY, phone TEXT NOT NULL,
+              code TEXT NOT NULL, expires_at REAL NOT NULL,
+              attempts INTEGER NOT NULL DEFAULT 0, created_at REAL NOT NULL
+            );
             """
         )
         # lightweight migrations (safe to re-run)
@@ -113,7 +119,10 @@ def init_db() -> None:
                      "ALTER TABLE campaigns ADD COLUMN window_end INTEGER",
                      "ALTER TABLE campaigns ADD COLUMN tz_offset_min INTEGER NOT NULL DEFAULT 0",
                      "ALTER TABLE contacts ADD COLUMN variant INTEGER NOT NULL DEFAULT 0",
-                     "ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT 'member'"):
+                     "ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT 'member'",
+                     "ALTER TABLE workspaces ADD COLUMN phone TEXT",
+                     "ALTER TABLE workspaces ADD COLUMN phone_verified INTEGER NOT NULL DEFAULT 0",
+                     "ALTER TABLE workspaces ADD COLUMN onboarded INTEGER NOT NULL DEFAULT 0"):
             try:
                 conn.execute(stmt)
             except sqlite3.OperationalError:
@@ -255,6 +264,88 @@ def logout(ctx: Ctx = Depends(get_ctx), authorization: str = Header(default=""))
     return {"ok": True}
 
 
+# ---------- phone verification (onboarding) ----------
+
+OTP_TTL = 10 * 60  # codes valid for 10 minutes
+
+
+def _gen_code() -> str:
+    # 6-digit numeric, unbiased, no leading-zero worries (kept as string)
+    return f"{secrets.randbelow(1_000_000):06d}"
+
+
+def _e164(raw: str) -> str:
+    """Normalize to +digits E.164-ish. Assumes US (+1) for 10-digit input."""
+    digits = re.sub(r"\D", "", raw or "")
+    if raw and raw.strip().startswith("+"):
+        return "+" + digits
+    if len(digits) == 10:
+        return "+1" + digits
+    if len(digits) == 11 and digits.startswith("1"):
+        return "+" + digits
+    return "+" + digits if digits else ""
+
+
+class OtpRequestIn(BaseModel):
+    phone: str
+
+
+@app.post("/api/auth/request-otp")
+def request_otp(body: OtpRequestIn, ctx: Ctx = Depends(get_ctx)):
+    phone = _e164(body.phone)
+    if len(re.sub(r"\D", "", phone)) < 10:
+        raise HTTPException(422, "Enter a valid mobile number.")
+    code = _gen_code()
+    now = time.time()
+    with db() as conn:
+        conn.execute(
+            "INSERT OR REPLACE INTO otps (workspace_id, phone, code, expires_at, attempts, created_at) "
+            "VALUES (?,?,?,?,0,?)",
+            (ctx.wid, phone, code, now + OTP_TTL, now),
+        )
+    result = sms.send_sms(phone, f"Your Colddrops verification code is {code}")
+    resp = {"phone": phone, "sent": result.get("sent", False), "channel": result["backend"]}
+    # In dev backend (no paid number yet) surface the code so the flow works end-to-end.
+    if result["backend"] == "dev":
+        resp["dev_code"] = code
+        resp["dev_note"] = "SMS provider not configured — showing the code here so you can finish."
+    return resp
+
+
+class OtpVerifyIn(BaseModel):
+    code: str
+
+
+@app.post("/api/auth/verify-otp")
+def verify_otp(body: OtpVerifyIn, ctx: Ctx = Depends(get_ctx)):
+    code = re.sub(r"\D", "", body.code or "")
+    with db() as conn:
+        row = conn.execute("SELECT * FROM otps WHERE workspace_id=?", (ctx.wid,)).fetchone()
+        if not row:
+            raise HTTPException(400, "Request a code first.")
+        if row["attempts"] >= 6:
+            raise HTTPException(429, "Too many attempts. Request a new code.")
+        if time.time() > row["expires_at"]:
+            raise HTTPException(400, "That code expired. Request a new one.")
+        if code != row["code"]:
+            conn.execute("UPDATE otps SET attempts=attempts+1 WHERE workspace_id=?", (ctx.wid,))
+            raise HTTPException(400, "That code isn't right. Try again.")
+        conn.execute("UPDATE workspaces SET phone=?, phone_verified=1 WHERE id=?", (row["phone"], ctx.wid))
+        conn.execute("DELETE FROM otps WHERE workspace_id=?", (ctx.wid,))
+    return {"phone": row["phone"], "phone_verified": True}
+
+
+class OnboardIn(BaseModel):
+    goal: str | None = None
+
+
+@app.post("/api/onboarding/complete")
+def onboarding_complete(body: OnboardIn = OnboardIn(), ctx: Ctx = Depends(get_ctx)):
+    with db() as conn:
+        conn.execute("UPDATE workspaces SET onboarded=1 WHERE id=?", (ctx.wid,))
+    return {"onboarded": True}
+
+
 def usage_for(wid: int) -> dict:
     with db() as conn:
         ws = conn.execute("SELECT * FROM workspaces WHERE id=?", (wid,)).fetchone()
@@ -266,12 +357,23 @@ def usage_for(wid: int) -> dict:
     return {"plan": ws["plan"], "cap": cap, "used": used, "remaining": max(0, cap - used)}
 
 
+def _ws_col(ws, name, default=None):
+    try:
+        return ws[name]
+    except (IndexError, KeyError):
+        return default
+
+
 @app.get("/api/auth/me")
 def me(ctx: Ctx = Depends(get_ctx)):
+    ws = ctx.workspace
     return {
         "email": ctx.user["email"],
-        "workspace": ctx.workspace["name"],
+        "workspace": ws["name"],
         "role": ctx.role,
+        "phone": _ws_col(ws, "phone"),
+        "phone_verified": bool(_ws_col(ws, "phone_verified", 0)),
+        "onboarded": bool(_ws_col(ws, "onboarded", 0)),
         "usage": usage_for(ctx.wid),
     }
 
