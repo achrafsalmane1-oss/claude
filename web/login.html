@@ -1,5 +1,6 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 30'%3E%3Cpath d='M12 1C12 1 3 12 3 19a9 9 0 0 0 18 0C21 12 12 1 12 1Z' fill='%2322B573'/%3E%3Cellipse cx='9' cy='21' rx='2.4' ry='2' fill='white' transform='rotate(-18 9 21)'/%3E%3C/svg%3E">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Colddrops — Sign in</title>
 <style>
@@ -53,7 +54,7 @@ button:hover{background:#2FB050} button:disabled{opacity:.6;cursor:default}
   padding:5px 12px;font-size:12.5px;font-weight:600;margin:0 auto 4px}
 </style></head>
 <body>
-  <div class="card">
+  <div class="card" id="card">
     <div style="text-align:center"><span class="wm">c<svg viewBox="0 0 24 30" class="dropo" aria-hidden="true"><path d="M13.6 1.2 C13.6 1.2 3.2 12.4 3.2 19 a9.4 9.4 0 0 0 18.8 0 C22 12.4 13.6 1.2 13.6 1.2 Z" fill="#22B573"/><ellipse cx="9.4" cy="21" rx="2.7" ry="2.2" fill="#fff" transform="rotate(-18 9.4 21)"/></svg>ld drops</span></div>
     <div class="steps" id="steps" style="display:none"><i id="s1"></i><i id="s2"></i><i id="s3"></i></div>
 
@@ -118,6 +119,7 @@ function authHdr(){return {'Content-Type':'application/json','Authorization':'Be
 
 /* ---- step machine ---- */
 function show(id){
+  $('card').style.visibility='visible';
   ['step-auth','step-phone','step-code','step-onboard'].forEach(function(s){
     $(s).classList.toggle('on', s===id);
   });
@@ -148,16 +150,21 @@ $('swap').onclick=function(){set('signup');};
 var invite=new URLSearchParams(location.search).get('invite');
 if(invite){set('signup');$('title').textContent='Join your team';$('sub').textContent='You were invited to a Colddrops workspace';$('nameRow').style.display='none';}
 
-/* Route a fresh session to the right step based on what's left to do. */
+/* Route a session to the right step based on what's left to do.
+   A stale/invalid token drops back to the sign-in step (never bounce to the
+   app, which would ping-pong with its own auth gate). */
 function routeAfterAuth(){
-  fetch('/api/auth/me',{headers:{'Authorization':'Bearer '+TOKEN}})
-    .then(function(r){return r.ok?r.json():null;})
+  return fetch('/api/auth/me',{headers:{'Authorization':'Bearer '+TOKEN}})
+    .then(function(r){
+      if(r.status===401){ localStorage.removeItem('cd_token'); TOKEN=null; show('step-auth'); return null; }
+      return r.ok?r.json():null;
+    })
     .then(function(me){
-      if(!me){location.href='/app.html';return;}
+      if(!me) return;
       if(!me.phone_verified){ show('step-phone'); setTimeout(function(){$('phone').focus();},60); return; }
       if(!me.onboarded){ show('step-onboard'); return; }
       location.href='/app.html';
-    }).catch(function(){location.href='/app.html';});
+    }).catch(function(){ show('step-auth'); });
 }
 
 $('go').addEventListener('click',function(){
@@ -248,14 +255,17 @@ document.querySelectorAll('#goals .goal').forEach(function(g){
 $('finish').addEventListener('click',function(){
   var b=$('finish'); b.disabled=true; b.textContent='Setting up…';
   fetch('/api/onboarding/complete',{method:'POST',headers:authHdr(),body:JSON.stringify({goal:GOAL})})
+    .then(function(r){ return r.json().catch(function(){return null;}); })  // drain body before navigating
     .then(function(){ if(GOAL) localStorage.setItem('cd_goal',GOAL); location.href='/app.html'; })
     .catch(function(){ location.href='/app.html'; });
 });
 
-/* Already-signed-in visitor landing on /login: resume where they left off. */
+/* Already-signed-in visitor landing on /login: resume where they left off.
+   Hide the card until we know which step to show, so verified users go
+   straight to the app with no flash of the sign-in form. */
 (function(){
   var t=localStorage.getItem('cd_token');
-  if(t && !invite){ TOKEN=t; routeAfterAuth(); }
+  if(t && !invite){ TOKEN=t; $('card').style.visibility='hidden'; routeAfterAuth(); }
 })();
 </script>
 </body></html>

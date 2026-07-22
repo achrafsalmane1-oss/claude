@@ -380,3 +380,11 @@ def test_onboarding_complete():
     assert client.post("/api/onboarding/complete", headers=h, json={"goal": "real_estate"}).status_code == 200
     me = client.get("/api/auth/me", headers=h).json()
     assert me["onboarded"] is True
+    assert me["goal"] == "real_estate"
+    # a use-case starter campaign is seeded so the workspace is never empty
+    camps = client.get("/api/campaigns", headers=h).json()["campaigns"]
+    assert len(camps) == 1
+    assert "{{first_name}}" in camps[0]["script"]
+    # completing again does not duplicate the starter
+    client.post("/api/onboarding/complete", headers=h, json={"goal": "real_estate"})
+    assert len(client.get("/api/campaigns", headers=h).json()["campaigns"]) == 1

@@ -122,7 +122,8 @@ def init_db() -> None:
                      "ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT 'member'",
                      "ALTER TABLE workspaces ADD COLUMN phone TEXT",
                      "ALTER TABLE workspaces ADD COLUMN phone_verified INTEGER NOT NULL DEFAULT 0",
-                     "ALTER TABLE workspaces ADD COLUMN onboarded INTEGER NOT NULL DEFAULT 0"):
+                     "ALTER TABLE workspaces ADD COLUMN onboarded INTEGER NOT NULL DEFAULT 0",
+                     "ALTER TABLE workspaces ADD COLUMN goal TEXT"):
             try:
                 conn.execute(stmt)
             except sqlite3.OperationalError:
@@ -339,11 +340,59 @@ class OnboardIn(BaseModel):
     goal: str | None = None
 
 
+# Use-case starter campaigns, seeded on onboarding so the workspace is never empty.
+STARTER_SCRIPTS = {
+    "real_estate": {
+        "name": "Expired & FSBO — intro",
+        "script": ("Hi {{first_name}}, it's Alex — I noticed your listing and I work with "
+                   "buyers in the area. I'd love to see if I can help you get it sold. "
+                   "Give me a quick call back when you get a sec, no pressure at all."),
+        "variant": ("Hey {{first_name}}, Alex here — quick one about your property. "
+                    "I think I've got a buyer who'd be a great fit. Call me back when you can."),
+    },
+    "agency": {
+        "name": "Booked-call outreach",
+        "script": ("Hi {{first_name}}, it's Alex from the team — we help companies like "
+                   "{{company}} book more qualified calls without the cold-calling grind. "
+                   "I'd love 10 minutes to show you how. Call me back when you get a chance."),
+        "variant": ("Hey {{first_name}}, Alex here — I put together a couple of ideas for "
+                    "{{company}} and would love to walk you through them. Give me a ring back."),
+    },
+    "sales": {
+        "name": "B2B prospecting — intro",
+        "script": ("Hi {{first_name}}, it's Alex — I'll keep this short. I work with teams "
+                   "like {{company}} on {{title}} and had one specific idea for you. "
+                   "Call me back when you have a moment and I'll explain."),
+        "variant": ("Hey {{first_name}}, Alex here. Promise to be brief — I've got something "
+                    "relevant for {{company}} and would love your take. Call me back."),
+    },
+    "other": {
+        "name": "My first campaign",
+        "script": ("Hi {{first_name}}, it's Alex — just wanted to reach out personally. "
+                   "Give me a quick call back when you get a chance and I'll fill you in."),
+        "variant": None,
+    },
+}
+
+
+def _seed_starter_campaign(conn, wid: int, goal: str | None) -> None:
+    """Create one draft campaign tailored to the use case, if none exist yet."""
+    if conn.execute("SELECT 1 FROM campaigns WHERE workspace_id=? LIMIT 1", (wid,)).fetchone():
+        return
+    tpl = STARTER_SCRIPTS.get(goal or "", STARTER_SCRIPTS["other"])
+    variants = [tpl["script"]] + ([tpl["variant"]] if tpl.get("variant") else [])
+    conn.execute(
+        "INSERT INTO campaigns (workspace_id, name, script, voice, variants, created_at) VALUES (?,?,?,?,?,?)",
+        (wid, tpl["name"], tpl["script"], "ava", json.dumps(variants), time.time()))
+
+
 @app.post("/api/onboarding/complete")
 def onboarding_complete(body: OnboardIn = OnboardIn(), ctx: Ctx = Depends(get_ctx)):
+    goal = (body.goal or "").strip()[:40] or None
     with db() as conn:
-        conn.execute("UPDATE workspaces SET onboarded=1 WHERE id=?", (ctx.wid,))
-    return {"onboarded": True}
+        conn.execute("UPDATE workspaces SET onboarded=1, goal=? WHERE id=?", (goal, ctx.wid))
+        _seed_starter_campaign(conn, ctx.wid, goal)
+    return {"onboarded": True, "goal": goal}
 
 
 def usage_for(wid: int) -> dict:
@@ -374,6 +423,7 @@ def me(ctx: Ctx = Depends(get_ctx)):
         "phone": _ws_col(ws, "phone"),
         "phone_verified": bool(_ws_col(ws, "phone_verified", 0)),
         "onboarded": bool(_ws_col(ws, "onboarded", 0)),
+        "goal": _ws_col(ws, "goal"),
         "usage": usage_for(ctx.wid),
     }
 
@@ -490,6 +540,23 @@ def dashboard(ctx: Ctx = Depends(get_ctx)):
         "usage": usage_for(ctx.wid),
         "latest": [dict(r) for r in latest],
     }
+
+
+@app.get("/api/activity")
+def activity(ctx: Ctx = Depends(get_ctx)):
+    """Recent per-contact activity across the workspace's campaigns (for the
+    activity table). Real data only — empty for a new workspace."""
+    with db() as conn:
+        rows = conn.execute(
+            """SELECT ct.first_name, ct.last_name, ct.company, ct.country, ct.mobile,
+                      ct.status, c.name AS campaign,
+                      COALESCE(d.updated_at, ct.created_at) AS ts
+               FROM contacts ct
+               JOIN campaigns c ON c.id = ct.campaign_id
+               LEFT JOIN drops d ON d.contact_id = ct.id
+               WHERE c.workspace_id = ?
+               ORDER BY ts DESC LIMIT 40""", (ctx.wid,)).fetchall()
+    return {"activity": [dict(r) for r in rows], "count": len(rows)}
 
 
 # ---------- billing ----------

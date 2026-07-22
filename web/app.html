@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 30'%3E%3Cpath d='M12 1C12 1 3 12 3 19a9 9 0 0 0 18 0C21 12 12 1 12 1Z' fill='%2322B573'/%3E%3Cellipse cx='9' cy='21' rx='2.4' ry='2' fill='white' transform='rotate(-18 9 21)'/%3E%3C/svg%3E">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="description" content="Colddrops workspace">
 <meta name="theme-color" content="#F4F3EE">
@@ -230,7 +231,7 @@ a{color:inherit;text-decoration:none}
     <div class="nav-i on" data-v="dashboard"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>Dashboard</div>
     <div class="nav-i" data-v="pipeline"><svg viewBox="0 0 24 24"><path d="M3 5h18l-7 8v5l-4 2v-7z"/></svg>Campaigns</div>
     <div class="nav-i" data-v="leads"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.2"/><path d="M3 20a6.2 6.2 0 0 1 12 0M16 5.5a3 3 0 0 1 0 6M21 20a6.2 6.2 0 0 0-4.2-5.8"/></svg>Leads</div>
-    <div class="nav-i" data-v="interested"><svg viewBox="0 0 24 24"><path d="M5 4h4l2 5-2.5 1.5a12 12 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z"/></svg>Callbacks<span class="bdg">4</span></div>
+    <div class="nav-i" data-v="interested"><svg viewBox="0 0 24 24"><path d="M5 4h4l2 5-2.5 1.5a12 12 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z"/></svg>Callbacks<span class="bdg" id="cb-badge" style="display:none">0</span></div>
     <div class="nav-i" data-v="analytics"><svg viewBox="0 0 24 24"><path d="M4 20V4M4 20h16M8 16l4-5 3 3 5-7"/></svg>Analytics</div>
     <div class="nav-i" data-v="buybox"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3.2"/></svg>Audience</div>
     <div class="nav-i" data-v="settings"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2"/></svg>Settings</div>
@@ -262,7 +263,7 @@ a{color:inherit;text-decoration:none}
       <div class="panel">
         <div class="phead">
           <div><h1>Dashboard</h1><p><b style="color:var(--slate)">Welcome,</b> track drops, listens, and callbacks in one place.</p></div>
-          <button class="btn btn-dark">View callbacks</button>
+          <button class="btn btn-dark" data-nav="interested">View callbacks</button>
         </div>
         <div class="stats">
           <div class="stat"><div class="l">Drops Sent</div><div class="b"><span class="v">1,847</span><span class="c">+55.83% ↗</span></div><div class="d">queued &amp; sent this month</div></div>
@@ -273,9 +274,9 @@ a{color:inherit;text-decoration:none}
       </div>
 
       <div class="grid2">
-        <div class="blk">
+        <div class="blk" id="dash-growth">
           <div class="k">Delivery Growth</div><h3>1,847 Drops Delivered</h3><div class="sub">cumulative, since your campaign went live</div>
-          <svg class="chart" viewBox="0 0 640 240" width="100%" height="220" preserveAspectRatio="none">
+          <svg class="chart" id="dash-chart" viewBox="0 0 640 240" width="100%" height="220" preserveAspectRatio="none">
             <defs><linearGradient id="ar" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#34C05A" stop-opacity=".22"/><stop offset="1" stop-color="#34C05A" stop-opacity="0"/></linearGradient></defs>
             <g stroke="#ECEBE6" stroke-width="1"><line x1="40" y1="30" x2="640" y2="30"/><line x1="40" y1="90" x2="640" y2="90"/><line x1="40" y1="150" x2="640" y2="150"/><line x1="40" y1="205" x2="640" y2="205"/></g>
             <g fill="#B8BCB6" font-size="11" font-family="Inter"><text x="14" y="34">2K</text><text x="6" y="94">1.5K</text><text x="14" y="154">1K</text><text x="8" y="209">0.5K</text></g>
@@ -289,16 +290,16 @@ a{color:inherit;text-decoration:none}
           <div class="rep-row int"><span class="nm">Interested</span><span class="bar"><i style="width:38%;background:var(--green)"></i></span><span class="n">18</span></div>
           <div class="rep-row now"><span class="nm">Ask me later</span><span class="bar"><i style="width:26%;background:var(--orange)"></i></span><span class="n">12</span></div>
           <div class="rep-row"><span class="nm">Not interested</span><span class="bar"><i style="width:36%;background:#CFCEC8"></i></span><span class="n">17</span></div>
-          <button class="btn btn-out" style="width:100%;margin-top:22px">View all campaigns</button>
+          <button class="btn btn-out" data-nav="pipeline" style="width:100%;margin-top:22px">View all campaigns</button>
         </div>
       </div>
 
       <div class="panel" style="margin-top:16px">
         <div class="phead" style="align-items:center">
-          <div><h1 style="font-size:26px">Latest callbacks</h1><p>Prospects who heard your drop and rang you back.</p></div>
-          <a class="link-all" href="#">View all →</a>
+          <div><h1 style="font-size:26px">Latest activity</h1><p>Your most recent drops and callbacks.</p></div>
+          <a class="link-all" href="#" data-nav="pipeline">View all →</a>
         </div>
-        <div class="ownlist">
+        <div class="ownlist" id="dash-latest">
           <div class="own"><span class="av">EF</span><div><div class="nm">Elena Ferris <span class="tag new">New</span></div><div class="role">Broker-Owner, Coastal Bend Realty — Dallas, TX</div></div><div class="right"><div class="rev">0:28 listen</div><div class="ago">called back 4h ago</div></div></div>
           <div class="own"><span class="av">DN</span><div><div class="nm">Dale Nunez <span class="tag new">New</span></div><div class="role">Founder &amp; CEO, Palmetto Building Services — Austin, TX</div></div><div class="right"><div class="rev">0:31 listen</div><div class="ago">called back 1d ago</div></div></div>
           <div class="own"><span class="av">GH</span><div><div class="nm">Gloria Holt <span class="tag new">New</span></div><div class="role">Co-Owner, Magnolia Air Conditioning — Fort Worth, TX</div></div><div class="right"><div class="rev">0:24 listen</div><div class="ago">called back 2d ago</div></div></div>
@@ -315,7 +316,7 @@ a{color:inherit;text-decoration:none}
         <div class="phead" style="align-items:center"><div><h1 style="font-size:22px">New campaign</h1></div><button class="btn btn-green" id="cd-send">Send campaign</button></div>
 
         <div class="field"><label>Campaign name</label>
-          <input id="cd-name" class="inp" placeholder="Campaign name" value="Q3 Dallas brokers"/></div>
+          <input id="cd-name" class="inp" placeholder="Campaign name"/></div>
 
         <div class="field"><label>Message script <span class="hint">personalize with the variables below</span></label>
           <textarea id="cd-script" class="ta" rows="4">Hey {{first_name}}, it's Alex — keeping this short. I help teams like {{company}} book more meetings without cold calls. I'll text you my calendar. Talk soon.</textarea>
@@ -341,7 +342,7 @@ a{color:inherit;text-decoration:none}
         <div class="field"><label>Contacts</label>
           <div class="toolbar">
             <label class="btn btn-out" style="cursor:pointer">Import CSV<input id="cd-csv" type="file" accept=".csv" style="display:none"></label>
-            <div class="findgrp"><input id="cd-lq" placeholder="Find leads — e.g. Founder SaaS software" value="Founder SaaS software"/><select id="cd-lcountry"><option>Australia</option><option>United States</option><option>United Kingdom</option><option>Canada</option></select><button class="btn btn-out" id="cd-find">Find &amp; add</button></div>
+            <div class="findgrp"><input id="cd-lq" placeholder="Find leads — e.g. Founder SaaS software"/><select id="cd-lcountry"><option>Australia</option><option>United States</option><option>United Kingdom</option><option>Canada</option></select><button class="btn btn-out" id="cd-find">Find &amp; add</button></div>
           </div>
           <div class="toolbar">
             <button class="btn btn-out" id="cd-save-aud">Save as audience</button>
@@ -372,7 +373,7 @@ a{color:inherit;text-decoration:none}
 
     <!-- ============ CALLBACKS ============ -->
     <section class="view" id="v-interested">
-      <div class="panel"><div class="phead"><div><h1>Callbacks</h1><p>Prospects who heard your drop and called back. <b>4 waiting for you.</b></p></div><div style="text-align:right"><div class="serif" style="font-size:34px;line-height:1;color:var(--green-d)">6</div><div style="font-size:12px;color:var(--faint)">this week</div></div></div></div>
+      <div class="panel"><div class="phead"><div><h1>Callbacks</h1><p>Prospects who heard your drop and called back.</p></div><div style="text-align:right"><div class="serif" style="font-size:34px;line-height:1;color:var(--green-d)">0</div><div style="font-size:12px;color:var(--faint)">total</div></div></div></div>
 
       <div id="cb-live" style="display:none"></div>
 
@@ -403,20 +404,16 @@ a{color:inherit;text-decoration:none}
 
     <!-- ============ AUDIENCE ============ -->
     <section class="view" id="v-buybox">
-      <div class="panel"><div class="phead"><div><h1>Audience &amp; Script</h1><p>Your standing campaign setup. Every drop follows this.</p></div><div style="display:flex;gap:10px;align-items:center"><span class="statuspill"><span class="d"></span>Active — dropping live</span><button class="btn btn-out">Edit</button></div></div></div>
+      <div class="panel"><div class="phead"><div><h1>Audience &amp; caller ID</h1><p>Your verified number and saved audiences. Reuse any list when you build a campaign.</p></div></div></div>
       <div class="bx">
-        <div class="bx-row"><div class="bk">Audience</div><div class="bv"><div class="chips"><span class="chip">Real-estate brokerages</span><span class="chip">B2B founders</span><span class="chip">Home services</span></div></div></div>
-        <div class="bx-row"><div class="bk">Geography</div><div class="bv"><div class="chips"><span class="chip">United States</span><span class="chip">Canada</span><span class="chip">Australia</span><span class="chip">United Kingdom</span></div></div></div>
-        <div class="bx-row"><div class="bk">List Source</div><div class="bv">Built-in lead finder (carrier-verified mobiles) plus your CSV and CRM imports.</div></div>
-        <div class="bx-row"><div class="bk">Daily Volume</div><div class="bv">Up to 500 drops / day, spread naturally across the day</div></div>
-        <div class="bx-row"><div class="bk">Sending Window</div><div class="bv">9:00 AM – 6:00 PM, recipient's local time</div></div>
-        <div class="bx-row"><div class="bk">Voice</div><div class="bv"><div class="chips"><span class="chip">“Ava” — cloned from a 30-second recording</span><span class="chip grey">natural neural voice</span></div></div></div>
-        <div class="bx-row"><div class="bk">Script</div><div class="bv"><span class="thesis">“Hey {{first_name}}, it's Alex — keeping this short on purpose. I help teams like {{company}} book more meetings without cold calls. No need to call back blind — I'll text you my calendar. Talk soon.”</span></div></div>
-        <div class="bx-row"><div class="bk">Compliance</div><div class="bv">Every list scrubbed against DNC before send. Opt-outs honored instantly and suppressed forever.</div></div>
+        <div class="idrow"><div class="bk">Caller ID</div><div><div class="nmn" id="aud-phone">Not set</div><div class="sub" id="aud-phone-sub">Verify a number in onboarding — callbacks ring here.</div></div></div>
+        <div class="bx-row"><div class="bk">List source</div><div class="bv">Built-in lead finder (carrier-verified mobiles), plus your own CSV and CRM imports.</div></div>
+        <div class="bx-row"><div class="bk">Sending window</div><div class="bv">Set per campaign — optional quiet hours in the recipient's local time.</div></div>
+        <div class="bx-row"><div class="bk">Compliance</div><div class="bv">Every list is scrubbed against your DNC list before send. Opt-outs are honored instantly and suppressed forever.</div></div>
       </div>
-      <div class="bx" style="margin-top:16px">
-        <div class="idrow"><div class="bk">Caller ID</div><div><div class="nmn">Alex Morgan</div><div class="sub">+1 (415) 555-0132</div><div class="hint">Callbacks ring your cell and are transcribed here</div></div></div>
-        <div class="idrow"><div class="bk">Sign-off</div><div><div class="nmn">“Talk soon — Alex.”</div><div class="sub">Northstar Consulting</div></div></div>
+      <div class="panel" style="margin-top:16px">
+        <div class="phead" style="margin-bottom:8px"><div><h1 style="font-size:20px">Saved audiences</h1><p>Stage a list in the campaign builder and “Save as audience” to reuse it here.</p></div></div>
+        <div style="overflow-x:auto"><table class="tbl"><thead><tr><th>Name</th><th>Contacts</th><th class="r">Saved</th></tr></thead><tbody id="aud-rows"></tbody></table></div>
       </div>
     </section>
 
@@ -425,8 +422,8 @@ a{color:inherit;text-decoration:none}
     <section class="view" id="v-leads">
       <div class="panel"><div class="phead"><div><h1>Lead finder</h1><p>Search live B2B profiles with validated emails and carrier-verified mobiles — then drop to them.</p></div></div>
         <div class="lsearch">
-          <input id="lq" placeholder="e.g. Founder SaaS software" value="Founder SaaS software"/>
-          <select id="lcountry"><option>Australia</option><option>United States</option><option>Canada</option><option>United Kingdom</option><option selected>Australia</option></select>
+          <input id="lq" placeholder="e.g. Founder SaaS software"/>
+          <select id="lcountry"><option>United States</option><option>Australia</option><option>Canada</option><option>United Kingdom</option></select>
           <button class="btn btn-green" id="lgo">Search</button>
         </div>
         <div class="lstatus" id="lstatus">Ready.</div>
@@ -539,13 +536,41 @@ a{color:inherit;text-decoration:none}
     ["Brazos Property Advisors","El Paso, TX","Pete Ainsley","Q3 Dallas brokers","Queued","dash","—","1d ago"]
   ];
   var tb=document.getElementById('pipe-rows');
-  tb.innerHTML=rows.map(function(r){
-    var out = r[5]==='dash' ? '<span class="dash-o">—</span>' : '<span class="opill '+r[5]+'">'+r[6]+'</span>';
-    return '<tr><td><div class="co">'+r[0]+'</div><div class="loc">'+r[1]+'</div></td>'
-      +'<td>'+r[2]+'</td><td style="color:var(--muted)">'+r[3]+'</td>'
-      +'<td><span class="spill">'+r[4]+'</span></td><td>'+out+'</td>'
-      +'<td class="r" style="color:var(--faint);font-size:12.5px">'+r[7]+'</td></tr>';
-  }).join('');
+  function renderPipeDemo(){
+    tb.innerHTML=rows.map(function(r){
+      var out = r[5]==='dash' ? '<span class="dash-o">—</span>' : '<span class="opill '+r[5]+'">'+r[6]+'</span>';
+      return '<tr><td><div class="co">'+r[0]+'</div><div class="loc">'+r[1]+'</div></td>'
+        +'<td>'+r[2]+'</td><td style="color:var(--muted)">'+r[3]+'</td>'
+        +'<td><span class="spill">'+r[4]+'</span></td><td>'+out+'</td>'
+        +'<td class="r" style="color:var(--faint);font-size:12.5px">'+r[7]+'</td></tr>';
+    }).join('');
+  }
+  function agoStr(ts){
+    if(!ts) return '';
+    var s=Math.max(0,Math.floor(Date.now()/1000-ts));
+    if(s<60) return 'just now'; if(s<3600) return Math.floor(s/60)+'m ago';
+    if(s<86400) return Math.floor(s/3600)+'h ago'; return Math.floor(s/86400)+'d ago';
+  }
+  var STAGE={delivered:'Delivered',sent:'Delivered',called_back:'Called back',queued:'Queued',
+             sending:'Sending',suppressed:'Suppressed',failed:'Failed',skipped_human:'Answered'};
+  function loadActivity(){
+    if(!localStorage.getItem('cd_token')){ renderPipeDemo(); return; }
+    CDfetch('/api/activity').then(function(r){return r.ok?r.json():null;}).then(function(d){
+      if(!d){ return; }
+      if(!d.count){ tb.innerHTML='<tr><td colspan="6" style="color:var(--faint);padding:22px 10px">No activity yet — send your first campaign and drops will show up here.</td></tr>'; return; }
+      tb.innerHTML=d.activity.map(function(a){
+        var nm=((a.first_name||'')+' '+(a.last_name||'')).trim()||'Contact';
+        var cls=a.status==='called_back'?'int':(a.status==='failed'?'no':'dash');
+        var outcome=a.status==='called_back'?'<span class="opill int">Called back</span>'
+          :(a.status==='failed'?'<span class="opill no">Failed</span>':'<span class="dash-o">—</span>');
+        return '<tr><td><div class="co">'+(a.company||'—')+'</div><div class="loc">'+(a.country||'')+'</div></td>'
+          +'<td>'+nm+'</td><td style="color:var(--muted)">'+(a.campaign||'')+'</td>'
+          +'<td><span class="spill">'+(STAGE[a.status]||a.status||'')+'</span></td><td>'+outcome+'</td>'
+          +'<td class="r" style="color:var(--faint);font-size:12.5px">'+agoStr(a.ts)+'</td></tr>';
+      }).join('');
+    }).catch(function(){});
+  }
+  loadActivity();
 
   var items=document.querySelectorAll('.nav-i');
   items.forEach(function(it){ it.addEventListener('click',function(){
@@ -553,6 +578,11 @@ a{color:inherit;text-decoration:none}
     document.querySelectorAll('.view').forEach(function(v){v.classList.remove('on')});
     var el=document.getElementById('v-'+it.getAttribute('data-v')); if(el) el.classList.add('on');
     window.scrollTo(0,0);
+  });});
+
+  // dashboard shortcut buttons/links -> switch views
+  document.querySelectorAll('[data-nav]').forEach(function(b){ b.addEventListener('click',function(e){
+    e.preventDefault(); var t=document.querySelector('.nav-i[data-v="'+b.getAttribute('data-nav')+'"]'); if(t) t.click();
   });});
 
   document.querySelectorAll('.icard .ihead').forEach(function(h){ h.addEventListener('click',function(){
@@ -576,7 +606,10 @@ a{color:inherit;text-decoration:none}
     }).join('');
   }
   var lgo=document.getElementById('lgo');
-  if(lgo){ renderLeads(DEMO);
+  if(lgo){
+    if(localStorage.getItem('cd_token')){
+      document.getElementById('lead-rows').innerHTML='<tr><td colspan="6" style="color:var(--faint);padding:20px 10px">Search to find B2B profiles with validated emails and carrier-verified mobiles.</td></tr>';
+    } else { renderLeads(DEMO); }
     lgo.addEventListener('click',function(){
       var st=document.getElementById('lstatus');
       st.className='lstatus'; st.textContent='Searching…'; lgo.disabled=true;
@@ -587,7 +620,10 @@ a{color:inherit;text-decoration:none}
         renderLeads(d.results.map(function(p){return [p.full_name||'—',p.title||'—',p.company||'—',p.country||'—',p.email||'—',p.linkedin_slug?('in/'+p.linkedin_slug):'—'];}));
         st.className='lstatus live'; st.textContent='Live — '+d.total.toLocaleString()+' total matches. Showing '+d.results.length+'.';
       })
-      .catch(function(){ renderLeads(DEMO); st.textContent='Demo data — run the Colddrops server (see README) to search live.'; })
+      .catch(function(){
+        if(localStorage.getItem('cd_token')){ document.getElementById('lead-rows').innerHTML='<tr><td colspan="6" style="color:var(--faint);padding:20px 10px">No matches — try a different search.</td></tr>'; st.textContent='No results.'; }
+        else { renderLeads(DEMO); st.textContent='Demo data — run the Colddrops server (see README) to search live.'; }
+      })
       .finally(function(){ lgo.disabled=false; });
     });
   }
@@ -707,7 +743,8 @@ a{color:inherit;text-decoration:none}
                 cdEl('cd-f-failed').textContent=s.failed||0;
                 cdEl('cd-b-delivered').style.width=(100*(s.delivered||0)/tot)+'%';
                 if((s.queued||0)===0){clearInterval(poll);btn.disabled=false;btn.textContent='Send campaign';
-                  cdEl('cd-cstatus').textContent='Sent · '+(s.delivered||0)+' delivered, '+res.skipped_no_mobile+' no mobile, '+res.skipped_suppressed+' suppressed.';}
+                  cdEl('cd-cstatus').textContent='Sent · '+(s.delivered||0)+' delivered, '+res.skipped_no_mobile+' no mobile, '+res.skipped_suppressed+' suppressed.';
+                  loadActivity();loadCampaignsList();if(typeof loadDashboard==='function')loadDashboard();}
               });
             },1200);
           });
@@ -779,17 +816,28 @@ a{color:inherit;text-decoration:none}
         var cc=c.querySelector('.c'); if(cc)cc.remove();
         var dd=c.querySelector('.d'); if(dd)dd.textContent=map[i][2];
       });
-      var list=document.querySelector('#v-dashboard .ownlist');
+      var list=document.getElementById('dash-latest');
       if(list){
         list.innerHTML = (d.latest&&d.latest.length) ? d.latest.map(function(c){
           var nm=((c.first_name||'')+' '+(c.last_name||'')).trim()||'Contact';
           var ini=(nm[0]||'C').toUpperCase();
           return '<div class="own"><span class="av">'+ini+'</span><div><div class="nm">'+nm+'</div>'
             +'<div class="role">'+(c.company||'')+(c.country?(' — '+c.country):'')+'</div></div>'
-            +'<div class="right"><div class="rev" style="text-transform:capitalize">'+(c.status||'')+'</div></div></div>';
-        }).join('') : '<div class="own"><div><div class="nm">No drops yet</div><div class="role">Build a campaign under Campaigns to get started.</div></div></div>';
+            +'<div class="right"><div class="rev" style="text-transform:capitalize">'+(c.status||'').replace(/_/g,' ')+'</div></div></div>';
+        }).join('') : '<div class="own"><div><div class="nm">No callbacks yet</div><div class="role">Send a campaign — prospects who call back land here.</div></div></div>';
       }
-      var onb=document.getElementById('cd-onboard'); if(onb) onb.style.display=(d.stats.campaigns===0)?'block':'none';
+      // replace the (static) delivery-growth chart with real data, or an empty state
+      var chart=document.getElementById('dash-chart');
+      if(chart){
+        if(!d.stats.drops_sent){
+          chart.outerHTML='<div id="dash-chart" style="height:200px;display:flex;align-items:center;justify-content:center;color:var(--faint);font-size:13px;border:1px dashed var(--line);border-radius:12px">No drops yet — your delivery curve appears here after your first send.</div>';
+        } else {
+          CDfetch('/api/analytics').then(function(r){return r.ok?r.json():null;}).then(function(an){
+            var c=document.getElementById('dash-chart'); if(c&&an){ var wrap=document.createElement('div'); wrap.id='dash-chart'; wrap.innerHTML=anChart(an.series); c.replaceWith(wrap); }
+          });
+        }
+      }
+      var onb=document.getElementById('cd-onboard'); if(onb) onb.style.display=(d.stats.drops_sent===0)?'block':'none';
       // real callbacks block (replaces demo numbers)
       var blks=document.querySelectorAll('#v-dashboard .grid2 .blk');
       if(blks[1]){ var rh=blks[1].querySelector('h3'); if(rh) rh.textContent=(d.stats.callbacks||0)+' Prospects Called Back';
@@ -847,6 +895,7 @@ a{color:inherit;text-decoration:none}
       if(!d) return; var live=document.getElementById('cb-live'); if(!live) return;
       document.querySelectorAll('#v-interested .icard').forEach(function(c){c.style.display='none';});
       var cnt=document.querySelector('#v-interested .phead .serif'); if(cnt) cnt.textContent=d.count;
+      var badge=document.getElementById('cb-badge'); if(badge){ badge.textContent=d.count; badge.style.display=d.count?'flex':'none'; }
       live.style.display='block';
       live.innerHTML = d.count ? d.callbacks.map(function(c){
         var nm=((c.first_name||'')+' '+(c.last_name||'')).trim()||'Contact';
@@ -858,7 +907,7 @@ a{color:inherit;text-decoration:none}
   }
   document.querySelectorAll('.nav-i').forEach(function(it){
     var v=it.getAttribute('data-v');
-    if(v==='pipeline') it.addEventListener('click',loadCampaignsList);
+    if(v==='pipeline') it.addEventListener('click',function(){loadCampaignsList();loadActivity();});
     if(v==='interested') it.addEventListener('click',loadCallbacks);
   });
   setTimeout(function(){loadCampaignsList();loadCallbacks();}, 1000);
@@ -997,6 +1046,22 @@ a{color:inherit;text-decoration:none}
         return '<option value="'+a.id+'">'+a.name+' ('+a.count+')</option>';}).join('');
     });
   }
+  function loadAudienceView(){
+    if(!localStorage.getItem('cd_token')) return;
+    CDfetch('/api/auth/me').then(function(r){return r.ok?r.json():null;}).then(function(me){
+      if(!me) return; var p=document.getElementById('aud-phone'), s=document.getElementById('aud-phone-sub');
+      if(me.phone){ if(p)p.textContent=me.phone; if(s)s.textContent='Verified · callbacks from prospects ring this number.'; }
+    });
+    CDfetch('/api/audiences').then(function(r){return r.ok?r.json():null;}).then(function(d){
+      if(!d) return; var el=document.getElementById('aud-rows'); if(!el) return;
+      el.innerHTML = d.audiences.length ? d.audiences.map(function(a){
+        var when=a.created_at?new Date(a.created_at*1000).toLocaleDateString():'';
+        return '<tr><td class="co">'+a.name+'</td><td>'+a.count+'</td><td class="r" style="color:var(--faint);font-size:12.5px">'+when+'</td></tr>';
+      }).join('') : '<tr><td colspan="3" style="color:var(--faint);padding:20px 10px">No saved audiences yet. Build a campaign, stage contacts, then “Save as audience”.</td></tr>';
+    });
+  }
+  document.querySelectorAll('.nav-i').forEach(function(it){ if(it.getAttribute('data-v')==='buybox') it.addEventListener('click',loadAudienceView); });
+
   var sa=document.getElementById('cd-save-aud');
   if(sa) sa.onclick=function(){
     if(!window.CD || !CD.staged.length){ cdEl('cd-cstatus').textContent='Stage some contacts first.'; return; }
