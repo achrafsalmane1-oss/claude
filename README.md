@@ -7,6 +7,31 @@ Positioning: *cold calling is the enemy; permission-based outbound is the future
 ICP: B2B sales teams, founders selling their own product, real estate agents — anyone
 doing outbound.
 
+## Deploy it (free, ~5 minutes, no credit card)
+
+The app runs at **$0** out of the box — SMS shows the verification code in-app,
+voice uses free gTTS, delivery is dry-run. Add keys later to go live.
+
+**Render (recommended):**
+
+1. Go to **[render.com](https://render.com)** and sign up with GitHub (free).
+2. **New → Blueprint**, pick this repo, and set the branch to
+   `claude/ai-cold-caller-voicemail-rvspgp` (or `main` if merged).
+   Render reads [`render.yaml`](render.yaml) and provisions everything.
+3. Click **Apply**. In ~3–5 min you get a public URL like
+   `https://colddrops.onrender.com` — open `/login.html` and click around.
+4. (Optional) set `PUBLIC_BASE_URL` to that URL in the service's Environment tab.
+
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy)
+
+The free tier spins down when idle (first hit after a pause takes ~30–50s) and
+has no persistent disk, so the SQLite DB resets on redeploy/spin-down — fine for
+demoing and first clicks. For real customer data, put `COLDDROPS_DB` on a paid
+disk or move to Postgres.
+
+**Any Docker host** works too (Fly.io, Railway, a VPS, Hugging Face Spaces):
+`docker build -t colddrops . && docker run -p 8000:8000 colddrops`.
+
 ## Status
 
 | Piece | State |

@@ -1,3 +1,12 @@
+# One-click deploy: https://render.com → New → Blueprint → pick this repo.
+# Runs on Render's FREE web tier (no credit card). It boots at $0 with no keys:
+#   SMS = dev code shown in-app, voice = free gTTS, delivery = dry-run.
+# Add the optional keys below later to turn on live SMS / voice / delivery.
+#
+# Note: the free tier has no persistent disk, so the SQLite DB is ephemeral —
+# it resets on redeploy or after the service spins down when idle. That's fine
+# for demoing and first clicks; move COLDDROPS_DB onto a paid disk (or Postgres)
+# before you rely on it for real customer data.
 services:
   - type: web
     name: colddrops
@@ -5,25 +14,26 @@ services:
     plan: free
     healthCheckPath: /api/health
     envVars:
-      - key: MOLTSETS_API_KEY
+      # --- all optional; the app runs free with none of these set ---
+      - key: MOLTSETS_API_KEY          # lead search + carrier-verified mobiles
         sync: false
-      - key: ELEVENLABS_API_KEY
+      - key: ELEVENLABS_API_KEY        # premium voice (paid); falls back to free gTTS
         sync: false
-      - key: TELNYX_API_KEY
+      - key: TELNYX_API_KEY            # live voicemail delivery + live SMS
         sync: false
       - key: TELNYX_CONNECTION_ID
         sync: false
       - key: TELNYX_FROM_NUMBER
         sync: false
-      - key: STRIPE_SECRET_KEY
+      - key: SMS_BACKEND               # auto|telnyx|dev (default auto -> dev until keyed)
+        sync: false
+      - key: TELNYX_SMS_FROM           # a purchased number, or use a messaging profile
+        sync: false
+      - key: TELNYX_MESSAGING_PROFILE_ID
+        sync: false
+      - key: STRIPE_SECRET_KEY         # billing (stub upgrades work without it)
         sync: false
       - key: STRIPE_WEBHOOK_SECRET
         sync: false
-      - key: PUBLIC_BASE_URL
+      - key: PUBLIC_BASE_URL           # set to your Render URL, e.g. https://colddrops.onrender.com
         sync: false
-      - key: COLDDROPS_DB
-        value: /var/data/colddrops.db
-    disk:
-      name: colddrops-data
-      mountPath: /var/data
-      sizeGB: 1
