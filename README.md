@@ -7,30 +7,64 @@ Positioning: *cold calling is the enemy; permission-based outbound is the future
 ICP: B2B sales teams, founders selling their own product, real estate agents — anyone
 doing outbound.
 
-## Deploy it (free, ~5 minutes, no credit card)
+## Deploy it
 
 The app runs at **$0** out of the box — SMS shows the verification code in-app,
-voice uses free gTTS, delivery is dry-run. Add keys later to go live.
+voice uses free gTTS, delivery is dry-run. Add keys later to go live. The same
+Docker image runs on any host; the config files are included.
 
-**Render (recommended):**
+### Fly.io — recommended for long-term (durable data, ~$0 idle → a few $/mo)
 
-1. Go to **[render.com](https://render.com)** and sign up with GitHub (free).
-2. **New → Blueprint**, pick this repo, and set the branch to
-   `claude/ai-cold-caller-voicemail-rvspgp` (or `main` if merged).
-   Render reads [`render.yaml`](render.yaml) and provisions everything.
-3. Click **Apply**. In ~3–5 min you get a public URL like
-   `https://colddrops.onrender.com` — open `/login.html` and click around.
-4. (Optional) set `PUBLIC_BASE_URL` to that URL in the service's Environment tab.
+Fly runs the Docker image with a **persistent volume**, so the SQLite database
+survives redeploys and restarts — no database migration, durable from day one.
+Uses [`fly.toml`](fly.toml).
 
-[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy)
+```bash
+# one-time: install flyctl -> https://fly.io/docs/flyctl/install/
+fly auth login
+fly launch --copy-config --no-deploy        # pick a unique app name + region
+fly volume create colddrops_data --size 1   # 1 GB durable disk for SQLite
+fly deploy
+fly open                                     # your live URL, e.g. https://<app>.fly.dev
+```
 
-The free tier spins down when idle (first hit after a pause takes ~30–50s) and
-has no persistent disk, so the SQLite DB resets on redeploy/spin-down — fine for
-demoing and first clicks. For real customer data, put `COLDDROPS_DB` on a paid
-disk or move to Postgres.
+Turn on live features later without redeploying code:
 
-**Any Docker host** works too (Fly.io, Railway, a VPS, Hugging Face Spaces):
-`docker build -t colddrops . && docker run -p 8000:8000 colddrops`.
+```bash
+fly secrets set TELNYX_API_KEY=... TELNYX_SMS_FROM=+1... \
+                ELEVENLABS_API_KEY=... MOLTSETS_API_KEY=...
+```
+
+It scales to zero when idle (first hit wakes it in ~1s), so you pay only for
+what you use. Bump `[[vm]]` / add machines in `fly.toml` when traffic grows.
+
+### Railway — easiest, no CLI (GitHub auto-deploy)
+
+1. **[railway.app](https://railway.app)** → sign in with GitHub.
+2. **New Project → Deploy from GitHub repo** → pick this repo + the
+   `claude/ai-cold-caller-voicemail-rvspgp` branch. Railway auto-detects the
+   Dockerfile and deploys.
+3. In the service: **add a Volume** mounted at `/data`, then set an env var
+   `COLDDROPS_DB=/data/colddrops.db` (durable storage).
+4. **Settings → Networking → Generate Domain** for your public URL.
+
+### Render — free tier for a quick look (no card, ephemeral data)
+
+**New → Blueprint** on [render.com](https://render.com), pick this repo + branch;
+it reads [`render.yaml`](render.yaml). Free web tier sleeps when idle and has no
+disk, so the DB resets on redeploy — fine for a first look. For durable data on
+Render, upgrade to Starter + add a disk and set `COLDDROPS_DB=/var/data/colddrops.db`.
+
+### Any Docker host / VPS
+
+```bash
+docker build -t colddrops . && docker run -p 8000:8000 -v colddrops_data:/data \
+  -e COLDDROPS_DB=/data/colddrops.db colddrops
+```
+
+> Scaling note: SQLite-on-a-volume is great for a single instance (comfortably
+> thousands of users). If you later run multiple instances, move `COLDDROPS_DB`
+> to managed Postgres — that's the only piece that would need a data-layer change.
 
 ## Status
 
