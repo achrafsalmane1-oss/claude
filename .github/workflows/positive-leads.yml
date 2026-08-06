@@ -1,0 +1,54 @@
+name: Positive leads pipeline
+
+# Processes every NEW positive (INTERESTED) reply in the PlusVibe unibox
+# (both workspaces) -> GHL round-robin -> reply+CC agent, and commits the
+# updated dedup state back so nothing is ever processed twice.
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"   # every 15 minutes
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Set to 1 to log without creating contacts or sending mail"
+        required: false
+        default: "0"
+
+concurrency:
+  group: positive-leads
+  cancel-in-progress: false   # never run two copies at once (avoids double-send)
+
+permissions:
+  contents: write             # to commit updated state.json
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Run pipeline
+        env:
+          PLUSVIBE_API_KEY: ${{ secrets.PLUSVIBE_API_KEY }}
+          GHL_TOKEN: ${{ secrets.GHL_TOKEN }}
+          GHL_LOCATION_ID: ${{ secrets.GHL_LOCATION_ID }}
+          THIBAUT_EMAIL: ${{ secrets.THIBAUT_EMAIL }}
+          DRY_RUN: ${{ github.event.inputs.dry_run }}
+        run: python positive_leads_automation/pipeline.py
+
+      - name: Commit updated state
+        if: ${{ github.event.inputs.dry_run != '1' }}
+        run: |
+          git config user.name  "landquire-bot"
+          git config user.email "bot@landquire.local"
+          if ! git diff --quiet -- positive_leads_automation/state.json; then
+            git add positive_leads_automation/state.json
+            git commit -m "chore: update positive-leads dedup state [skip ci]"
+            git push
+          else
+            echo "No state change."
+          fi
