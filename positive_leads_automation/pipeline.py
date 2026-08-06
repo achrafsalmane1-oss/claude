@@ -4,14 +4,23 @@ Positive-lead pipeline (PlusVibe -> GHL -> reply+CC), going forward.
 
 For every NEW positive (INTERESTED) reply in the PlusVibe unibox, across both
 workspaces (Cold-B2B + Warm-B2C), this script:
-  1. Creates/updates the contact in GHL  (source=PlusVibe, tags NEW LEAD +
-     Investor LQ + language, round-robin assigned by language).
-  2. Sends the prospect a reply from PlusVibe in their language (phone number +
-     availability request), CC the assigned agent + Thibaut.
+  1. Looks the contact up in GHL first.
+       - If it already exists AND already has an owner (assignedTo), that owner
+         is PRESERVED -- the round-robin never touches an already-assigned lead.
+       - Only genuinely new / unassigned contacts get a round-robin owner.
+     The contact is upserted with source=PlusVibe + tags (NEW LEAD + Investor LQ
+     + language); assignedTo is sent ONLY when we are assigning a new lead.
+  2. Sends the prospect a reply from PlusVibe in their language, using the
+     prospect's REAL first name (from the reply's display name), and CCs the
+     lead's actual owner (existing owner if any, else the new round-robin agent)
+     + Thibaut.
   3. Records the email in state.json so it is never processed twice.
 
-Dedup + round-robin position are persisted in state.json (committed back by the
-GitHub Actions workflow), so re-runs are idempotent and assignment stays even.
+Two bugs this version fixes vs the first cut:
+  * Greeting used the email prefix ("pfpelletier@..." -> "Pfpelletier"); it now
+    uses the real display name and falls back to a plain "Bonjour," when there
+    is no usable name -- never a mangled prefix.
+  * Round-robin overwrote existing owners; it now preserves them.
 
 Credentials come from environment variables (repo secrets):
   PLUSVIBE_API_KEY, GHL_TOKEN, GHL_LOCATION_ID
@@ -21,6 +30,7 @@ Set DRY_RUN=1 to log what would happen without creating contacts or sending mail
 """
 import json, os, time, subprocess, urllib.request, urllib.error, sys, re
 from collections import Counter
+from email.header import decode_header
 
 PVKEY = os.environ.get("PLUSVIBE_API_KEY", "")
 PVBASE = "https://api.plusvibe.ai/api/v1"
@@ -54,11 +64,14 @@ UID2EMAIL = {
     "xUvVav7DQywx2WYZnLMI": "fsantos@landquire.com", "PIudlTQkBqQCWJ2bVL0l": "splummer@landquire.com",
     "fQjewvPSzRh3ui2ZCf2W": "carlosurdinineasejas@gmail.com"}
 
+# Leading "{greet}" is filled with "<word> <FirstName>" when a real name is known,
+# or just "<word>" (no name) otherwise -- never a mangled email prefix.
+GREETWORD = {"FR": "Bonjour", "EN": "Hello", "ES": "Hola", "PT": "Ola"}
 BODY = {
-'FR': "Bonjour {fn},<br><br>Je vous remercie pour votre reponse.<br><br>Pourriez-vous, s'il vous plait, me communiquer le numero de telephone sur lequel vous etes le plus facilement joignable, ainsi qu'un ou deux creneaux de disponibilite, en heure de France, pour un echange demain ?<br><br>Une fois le creneau convenu, je vous adresserai par e-mail une invitation afin que notre echange, par telephone ou en visioconference, puisse etre directement integre a nos agendas respectifs.<br><br>Bien cordialement,<br>Thibaut Gueant",
-'EN': "Hello {fn},<br><br>Thank you for your reply.<br><br>Could you please share the phone number where you are most easily reachable, along with one or two availability slots (France time) for a call tomorrow?<br><br>Once we agree on a slot, I will send you a calendar invitation so that our call, by phone or video, is added directly to both our agendas.<br><br>Best regards,<br>Thibaut Gueant",
-'ES': "Hola {fn},<br><br>Gracias por su respuesta.<br><br>Podria indicarme el numero de telefono en el que es mas facil localizarle, asi como uno o dos horarios de disponibilidad (hora de Francia) para hablar manana?<br><br>Una vez acordado el horario, le enviare una invitacion por correo para que nuestra llamada, por telefono o videoconferencia, quede integrada en ambas agendas.<br><br>Un cordial saludo,<br>Thibaut Gueant",
-'PT': "Ola {fn},<br><br>Obrigado pela sua resposta.<br><br>Poderia indicar-me o numero de telefone onde e mais facilmente contactavel, bem como um ou dois horarios de disponibilidade (hora de Franca) para uma conversa amanha?<br><br>Assim que combinarmos o horario, enviar-lhe-ei um convite por e-mail para que a nossa conversa, por telefone ou videochamada, fique integrada nas nossas agendas.<br><br>Com os melhores cumprimentos,<br>Thibaut Gueant"}
+'FR': "{greet},<br><br>Je vous remercie pour votre reponse.<br><br>Pourriez-vous, s'il vous plait, me communiquer le numero de telephone sur lequel vous etes le plus facilement joignable, ainsi qu'un ou deux creneaux de disponibilite, en heure de France, pour un echange demain ?<br><br>Une fois le creneau convenu, je vous adresserai par e-mail une invitation afin que notre echange, par telephone ou en visioconference, puisse etre directement integre a nos agendas respectifs.<br><br>Bien cordialement,<br>Thibaut Gueant",
+'EN': "{greet},<br><br>Thank you for your reply.<br><br>Could you please share the phone number where you are most easily reachable, along with one or two availability slots (France time) for a call tomorrow?<br><br>Once we agree on a slot, I will send you a calendar invitation so that our call, by phone or video, is added directly to both our agendas.<br><br>Best regards,<br>Thibaut Gueant",
+'ES': "{greet},<br><br>Gracias por su respuesta.<br><br>Podria indicarme el numero de telefono en el que es mas facil localizarle, asi como uno o dos horarios de disponibilidad (hora de Francia) para hablar manana?<br><br>Una vez acordado el horario, le enviare una invitacion por correo para que nuestra llamada, por telefono o videoconferencia, quede integrada en ambas agendas.<br><br>Un cordial saludo,<br>Thibaut Gueant",
+'PT': "{greet},<br><br>Obrigado pela sua resposta.<br><br>Poderia indicar-me o numero de telefone onde e mais facilmente contactavel, bem como um ou dois horarios de disponibilidade (hora de Franca) para uma conversa amanha?<br><br>Assim que combinarmos o horario, enviar-lhe-ei um convite por e-mail para que a nossa conversa, por telefone ou videochamada, fique integrada nas nossas agendas.<br><br>Com os melhores cumprimentos,<br>Thibaut Gueant"}
 
 STATE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "state.json")
 
@@ -121,9 +134,50 @@ def strip_html(h):
     return re.sub(r"<[^>]+>", " ", h or "").replace("&nbsp;", " ")
 
 
-def firstname(email):
-    tok = email.split("@")[0].replace(".", " ").replace("_", " ").replace("-", " ").split()
-    return tok[0].capitalize() if tok else ""
+def _mime(s):
+    try:
+        return "".join((b.decode(enc or "utf-8", "ignore") if isinstance(b, bytes) else b)
+                       for b, enc in decode_header(s))
+    except Exception:
+        return s or ""
+
+
+def clean_first(display_name):
+    """Real first name from a reply's display name. Returns '' when unusable
+    (so the greeting falls back to a plain hello -- never an email prefix)."""
+    if not display_name:
+        return ""
+    nm = _mime(display_name).strip()
+    nm = nm.split(" - ")[0].split(" | ")[0].strip()      # drop "- Company" suffix
+    nm = re.sub(r'["<>]', "", nm).strip()
+    if "@" in nm:                                        # it's an email, not a name
+        return ""
+    toks = [t for t in re.split(r"[ ,]+", nm) if t]
+    if not toks:
+        return ""
+    # "LASTNAME Firstname" -> take the non-uppercase token; else first token
+    fn = toks[1] if (len(toks) >= 2 and toks[0].isupper() and not toks[1].isupper()) else toks[0]
+    fn = fn.strip(".-_")
+    if len(fn) < 2 or any(c.isdigit() for c in fn):
+        return ""
+    return fn[:1].upper() + fn[1:]
+
+
+def ghl_lookup(email):
+    """Return (contact_id, assignedTo) for an existing GHL contact, or (None, None)."""
+    if DRY:
+        return None, None
+    cmd = ["curl", "-s", GHLBASE + f"/contacts/?locationId={LOC}&query={email}",
+           "-H", "Authorization: Bearer " + PIT, "-H", "Version: 2021-07-28"]
+    try:
+        out = subprocess.run(cmd, capture_output=True, text=True, timeout=40)
+        cs = json.loads(out.stdout).get("contacts", [])
+        c = next((x for x in cs if (x.get("email") or "").lower() == email.lower()), None)
+        if c:
+            return c.get("id"), c.get("assignedTo")
+    except Exception:
+        pass
+    return None, None
 
 
 def load_state():
@@ -168,11 +222,14 @@ def fetch_new_positives(cl, seen):
                 em = (it.get("from_address_email") or "").strip().lower()
                 if not em or "landquire" in em or em in seen or em in out:
                     continue
+                faj = it.get("from_address_json") or []
+                display = faj[0].get("name") if faj else ""
                 out[em] = {
                     "email": em, "seg": seg, "wid": wid,
                     "lang": cl.get(it.get("campaign_id"), "FR"),
                     "reply_to_id": it.get("id"), "eaccount": it.get("eaccount"),
                     "subject": it.get("subject") or "",
+                    "display_name": display,
                 }
             trail = d.get("page_trail")
             if not trail or not data:
@@ -200,28 +257,46 @@ def main():
     if not new:
         return
     done = []
+    kept_owner = 0
     for l in new:
         lang = l["lang"] if l["lang"] in BODY else "FR"
-        aname, aid = agent_for(lang, state["rr"])
-        fn = firstname(l["email"])
-        # 1. GHL contact
-        r = ghl_upsert({
-            "locationId": LOC, "email": l["email"], "firstName": fn,
+        fn = clean_first(l.get("display_name"))
+        greet = f"{GREETWORD[lang]} {fn}" if fn else GREETWORD[lang]
+
+        # --- Assignment guard: preserve an existing owner, never round-robin over it.
+        _, existing_owner = ghl_lookup(l["email"])
+        if existing_owner:
+            owner_id = existing_owner           # keep the lead's current agent
+            kept_owner += 1
+            aname = "(existing owner)"
+        else:
+            aname, owner_id = agent_for(lang, state["rr"])  # only new leads are round-robined
+
+        # 1. Upsert contact. assignedTo is sent ONLY when assigning a NEW lead,
+        #    so an already-owned contact is never reassigned.
+        body = {
+            "locationId": LOC, "email": l["email"],
             "source": "PlusVibe",
             "tags": ["NEW LEAD", "Investor LQ", lang, "positive-reply", "otto-recovery"],
-            "assignedTo": aid})
+        }
+        if fn:
+            body["firstName"] = fn
+        if not existing_owner:
+            body["assignedTo"] = owner_id
+        r = ghl_upsert(body)
         if not (r.get("contact") or {}).get("id"):
             print("  GHL FAIL", l["email"], str(r)[:120], file=sys.stderr)
             continue
-        # 2. reply + CC assigned agent + Thibaut
-        agent_email = UID2EMAIL.get(aid)
-        cc = THIB if not agent_email or agent_email == THIB else f"{agent_email}, {THIB}"
+
+        # 2. Reply + CC the lead's ACTUAL owner (existing or new) + Thibaut.
+        owner_email = UID2EMAIL.get(owner_id)
+        cc = THIB if not owner_email or owner_email == THIB else f"{owner_email}, {THIB}"
         subj = l["subject"] or "Re:"
         if not subj.lower().startswith("re"):
             subj = "Re: " + subj
         code, resp = pv_post(f"/unibox/emails/reply?workspace_id={l['wid']}", {
             "reply_to_id": l["reply_to_id"], "from": l["eaccount"], "to": l["email"],
-            "subject": subj, "body": BODY[lang].format(fn=fn), "cc": cc})
+            "subject": subj, "body": BODY[lang].format(greet=greet), "cc": cc})
         if code in (200, 201):
             state["processed"].append(l["email"])
             done.append((l["email"], lang, aname))
@@ -230,9 +305,9 @@ def main():
         time.sleep(0.3)
     if not DRY:
         save_state(state)
-    print("Processed:", len(done))
+    print("Processed:", len(done), "| kept existing owner:", kept_owner,
+          "| newly round-robined:", len(done) - kept_owner)
     print("by lang:", dict(Counter(x[1] for x in done)))
-    print("by agent:", dict(Counter(x[2] for x in done)))
 
 
 if __name__ == "__main__":

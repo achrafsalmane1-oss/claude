@@ -51,6 +51,32 @@ export PLUSVIBE_API_KEY=... GHL_TOKEN=... DRY_RUN=1
 python positive_leads_automation/pipeline.py
 ```
 
+## Assignment safety (important)
+
+The pipeline **never round-robins a lead that already has an owner**. For each
+positive it first looks the contact up in GHL:
+
+- **Already owned** → the existing owner is kept, `assignedTo` is *not* sent on
+  the upsert, and the reply CCs that existing owner.
+- **New / unassigned** → a round-robin agent is assigned and CC'd.
+
+This fixes a bug in the first run where the round-robin overwrote existing owners
+on ~70 pre-existing leads. To restore ownership that was already overwritten, use
+`restore_owners.py` with a CSV (`email,owner`) taken from a pre-overwrite CRM
+export or GHL's per-contact activity log:
+
+```bash
+DRY_RUN=1 GHL_TOKEN=... python positive_leads_automation/restore_owners.py owners.csv
+```
+
+## Real names in the greeting
+
+The greeting uses the prospect's real first name from the reply's display name
+(`from_address_json[0].name`), MIME-decoded and cleaned (handles "LASTNAME First"
+and "- Company" suffixes). When there is no usable name it falls back to a plain
+"Bonjour," — **never** the email prefix (the old bug that produced "Pfpelletier"
+for `pfpelletier@outlook.com`, whose real name is Félix).
+
 ## Stop-on-reply
 
 The agent works the lead in GHL from there. Because each prospect is added to
