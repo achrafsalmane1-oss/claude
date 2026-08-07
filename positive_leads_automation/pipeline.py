@@ -180,6 +180,108 @@ def ghl_lookup(email):
     return None, None
 
 
+PHONE_RE = re.compile(r"(\+?\d[\d .()\-]{7,}\d)")
+
+
+def extract_phone(text):
+    """Best-effort phone from a reply signature; '' if none looks valid."""
+    for m in PHONE_RE.finditer(text or ""):
+        digits = re.sub(r"\D", "", m.group(1))
+        if 8 <= len(digits) <= 15:
+            return "+" + digits if not m.group(1).strip().startswith("+") and len(digits) > 9 else m.group(1).strip()
+    return ""
+
+
+TERMINAL_STATUS = {"REPLIED", "COMPLETED", "UNSUBSCRIBED", "BOUNCED", "SKIPPED"}
+
+
+def stop_lead_automation(email):
+    """Set the lead to COMPLETED on every campaign (BOTH workspaces) where it is
+    still active, so no further automated sequence email goes out after handoff."""
+    if DRY:
+        return 0
+    stopped = 0
+    for wid in WS.values():
+        try:
+            d = pv_get(f"/lead/workspace-leads?workspace_id={wid}&email={email}")
+        except Exception:
+            continue
+        recs = d if isinstance(d, list) else (d.get("data") or [])
+        for r in recs:
+            st = (r.get("status") or "").upper(); cid = r.get("campaign_id")
+            if not cid or st in TERMINAL_STATUS:
+                continue
+            code, _ = pv_post("/lead/update/status",
+                              {"workspace_id": wid, "campaign_id": cid, "email": email, "new_status": "COMPLETED"})
+            if code in (200, 201):
+                stopped += 1
+            time.sleep(0.2)
+    return stopped
+
+
+def ghl_note(contact_id, body, user_id=None):
+    """Log the prospect's reply as a note on their GHL contact so the assigned
+    agent sees it (GHL notifies the owner). Used to forward ongoing replies."""
+    if DRY or not contact_id:
+        return False
+    payload = {"body": body}
+    if user_id:
+        payload["userId"] = user_id
+    cmd = ["curl", "-s", "-X", "POST", GHLBASE + f"/contacts/{contact_id}/notes",
+           "-H", "Authorization: Bearer " + PIT, "-H", "Version: 2021-07-28",
+           "-H", "Content-Type: application/json", "-d", json.dumps(payload)]
+    out = subprocess.run(cmd, capture_output=True, text=True, timeout=40)
+    try:
+        return bool((json.loads(out.stdout).get("note") or {}).get("id"))
+    except Exception:
+        return False
+
+
+def fetch_all_inbound():
+    """All inbound INTERESTED messages across both workspaces (for reply forwarding)."""
+    msgs = []
+    for seg, wid in WS.items():
+        trail = None
+        while True:
+            path = f"/unibox/emails?workspace_id={wid}&label=INTERESTED" + (f"&page_trail={trail}" if trail else "")
+            d = pv_get(path)
+            data = d.get("data", [])
+            for it in data:
+                if it.get("direction") != "IN":
+                    continue
+                em = (it.get("from_address_email") or "").strip().lower()
+                if not em or "landquire" in em:
+                    continue
+                txt = it.get("content_preview") or strip_html((it.get("body") or {}).get("html", ""))
+                msgs.append({"email": em, "id": it.get("id"), "wid": wid,
+                             "text": txt, "subject": it.get("subject") or ""})
+            trail = d.get("page_trail")
+            if not trail or not data:
+                break
+            time.sleep(0.15)
+    return msgs
+
+
+def forward_new_replies(state, inbound):
+    """For leads already handed to an agent, log any NEW inbound reply as a GHL
+    note on their contact so the assigned agent picks it up. No emails sent."""
+    handoff = state.get("handoff", {})
+    fwd = 0
+    for m in inbound:
+        h = handoff.get(m["email"])
+        if not h:
+            continue
+        seen = h.setdefault("seen", [])
+        if m["id"] in seen or m["id"] == h.get("first_reply_id"):
+            continue
+        body = f"[Réponse prospect via PlusVibe] {m.get('subject','')}\n\n{(m.get('text') or '')[:1500]}"
+        if ghl_note(h.get("contact_id"), body, h.get("agent_id")):
+            fwd += 1
+        seen.append(m["id"])
+        time.sleep(0.2)
+    return fwd
+
+
 def load_state():
     try:
         s = json.load(open(STATE_PATH))
@@ -187,6 +289,7 @@ def load_state():
         s = {}
     s.setdefault("processed", [])
     s.setdefault("rr", {"FR": 0, "PT": 0, "EN": 0, "ES": 0})
+    s.setdefault("handoff", {})
     return s
 
 
@@ -224,12 +327,13 @@ def fetch_new_positives(cl, seen):
                     continue
                 faj = it.get("from_address_json") or []
                 display = faj[0].get("name") if faj else ""
+                body_txt = it.get("content_preview") or strip_html((it.get("body") or {}).get("html", ""))
                 out[em] = {
                     "email": em, "seg": seg, "wid": wid,
                     "lang": cl.get(it.get("campaign_id"), "FR"),
                     "reply_to_id": it.get("id"), "eaccount": it.get("eaccount"),
                     "subject": it.get("subject") or "",
-                    "display_name": display,
+                    "display_name": display, "reply_text": body_txt,
                 }
             trail = d.get("page_trail")
             if not trail or not data:
@@ -254,8 +358,6 @@ def main():
     cl = campaign_langs()
     new = fetch_new_positives(cl, seen)
     print(f"New positives to process: {len(new)}  (DRY_RUN={DRY})")
-    if not new:
-        return
     done = []
     kept_owner = 0
     for l in new:
@@ -264,7 +366,7 @@ def main():
         greet = f"{GREETWORD[lang]} {fn}" if fn else GREETWORD[lang]
 
         # --- Assignment guard: preserve an existing owner, never round-robin over it.
-        _, existing_owner = ghl_lookup(l["email"])
+        contact_id, existing_owner = ghl_lookup(l["email"])
         if existing_owner:
             owner_id = existing_owner           # keep the lead's current agent
             kept_owner += 1
@@ -273,7 +375,9 @@ def main():
             aname, owner_id = agent_for(lang, state["rr"])  # only new leads are round-robined
 
         # 1. Upsert contact. assignedTo is sent ONLY when assigning a NEW lead,
-        #    so an already-owned contact is never reassigned.
+        #    so an already-owned contact is never reassigned. Phone (if the prospect
+        #    left one in their reply) is added so the agent has it in GHL.
+        phone = extract_phone(l.get("reply_text"))
         body = {
             "locationId": LOC, "email": l["email"],
             "source": "PlusVibe",
@@ -281,10 +385,13 @@ def main():
         }
         if fn:
             body["firstName"] = fn
+        if phone:
+            body["phone"] = phone
         if not existing_owner:
             body["assignedTo"] = owner_id
         r = ghl_upsert(body)
-        if not (r.get("contact") or {}).get("id"):
+        contact_id = (r.get("contact") or {}).get("id") or contact_id
+        if not contact_id:
             print("  GHL FAIL", l["email"], str(r)[:120], file=sys.stderr)
             continue
 
@@ -299,14 +406,28 @@ def main():
             "subject": subj, "body": BODY[lang].format(greet=greet), "cc": cc})
         if code in (200, 201):
             state["processed"].append(l["email"])
-            done.append((l["email"], lang, aname))
+            # 3. HANDOFF: stop all automation for this lead and record it so future
+            #    prospect replies are forwarded to the agent (never auto-replied again).
+            n_stopped = stop_lead_automation(l["email"])
+            state["handoff"][l["email"]] = {
+                "agent_id": owner_id, "agent_email": owner_email or THIB,
+                "contact_id": contact_id, "first_reply_id": l["reply_to_id"], "seen": []}
+            done.append((l["email"], lang, aname, n_stopped, bool(phone)))
         else:
             print("  REPLY FAIL", l["email"], code, resp, file=sys.stderr)
         time.sleep(0.3)
+
+    # 4. Forward any NEW prospect replies (on already-handed-off leads) to the
+    #    assigned agent as a GHL note -- the agent runs the conversation, not us.
+    forwarded = forward_new_replies(state, fetch_all_inbound())
+
     if not DRY:
         save_state(state)
     print("Processed:", len(done), "| kept existing owner:", kept_owner,
           "| newly round-robined:", len(done) - kept_owner)
+    print("automation stopped on handoff (campaign-records):", sum(x[3] for x in done))
+    print("phones captured:", sum(1 for x in done if x[4]))
+    print("ongoing replies forwarded to agents (GHL notes):", forwarded)
     print("by lang:", dict(Counter(x[1] for x in done)))
 
 

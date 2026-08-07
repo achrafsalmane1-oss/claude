@@ -77,9 +77,42 @@ and "- Company" suffixes). When there is no usable name it falls back to a plain
 "Bonjour," — **never** the email prefix (the old bug that produced "Pfpelletier"
 for `pfpelletier@outlook.com`, whose real name is Félix).
 
+## Handoff = hard stop of all automation (per Thibaut)
+
+Once a lead is handed to an agent (first positive reply → assigned + agent CC'd),
+**all automation stops for that lead**:
+
+1. The pipeline sends exactly one reply (the phone + availability ask) and CCs the
+   agent — the single handoff touch.
+2. It then calls `stop_lead_automation()`, which sets the lead to `COMPLETED` on
+   **every campaign in both workspaces** where it is still active — so the prospect
+   never receives another automated sequence email (a lead can sit in several
+   campaigns at once; all are stopped).
+3. The lead is recorded in `state.json > handoff`; it is never auto-replied to
+   again, and the pipeline never books meetings — the agent runs it manually.
+
+Retroactive one-off for leads already assigned before this rule existed:
+`python stop_automation.py` (sets COMPLETED on every still-active campaign record
+for the already-handed-off positives).
+
+## Ongoing replies are forwarded to the agent (no auto-reply)
+
+Because a prospect usually replies only to the sending mailbox (not "reply all"),
+the CC does not carry their later replies to the agent. Each cycle,
+`forward_new_replies()` scans inbound messages and, for any **new** reply on an
+already-handed-off lead, logs it as a **GHL note on that lead's contact** (which is
+assigned to the agent, so GHL notifies them). No emails are sent to prospects —
+the agent picks up the conversation from GHL.
+
+## Phone capture → GHL
+
+`extract_phone()` pulls a phone number from the prospect's reply signature when
+present and writes it to the GHL contact's `phone` field, so the agent has the
+number without manual work. Falls back to blank when none is found (an enrichment
+finder can be added here later).
+
 ## Stop-on-reply
 
-The agent works the lead in GHL from there. Because each prospect is added to
-`state.json` after the first automated reply, the pipeline never sends a second
-automated message to the same person — once the conversation is human, it stays
-human.
+Because each prospect is added to `state.json` after the first automated reply, the
+pipeline never sends a second automated message to the same person — once the
+conversation is human, it stays human.
