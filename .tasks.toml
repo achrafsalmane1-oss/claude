@@ -1,0 +1,6 @@
+backend = "markdown"
+
+[markdown]
+path = ".claude/backlog.md"
+archive = ".claude/done-archive.md"
+done_keep = 30
