@@ -40,6 +40,19 @@ THIB = os.environ.get("THIBAUT_EMAIL", "tgueant@landquire.com")
 DRY = os.environ.get("DRY_RUN", "") not in ("", "0", "false", "False")
 GHLBASE = "https://services.leadconnectorhq.com"
 
+# --- Current rules (per Paul's call, 13 Aug) ---------------------------------
+# B2C positive reply -> DO NOTHING in GHL. Just log it as a note on the (already
+#   existing) GHL contact so the assigned agent is notified, and it is recorded
+#   for the agent + Thibaut. No contact creation, no auto-reply.
+# B2B positive reply -> CREATE the contact in GHL in the NEW format only:
+#   tag "plusvibe", source "cold emailing", Language custom field, first/last/
+#   email/phone(if available). NO agent assignment, NO notification (Paul's GHL
+#   automation picks it up via the "plusvibe" tag).
+B2B_WID = "6a3179f64517eb5ecd7c1642"
+LANG_FIELD = "Vr0luh4Dz7YIbM4BtawP"   # GHL "Language" (French/English/Spanish/Portuguese)
+LANG_TEXT  = "adsXOWOrmfJXcMNvdwx0"   # GHL "Lead preferred language" (text)
+LMAP = {"FR": "French", "EN": "English", "ES": "Spanish", "PT": "Portuguese"}
+
 WS = {"B2B": "6a3179f64517eb5ecd7c1642", "B2C": "6a4645cc305ead1e2243e94f"}
 
 # Round-robin agent pools by language: (name, GHL user id)
@@ -161,6 +174,36 @@ def clean_first(display_name):
     if len(fn) < 2 or any(c.isdigit() for c in fn):
         return ""
     return fn[:1].upper() + fn[1:]
+
+
+def last_name_of(display_name, first):
+    """Best-effort last name from a reply display name."""
+    if not display_name:
+        return ""
+    nm = _mime(display_name).split(" - ")[0].split(" | ")[0]
+    nm = re.sub(r'["<>]', "", nm).strip()
+    if "@" in nm:
+        return ""
+    toks = [t for t in re.split(r"[ ,]+", nm) if t and t.lower() != (first or "").lower()]
+    if not toks:
+        return ""
+    caps = [t for t in toks if t.isupper() and len(t) > 1]
+    ln = caps[0] if caps else toks[-1]
+    return ln if ln.isupper() else ln[:1].upper() + ln[1:].lower()
+
+
+def ghl_users():
+    """Map GHL user id -> login email, so any agent (not just a hardcoded few)
+    can be resolved when looping the assigned agent in on a B2C reply."""
+    if DRY:
+        return {}
+    cmd = ["curl", "-s", GHLBASE + f"/users/?locationId={LOC}",
+           "-H", "Authorization: Bearer " + PIT, "-H", "Version: 2021-07-28"]
+    try:
+        out = subprocess.run(cmd, capture_output=True, text=True, timeout=40).stdout
+        return {u.get("id"): u.get("email") for u in json.loads(out).get("users", []) if u.get("id")}
+    except Exception:
+        return {}
 
 
 def ghl_lookup(email):
@@ -358,77 +401,51 @@ def main():
     cl = campaign_langs()
     new = fetch_new_positives(cl, seen)
     print(f"New positives to process: {len(new)}  (DRY_RUN={DRY})")
-    done = []
-    kept_owner = 0
+    users = ghl_users()          # id -> agent email, for looping the B2C owner in
+    b2b_created = []; b2c_forwarded = []
     for l in new:
-        lang = l["lang"] if l["lang"] in BODY else "FR"
+        lang = l["lang"] if l["lang"] in LMAP else "FR"
         fn = clean_first(l.get("display_name"))
-        greet = f"{GREETWORD[lang]} {fn}" if fn else GREETWORD[lang]
 
-        # --- Assignment guard: preserve an existing owner, never round-robin over it.
-        contact_id, existing_owner = ghl_lookup(l["email"])
-        if existing_owner:
-            owner_id = existing_owner           # keep the lead's current agent
-            kept_owner += 1
-            aname = "(existing owner)"
+        if l["wid"] == B2B_WID:
+            # ---- B2B: create in GHL, new format, no agent, no notification ----
+            ln = last_name_of(l.get("display_name"), fn)
+            phone = extract_phone(l.get("reply_text"))
+            body = {"locationId": LOC, "email": l["email"],
+                    "source": "cold emailing", "tags": ["plusvibe"],
+                    "customFields": [{"id": LANG_FIELD, "value": LMAP[lang]},
+                                     {"id": LANG_TEXT, "value": LMAP[lang]}]}
+            if fn: body["firstName"] = fn
+            if ln: body["lastName"] = ln
+            if phone: body["phone"] = phone
+            r = ghl_upsert(body)
+            if (r.get("contact") or {}).get("id") or DRY:
+                state["processed"].append(l["email"])
+                b2b_created.append((l["email"], lang, bool(phone)))
+            else:
+                print("  B2B GHL FAIL", l["email"], str(r)[:120], file=sys.stderr)
         else:
-            aname, owner_id = agent_for(lang, state["rr"])  # only new leads are round-robined
-
-        # 1. Upsert contact. assignedTo is sent ONLY when assigning a NEW lead,
-        #    so an already-owned contact is never reassigned. Phone (if the prospect
-        #    left one in their reply) is added so the agent has it in GHL.
-        phone = extract_phone(l.get("reply_text"))
-        body = {
-            "locationId": LOC, "email": l["email"],
-            "source": "PlusVibe",
-            "tags": ["NEW LEAD", "Investor LQ", lang, "positive-reply", "otto-recovery"],
-        }
-        if fn:
-            body["firstName"] = fn
-        if phone:
-            body["phone"] = phone
-        if not existing_owner:
-            body["assignedTo"] = owner_id
-        r = ghl_upsert(body)
-        contact_id = (r.get("contact") or {}).get("id") or contact_id
-        if not contact_id:
-            print("  GHL FAIL", l["email"], str(r)[:120], file=sys.stderr)
-            continue
-
-        # 2. Reply + CC the lead's ACTUAL owner (existing or new) + Thibaut.
-        owner_email = UID2EMAIL.get(owner_id)
-        cc = THIB if not owner_email or owner_email == THIB else f"{owner_email}, {THIB}"
-        subj = l["subject"] or "Re:"
-        if not subj.lower().startswith("re"):
-            subj = "Re: " + subj
-        code, resp = pv_post(f"/unibox/emails/reply?workspace_id={l['wid']}", {
-            "reply_to_id": l["reply_to_id"], "from": l["eaccount"], "to": l["email"],
-            "subject": subj, "body": BODY[lang].format(greet=greet), "cc": cc})
-        if code in (200, 201):
+            # ---- B2C: do NOTHING in GHL. Notify the assigned agent + Thibaut. ----
+            contact_id, owner = ghl_lookup(l["email"])
+            agent_email = users.get(owner) or ""
+            note = (f"[Réponse positive B2C — à reprendre en main]\n"
+                    f"Prospect: {l['email']}\nAgent assigné: {agent_email or 'non assigné'}\n\n"
+                    f"{(l.get('reply_text') or '')[:1500]}")
+            ghl_note(contact_id, note)               # notifies the assigned agent in GHL
             state["processed"].append(l["email"])
-            # 3. HANDOFF: stop all automation for this lead and record it so future
-            #    prospect replies are forwarded to the agent (never auto-replied again).
-            n_stopped = stop_lead_automation(l["email"])
-            state["handoff"][l["email"]] = {
-                "agent_id": owner_id, "agent_email": owner_email or THIB,
-                "contact_id": contact_id, "first_reply_id": l["reply_to_id"], "seen": []}
-            done.append((l["email"], lang, aname, n_stopped, bool(phone)))
-        else:
-            print("  REPLY FAIL", l["email"], code, resp, file=sys.stderr)
-        time.sleep(0.3)
-
-    # 4. Forward any NEW prospect replies (on already-handed-off leads) to the
-    #    assigned agent as a GHL note -- the agent runs the conversation, not us.
-    forwarded = forward_new_replies(state, fetch_all_inbound())
+            state["handoff"][l["email"]] = {"seg": "B2C", "agent_email": agent_email,
+                                            "contact_id": contact_id,
+                                            "first_reply_id": l["reply_to_id"], "seen": [],
+                                            "eaccount": l["eaccount"], "wid": l["wid"],
+                                            "subject": l.get("subject", "")}
+            b2c_forwarded.append((l["email"], lang, agent_email or "unassigned"))
+        time.sleep(0.2)
 
     if not DRY:
         save_state(state)
-    print("Processed:", len(done), "| kept existing owner:", kept_owner,
-          "| newly round-robined:", len(done) - kept_owner)
-    print("automation stopped on handoff (campaign-records):", sum(x[3] for x in done))
-    print("phones captured:", sum(1 for x in done if x[4]))
-    print("ongoing replies forwarded to agents (GHL notes):", forwarded)
-    print("by lang:", dict(Counter(x[1] for x in done)))
+    print("B2B created in GHL (plusvibe / cold emailing / language, no agent):", len(b2b_created))
+    print("B2C forwarded to agent + Thibaut (no GHL create):", len(b2c_forwarded))
+    print("B2B by lang:", dict(Counter(x[1] for x in b2b_created)))
 
 
 if __name__ == "__main__":
