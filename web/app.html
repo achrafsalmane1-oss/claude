@@ -346,6 +346,13 @@ a{color:inherit;text-decoration:none}
           </div>
         </div>
 
+        <div class="field"><label>Compliance</label>
+          <label style="display:flex;gap:10px;align-items:flex-start;font-size:13.5px;color:var(--ink-soft);cursor:pointer;line-height:1.55">
+            <input type="checkbox" id="cd-consent" style="margin-top:3px;flex:0 0 auto">
+            <span>I have prior express consent or an established business relationship with these recipients, and I'll honor opt-outs immediately. <a href="/dnc.html" target="_blank" style="color:var(--green-d);font-weight:600">Acceptable use &amp; TCPA ↗</a></span>
+          </label>
+        </div>
+
         <div class="field"><label>Contacts</label>
           <div class="toolbar">
             <label class="btn btn-out" style="cursor:pointer">Import CSV<input id="cd-csv" type="file" accept=".csv" style="display:none"></label>
@@ -743,8 +750,18 @@ a{color:inherit;text-decoration:none}
         } else { st.textContent=d.results.length+' leads added.'; }
       }).catch(function(){st.textContent='Lead search is unavailable right now — you can still import a CSV.';});
     });
+    // remember a prior consent affirmation so repeat sends aren't re-clicking
+    var consentBox=cdEl('cd-consent');
+    if(consentBox){
+      if(localStorage.getItem('cd_consent')==='1') consentBox.checked=true;
+      consentBox.addEventListener('change',function(){ if(consentBox.checked) localStorage.setItem('cd_consent','1'); });
+    }
     cdEl('cd-send').addEventListener('click',function(){
       if(!CD.staged.length){cdEl('cd-cstatus').textContent='Add contacts first.';return;}
+      if(consentBox && !consentBox.checked){
+        cdEl('cd-cstatus').textContent='Please confirm the consent checkbox above — permission-based outbound only.';
+        consentBox.focus(); return;
+      }
       if(cdEl('cd-sched-on')&&cdEl('cd-sched-on').checked&&cdEl('cd-sched-at').value){
         if(!CD.live){cdEl('cd-cstatus').textContent='Demo: would schedule for '+cdEl('cd-sched-at').value+'.';return;}
         var at=Math.floor(new Date(cdEl('cd-sched-at').value).getTime()/1000);

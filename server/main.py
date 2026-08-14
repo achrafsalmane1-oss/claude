@@ -717,6 +717,23 @@ def voice_preview(body: VoicePreview, ctx: Ctx = Depends(get_ctx)):
     return {"url": "/audio/" + voice["path"].name, "backend": voice["backend"]}
 
 
+_SAMPLE_CACHE: dict[str, str] = {}
+SAMPLE_SCRIPT = ("Hey, it's Sam — I know this is a little out of the blue, so no pressure at all. "
+                 "I help teams like yours book more meetings without the cold-calling grind. "
+                 "If it sounds worth a quick chat, just call me back at this number. Talk soon.")
+
+
+@app.get("/api/voice/sample")
+def voice_sample():
+    """Public: a rendered sample voicemail so visitors can hear the product on
+    the landing page. Rendered once, then cached."""
+    cached = _SAMPLE_CACHE.get("sample")
+    if not cached or not (providers.AUDIO_DIR / cached).exists():
+        voice = providers.render_voice(SAMPLE_SCRIPT, "sample_drop")
+        _SAMPLE_CACHE["sample"] = voice["path"].name
+    return {"url": "/audio/" + _SAMPLE_CACHE["sample"], "script": SAMPLE_SCRIPT}
+
+
 # ---------- campaigns ----------
 
 class CampaignIn(BaseModel):
@@ -1017,6 +1034,15 @@ def list_suppressions(ctx: Ctx = Depends(get_ctx)):
 
 # ---------- send pipeline ----------
 
+def _maybe_complete_campaign(conn, campaign_id) -> None:
+    """Flip a campaign from 'sending' to 'sent' once no drops are in flight."""
+    remaining = conn.execute(
+        "SELECT COUNT(*) FROM drops WHERE campaign_id=? AND status IN ('queued','sending')",
+        (campaign_id,)).fetchone()[0]
+    if remaining == 0:
+        conn.execute("UPDATE campaigns SET status='sent' WHERE id=? AND status='sending'", (campaign_id,))
+
+
 def process_drop(drop_id: int) -> None:
     with db() as conn:
         row = conn.execute(
@@ -1043,10 +1069,12 @@ def process_drop(drop_id: int) -> None:
             conn.execute("UPDATE drops SET audio_path=?, provider_id=?, status=?, updated_at=? WHERE id=?",
                          (voice["path"].name, result["provider_id"], result["status"], time.time(), drop_id))
             conn.execute("UPDATE contacts SET status=? WHERE id=?", (result["status"], row["id"]))
+            _maybe_complete_campaign(conn, row["campaign_id"])
     except Exception as exc:
         with db() as conn:
             conn.execute("UPDATE drops SET status='failed', error=?, updated_at=? WHERE id=?",
                          (str(exc)[:300], time.time(), drop_id))
+            _maybe_complete_campaign(conn, row["campaign_id"])
 
 
 class SendIn(BaseModel):
@@ -1178,6 +1206,7 @@ async def telnyx_webhook(payload: dict):
             if row:
                 conn.execute("UPDATE drops SET status=?, updated_at=? WHERE id=?", (status, time.time(), row["id"]))
                 conn.execute("UPDATE contacts SET status=? WHERE id=?", (status, row["contact_id"]))
+                _maybe_complete_campaign(conn, row["campaign_id"])
 
     # inbound: a prospect calling the number back -> log a callback
     if event == "call.initiated" and p.get("direction") in ("incoming", "inbound"):

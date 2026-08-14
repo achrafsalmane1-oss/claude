@@ -429,3 +429,23 @@ def test_lead_search_friendly_when_unconfigured():
     r = client.post("/api/leads/search", headers=h, json={"query": "founder", "limit": 5})
     assert r.status_code == 503
     assert "Moltsets" in r.json()["detail"]
+
+
+# ---- campaign completion + public sample ----
+
+def test_campaign_marked_sent_after_delivery():
+    h = signup("complete@acme.com")
+    cid = client.post("/api/campaigns", headers=h, json={"name": "done", "script": "Hi {{first_name}}"}).json()["id"]
+    client.post(f"/api/campaigns/{cid}/contacts", headers=h, json={"contacts": [
+        {"first_name": "A", "mobile": "+14155557001"}, {"first_name": "B", "mobile": "+14155557002"}]})
+    client.post(f"/api/campaigns/{cid}/send", headers=h, json={})
+    # dry-run delivers synchronously in the background task; status should be 'sent'
+    st = client.get(f"/api/campaigns/{cid}", headers=h).json()["campaign"]["status"]
+    assert st == "sent", st
+
+
+def test_voice_sample_is_public():
+    r = client.get("/api/voice/sample")
+    assert r.status_code == 200
+    d = r.json()
+    assert d["url"].startswith("/audio/") and d["script"]

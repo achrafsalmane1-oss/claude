@@ -184,10 +184,30 @@ footer.lp{background:var(--slate);color:#C9CDD2;padding:56px 26px 40px}
     <p class="hero-sub">Colddrops delivers a personal voice message straight to voicemail — no ring, no interruption. Prospects hear a real human, and they call you back.</p>
     <div class="hero-cta">
       <a href="/login.html" class="btn btn-green btn-lg">Start now <span aria-hidden="true">↗</span></a>
-      <a href="/login.html" class="btn btn-white btn-lg">See it live</a>
+      <button type="button" id="sample-btn" class="btn btn-white btn-lg">▶ Hear a sample drop</button>
     </div>
+    <audio id="sample-audio" style="display:none"></audio>
+    <div id="sample-note" style="margin-top:12px;font-size:13px;color:#6E7379;min-height:18px"></div>
   </div>
 </section>
+<script>
+(function(){
+  var btn=document.getElementById('sample-btn'), a=document.getElementById('sample-audio'), note=document.getElementById('sample-note');
+  if(!btn) return;
+  var loaded=false;
+  btn.addEventListener('click',function(){
+    if(loaded){ a.currentTime=0; a.play(); return; }
+    btn.disabled=true; var orig=btn.textContent; btn.textContent='Loading…'; note.textContent='';
+    fetch('/api/voice/sample').then(function(r){return r.ok?r.json():null;}).then(function(d){
+      btn.disabled=false; btn.textContent='▶ Hear a sample drop';
+      if(!d){ note.textContent='Sample unavailable right now.'; return; }
+      a.src=d.url; loaded=true; a.style.display='block'; a.setAttribute('controls','');
+      note.textContent='This is what lands in your prospect’s voicemail.';
+      a.play().catch(function(){ note.textContent='Tap play on the bar above to listen.'; });
+    }).catch(function(){ btn.disabled=false; btn.textContent='▶ Hear a sample drop'; note.textContent='Sample unavailable right now.'; });
+  });
+})();
+</script>
 
 <div class="dashwrap">
   <div class="dash">
