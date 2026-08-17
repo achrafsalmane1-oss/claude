@@ -1,0 +1,56 @@
+{
+  "name": "novax",
+  "version": "0.1.0",
+  "private": true,
+  "description": "novaX — newly registered domain signal engine",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start -p ${PORT:-3000}",
+    "worker": "tsx worker/index.ts",
+    "worker:dev": "tsx watch worker/index.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "tsx scripts/migrate.ts",
+    "db:studio": "drizzle-kit studio",
+    "ingest:nrd": "tsx scripts/ingest-nrd.ts",
+    "ingest:ct": "tsx scripts/ingest-ct.ts",
+    "score:run": "tsx scripts/score-run.ts",
+    "eval": "tsx src/eval/run.ts",
+    "backfill": "tsx scripts/backfill.ts",
+    "sample": "tsx scripts/sample.ts",
+    "issue-key": "tsx scripts/issue-key.ts",
+    "digest": "tsx scripts/send-digests.ts"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.70.0",
+    "better-auth": "^1.3.0",
+    "drizzle-orm": "^0.45.2",
+    "next": "^15.5.0",
+    "pg": "^8.16.0",
+    "pg-boss": "^10.3.0",
+    "postgres": "^3.4.7",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "resend": "^4.6.0",
+    "tldts": "^7.0.0",
+    "undici": "^7.12.0",
+    "zod": "^3.25.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.0",
+    "@types/pg": "^8.15.0",
+    "@types/react": "^19.1.0",
+    "@types/react-dom": "^19.1.0",
+    "drizzle-kit": "^0.31.0",
+    "tsx": "^4.20.0",
+    "typescript": "^5.8.0",
+    "vitest": "^3.2.0"
+  }
+}
