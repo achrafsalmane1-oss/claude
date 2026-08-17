@@ -51,6 +51,10 @@ const schema = z.object({
   CT_MAX_LOGS: int(6),
   CT_BATCH_SIZE: int(256),
   CT_POLL_INTERVAL_MS: int(3_000),
+  // Logs return HTTP 429 to callers that poll too hard. Observed live: 2 req/s
+  // per log is accepted, higher gets throttled. This is a politeness limit as
+  // much as a throughput one — a banned IP ingests nothing.
+  CT_REQUESTS_PER_SECOND_PER_LOG: int(2),
   // Spec: alert if the CT stream is silent for more than 10 minutes.
   CT_SILENCE_ALERT_SECONDS: int(600),
   // In-process dedupe window. ~2M apexes at roughly 60 bytes each.
