@@ -273,6 +273,23 @@ describe('HTML extraction', () => {
     );
   });
 
+  /**
+   * Regression from real output: the capture used to cross tag boundaries and
+   * return the viewport meta plus everything up to the next quote.
+   */
+  it('does not run across tag boundaries into the next meta tag', () => {
+    const html =
+      '<meta name="viewport" content="width=device-width, initial-scale=1.0">' +
+      '<meta name="description" content="Actual description here">';
+    expect(extractMetaDescription(html)).toBe('Actual description here');
+  });
+
+  it('returns null when there is no description meta at all', () => {
+    expect(
+      extractMetaDescription('<meta name="viewport" content="width=device-width"><title>x</title>'),
+    ).toBeNull();
+  });
+
   it('extracts the document language', () => {
     expect(extractLang('<html lang="en-GB">')).toBe('en-gb');
     expect(extractLang('<html>')).toBeNull();

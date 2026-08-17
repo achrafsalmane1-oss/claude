@@ -157,10 +157,16 @@ export function extractTitle(html: string): string | null {
 
 export function extractMetaDescription(html: string): string | null {
   // Attribute order varies, so match either ordering rather than assuming one.
+  //
+  // The capture groups exclude `>` and quote characters deliberately. An
+  // earlier version used `[\s\S]{0,1000}?`, which happily ran across tag
+  // boundaries and captured the *viewport* meta plus everything up to the next
+  // quote — real output was `width=device-width, initial-scale=1.0"> SOME TITLE`.
   const patterns = [
-    /<meta[^>]+name=["']description["'][^>]+content=["']([\s\S]{0,1000}?)["']/i,
-    /<meta[^>]+content=["']([\s\S]{0,1000}?)["'][^>]+name=["']description["']/i,
-    /<meta[^>]+property=["']og:description["'][^>]+content=["']([\s\S]{0,1000}?)["']/i,
+    /<meta[^>]+name=["']description["'][^>]*?content=["']([^"'>]{0,1000})["']/i,
+    /<meta[^>]+content=["']([^"'>]{0,1000})["'][^>]*?name=["']description["']/i,
+    /<meta[^>]+property=["']og:description["'][^>]*?content=["']([^"'>]{0,1000})["']/i,
+    /<meta[^>]+content=["']([^"'>]{0,1000})["'][^>]*?property=["']og:description["']/i,
   ];
   for (const pattern of patterns) {
     const match = pattern.exec(html);
