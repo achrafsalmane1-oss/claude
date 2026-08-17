@@ -96,6 +96,9 @@ const schema = z.object({
   // DNS is batched so pg-boss sees hundreds of jobs a day, not hundreds of
   // thousands. See the sizing note in DECISIONS.md.
   QUEUE_DNS_BATCH_SIZE: int(500),
+  // Smaller than the DNS batch because each item costs a real HTTP round trip.
+  QUEUE_HTTP_BATCH_SIZE: int(25),
+  QUEUE_RDAP_BATCH_SIZE: int(25),
   QUEUE_CONCURRENCY: int(5),
   QUEUE_SCHEMA: z.string().default('pgboss'),
 

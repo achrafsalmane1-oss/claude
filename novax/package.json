@@ -26,7 +26,8 @@
     "backfill": "tsx scripts/backfill.ts",
     "sample": "tsx scripts/sample.ts",
     "issue-key": "tsx scripts/issue-key.ts",
-    "digest": "tsx scripts/send-digests.ts"
+    "digest": "tsx scripts/send-digests.ts",
+    "enrich": "tsx scripts/enrich-run.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.70.0",

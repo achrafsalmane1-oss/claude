@@ -53,18 +53,40 @@ sometimes truncated — is reported in `PHASE-REPORTS.md` rather than silently w
 **Sizing, since the spec asked for proof either way.** pg-boss at one job per domain per stage would
 be ~1.2M jobs/day (4 stages × 300k) — every job is an INSERT, a polled UPDATE for the fetch, and a
 completion write, against a table that also has to be archived. That is the regime where people
-report pg-boss struggling. novaX does not run that way:
+report pg-boss struggling. novaX does not run that way: **every stage is batched.**
 
-- **DNS is batched.** One `dns.resolve.batch` job carries 500 apexes → 600 jobs/day, not 300k.
-- **DNS is also the gate.** ~85–95% of a day's feed has no A and no MX record and never produces a
-  second job. The stages after it see thousands, not hundreds of thousands.
-- **The LLM classifier runs through the Anthropic Batch API**, so a whole day is one job, not one
-  job per domain.
+The original plan batched only DNS, on the assumption that the DNS gate would kill ~90% of a day's
+feed and leave the later stages with a few tens of thousands of domains. **That assumption was
+wrong and the build measured it rather than trusting it.** Over 300 domains from the 2026-08-13
+feed:
 
-Realistic steady state is **low tens of thousands of jobs/day**, which pg-boss handles on a small
-Postgres without argument. `QUEUE_DNS_BATCH_SIZE` is the tuning knob. If a future source pushes this
-past ~500k jobs/day, swap to BullMQ — the queue is behind `src/queue/index.ts` for exactly that
-reason.
+| Stage | In | Killed | Kill rate |
+|---|---|---|---|
+| DNS gate (no A and no MX) | 300 | 129 | **43%** |
+| HTTP probe (unreachable) | 171 | 19 | 11% |
+| HTTP probe (parked outright) | 152 | 3 | 2% |
+| HTTP probe (empty/placeholder page) | 152 | 59 | 39% |
+
+43% is nowhere near 90%, so a one-job-per-domain HTTP stage would have meant ~170k jobs/day —
+exactly the regime to avoid. The fix was to batch the HTTP and RDAP stages too
+(`QUEUE_HTTP_BATCH_SIZE`, `QUEUE_RDAP_BATCH_SIZE`, both 25), with per-item error isolation inside
+the handler so one dead host never causes a batch to retry its own successes.
+
+Resulting steady state at 300k domains/day:
+
+- `dns.resolve.batch` @ 500/job → **600 jobs/day**
+- `http.probe.batch` @ 25/job over ~171k survivors → **~6,800 jobs/day**
+- `rdap.lookup.batch` @ 25/job over ~150k → **~6,000 jobs/day**
+- `score.rules` batched, and the classifier goes through the Anthropic Batch API → **tens of jobs/day**
+
+Roughly **14,000 jobs/day**, which pg-boss handles on a small Postgres without argument — two orders
+of magnitude below the naive design. If a future source pushes this past ~500k jobs/day, swap to
+BullMQ; the queue is behind `src/queue/index.ts` for exactly that reason.
+
+The low parked-page rate (2%) is also worth recording: the dominant failure mode of a new domain is
+not a Sedo parking page, it is an **empty page** — HTTP 200, no title, no body. The parking detector
+classifies those as placeholders rather than parked, and the rules layer kills them on the
+combination of thin content + no business MX.
 
 ## Ingestion
 

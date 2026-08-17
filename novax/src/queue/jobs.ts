@@ -10,10 +10,17 @@ export const QUEUES = {
   NRD_INGEST: 'nrd.ingest',
   /** Resolve DNS for a batch of apexes. Batched so the queue stays small. */
   DNS_RESOLVE: 'dns.resolve.batch',
-  /** HTTP probe one apex (has a per-host cost, so not batched). */
-  HTTP_PROBE: 'http.probe',
-  /** RDAP lookup for one apex (rate-limited per registry). */
-  RDAP_LOOKUP: 'rdap.lookup',
+  /**
+   * HTTP probe a batch of apexes.
+   *
+   * Batched for the same reason DNS is: measured against a real feed day, the
+   * DNS gate kills ~43%, not the ~90% originally assumed, so one job per domain
+   * here would mean ~170k jobs/day. Failures are isolated per item inside the
+   * handler so a batch never retries its successes.
+   */
+  HTTP_PROBE: 'http.probe.batch',
+  /** RDAP lookup for a batch of apexes (rate-limited per registry within). */
+  RDAP_LOOKUP: 'rdap.lookup.batch',
   /** Run the rules layer, then queue survivors for the classifier. */
   SCORE_RULES: 'score.rules',
   /** Submit + collect one Anthropic batch of classifier calls. */
@@ -31,8 +38,8 @@ export type QueueName = (typeof QUEUES)[keyof typeof QUEUES];
 export interface JobPayloads {
   [QUEUES.NRD_INGEST]: { date: string };
   [QUEUES.DNS_RESOLVE]: { apexes: string[] };
-  [QUEUES.HTTP_PROBE]: { apex: string };
-  [QUEUES.RDAP_LOOKUP]: { apex: string };
+  [QUEUES.HTTP_PROBE]: { apexes: string[] };
+  [QUEUES.RDAP_LOOKUP]: { apexes: string[] };
   [QUEUES.SCORE_RULES]: { apexes: string[] };
   [QUEUES.SCORE_CLASSIFY]: { apexes: string[]; batchId?: string };
   [QUEUES.WEBHOOK_DELIVER]: { webhookId: number };
@@ -44,8 +51,8 @@ export interface JobPayloads {
 export const QUEUE_POLICIES: Record<QueueName, { retryLimit: number; retryDelay: number; expireInSeconds: number }> = {
   [QUEUES.NRD_INGEST]: { retryLimit: 3, retryDelay: 300, expireInSeconds: 3600 },
   [QUEUES.DNS_RESOLVE]: { retryLimit: 3, retryDelay: 60, expireInSeconds: 900 },
-  [QUEUES.HTTP_PROBE]: { retryLimit: 2, retryDelay: 120, expireInSeconds: 300 },
-  [QUEUES.RDAP_LOOKUP]: { retryLimit: 3, retryDelay: 300, expireInSeconds: 300 },
+  [QUEUES.HTTP_PROBE]: { retryLimit: 2, retryDelay: 120, expireInSeconds: 1800 },
+  [QUEUES.RDAP_LOOKUP]: { retryLimit: 3, retryDelay: 300, expireInSeconds: 1800 },
   [QUEUES.SCORE_RULES]: { retryLimit: 2, retryDelay: 60, expireInSeconds: 900 },
   // The Anthropic batch can take up to 24h; the job polls it.
   [QUEUES.SCORE_CLASSIFY]: { retryLimit: 2, retryDelay: 600, expireInSeconds: 90_000 },
