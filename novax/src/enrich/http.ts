@@ -1,3 +1,4 @@
+import { domainToASCII } from 'node:url';
 import { eq, and } from 'drizzle-orm';
 import { db, domainHttp } from '@/db';
 import { env, USER_AGENT } from '@/config/env';
@@ -235,8 +236,14 @@ export async function probeDomain(apex: string): Promise<HttpProbeResult> {
       });
       const tech = detectTech({ html: res.body, headers: res.headers });
 
+      // Compare in punycode on both sides. `URL.hostname` always returns the
+      // ASCII form, while `apex` comes from the feed in whatever form the feed
+      // used — so an internationalised domain would otherwise always look like
+      // it had redirected off-domain, which killed real IDN businesses.
       const finalApex = extractApex(new URL(res.finalUrl).hostname);
-      const offDomain = finalApex !== null && finalApex.apex !== apex;
+      const apexAscii = domainToASCII(apex) || apex;
+      const finalAscii = finalApex ? domainToASCII(finalApex.apex) || finalApex.apex : null;
+      const offDomain = finalAscii !== null && finalAscii !== apexAscii;
 
       return {
         ...base,

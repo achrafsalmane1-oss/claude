@@ -157,7 +157,28 @@ export function detectParking(input: ParkingInput): ParkingResult {
         phrase.includes('it works') ||
         phrase.includes('index of /') ||
         phrase.includes('default') ||
-        phrase.includes('suspended');
+        phrase.includes('suspended') ||
+        // A proxy error served with HTTP 200 is a dead site, not a placeholder.
+        phrase.includes('upstream') ||
+        phrase.includes('gateway') ||
+        phrase.includes('unauthorized') ||
+        phrase.includes('forbidden') ||
+        // An unmodified theme demo is not a business, however pretty it looks.
+        phrase.includes('example.com') ||
+        phrase.includes('lorem ipsum') ||
+        phrase.includes('123 street') ||
+        phrase.includes('your company name') ||
+        phrase.includes('error code:') ||
+        phrase.includes('deployment_not_found') ||
+        phrase.includes('site disabled') ||
+        phrase.includes('temporarily unavailable') ||
+        phrase.includes('dns resolution failed') ||
+        // A server that boots and serves its own "it worked" page is not a site.
+        phrase.includes('site is created successfully') ||
+        phrase.includes('content is to be added') ||
+        phrase.includes('index.html') ||
+        phrase.includes('hello world') ||
+        phrase.includes('your site title');
 
       return {
         isParked: isServerDefault,
