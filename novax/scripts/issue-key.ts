@@ -20,26 +20,42 @@ async function main() {
 
   const name = arg('name');
   if (!name) {
-    process.stderr.write('usage: npm run issue-key -- --name="Customer name" [--email=...] [--rpm=60] [--rpd=10000] [--days=N]\n');
+    process.stderr.write(
+      'usage: npm run issue-key -- --name="Customer name" [--email=...] [--api-only] [--rpm=60] [--rpd=10000] [--days=N]\n',
+    );
     process.exit(1);
   }
 
   const email = arg('email');
+  const apiOnly = process.argv.includes('--api-only');
   const rpm = arg('rpm') ? Number(arg('rpm')) : undefined;
   const rpd = arg('rpd') ? Number(arg('rpd')) : undefined;
   const days = arg('days') ? Number(arg('days')) : undefined;
 
   // Saved searches, webhooks and digests all hang off a user, so attach the key
   // to one when an email is given.
+  //
+  // We deliberately do NOT create a user row for an unknown email by default.
+  // Better Auth owns account creation, and a bare row inserted here has no
+  // credential — which then blocks that person from ever signing up with their
+  // own address ("user already exists"). Have them sign up at /login first, or
+  // pass --api-only for a key that has no dashboard account behind it.
   let userId: string | null = null;
   if (email) {
     const existing = await db.select({ id: users.id }).from(users).where(eq(users.email, email)).limit(1);
     if (existing[0]) {
       userId = existing[0].id;
-    } else {
+    } else if (apiOnly) {
       userId = randomUUID();
-      await db.insert(users).values({ id: userId, email, name: name });
-      log.info('created user', { email, id: userId });
+      await db.insert(users).values({ id: userId, email, name });
+      log.info('created API-only user (no dashboard password)', { email, id: userId });
+    } else {
+      process.stderr.write(
+        `\nNo account exists for ${email}.\n` +
+          `  Ask them to sign up at ${process.env.PUBLIC_BASE_URL ?? 'http://localhost:3000'}/login, then re-run this.\n` +
+          `  Or pass --api-only to issue a key with no dashboard account (no saved searches or digests).\n\n`,
+      );
+      process.exit(1);
     }
   }
 

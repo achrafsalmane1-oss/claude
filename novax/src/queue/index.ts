@@ -41,10 +41,20 @@ export async function getBoss(): Promise<PgBoss> {
   return instance;
 }
 
-export async function stopQueue(): Promise<void> {
+/**
+ * Stop accepting new jobs and wait for in-flight handlers to finish.
+ *
+ * The wait matters: an HTTP probe batch can legitimately take ~30s (25 domains
+ * at up to an 8s timeout each). Stopping faster than that means the database
+ * pool closes underneath running handlers, which produced a burst of
+ * CONNECTION_ENDED errors on every shutdown. The jobs themselves were safe —
+ * pg-boss retries anything not completed — but the noise buries real errors.
+ */
+export async function stopQueue(timeoutMs = 45_000): Promise<void> {
   if (!boss) return;
-  await boss.stop({ graceful: true, wait: true });
+  const instance = boss;
   boss = null;
+  await instance.stop({ graceful: true, wait: true, timeout: timeoutMs });
 }
 
 /** Enqueue one job. */
