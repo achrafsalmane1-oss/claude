@@ -227,11 +227,15 @@ PHONE_RE = re.compile(r"(\+?\d[\d .()\-]{7,}\d)")
 
 
 def extract_phone(text):
-    """Best-effort phone from a reply signature; '' if none looks valid."""
+    """Phone from a reply signature -- only returns an already-international
+    (+countrycode) number GHL will accept. A national-format number (leading 0,
+    no country code) is left for the agent to add, rather than sending an invalid
+    value that would make the whole contact create fail."""
     for m in PHONE_RE.finditer(text or ""):
-        digits = re.sub(r"\D", "", m.group(1))
-        if 8 <= len(digits) <= 15:
-            return "+" + digits if not m.group(1).strip().startswith("+") and len(digits) > 9 else m.group(1).strip()
+        raw = m.group(1).strip()
+        digits = re.sub(r"\D", "", raw)
+        if raw.startswith("+") and 8 <= len(digits) <= 15 and digits[0] != "0":
+            return "+" + digits
     return ""
 
 
