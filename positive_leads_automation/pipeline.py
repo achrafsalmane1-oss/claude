@@ -284,6 +284,26 @@ def ghl_note(contact_id, body, user_id=None):
         return False
 
 
+def forward_to_team(l, agent_email):
+    """Forward the prospect's positive reply to Thibaut + the assigned agent.
+    Recipients are ONLY the addresses we set in to/cc (Thibaut, agent) -- the
+    prospect is never a recipient, so this can never reach the prospect."""
+    if DRY:
+        return True
+    to = THIB
+    cc = agent_email if agent_email and agent_email != THIB else ""
+    subj = l.get("subject") or "Reponse positive"
+    if not subj.lower().startswith(("fwd", "tr", "fw")):
+        subj = "Fwd: " + subj
+    body = ("Reponse positive d'un prospect - a reprendre en main.<br>"
+            f"Prospect : {l['email']}<br>Agent : {agent_email or '-'}<br><br>"
+            "--- Message du prospect ---<br>" + (l.get("reply_text") or "")[:2000])
+    code, _ = pv_post(f"/unibox/emails/reply?workspace_id={l['wid']}", {
+        "reply_to_id": l["reply_to_id"], "from": l["eaccount"],
+        "to": to, "cc": cc, "subject": subj, "body": body})
+    return code in (200, 201)
+
+
 def fetch_all_inbound():
     """All inbound INTERESTED messages across both workspaces (for reply forwarding)."""
     msgs = []
@@ -423,19 +443,26 @@ def main():
             if ln: body["lastName"] = ln
             if phone: body["phone"] = phone
             r = ghl_upsert(body)
-            if (r.get("contact") or {}).get("id") or DRY:
+            c_id = (r.get("contact") or {}).get("id")
+            if c_id or DRY:
                 state["processed"].append(l["email"])
+                # keep the reply content on the contact + forward it to Thibaut
+                # (the assigned agent is notified separately by Paul's GHL automation)
+                ghl_note(c_id, f"[Reponse positive - cold outreach]\nProspect: {l['email']}\n\n"
+                               f"{(l.get('reply_text') or '')[:1500]}")
+                forward_to_team(l, "")
                 b2b_created.append((l["email"], lang, bool(phone)))
             else:
                 print("  B2B GHL FAIL", l["email"], str(r)[:120], file=sys.stderr)
         else:
-            # ---- B2C: do NOTHING in GHL. Notify the assigned agent + Thibaut. ----
+            # ---- B2C: do NOTHING in GHL. Forward the reply to Thibaut + agent. ----
             contact_id, owner = ghl_lookup(l["email"])
             agent_email = users.get(owner) or ""
             note = (f"[Réponse positive B2C — à reprendre en main]\n"
                     f"Prospect: {l['email']}\nAgent assigné: {agent_email or 'non assigné'}\n\n"
                     f"{(l.get('reply_text') or '')[:1500]}")
-            ghl_note(contact_id, note)               # notifies the assigned agent in GHL
+            ghl_note(contact_id, note)               # note on the existing contact
+            forward_to_team(l, agent_email)          # email to Thibaut + assigned agent
             state["processed"].append(l["email"])
             state["handoff"][l["email"]] = {"seg": "B2C", "agent_email": agent_email,
                                             "contact_id": contact_id,

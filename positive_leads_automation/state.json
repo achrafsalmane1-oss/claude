@@ -47,6 +47,7 @@
 "gg.simon@laposte.net",
 "gilson.santoni@brasilsalomao.com.br",
 "grandridgesenterprises@gmail.com",
+"gregoire@p2fadvisory.com",
 "guilhem.becvort@whitecase.com",
 "guillaume.ginguene@peersgroup.fr",
 "guillaume@mycuistot.com",
@@ -54,6 +55,7 @@
 "habib@shoukry.fr",
 "hamatchi@mailo.com",
 "hamriouir@yahoo.fr",
+"henrique@armcapital.com.br",
 "hugyvan@gmail.com",
 "i.indien@orange.fr",
 "jaime.kalb@courtavenue.com",
@@ -81,6 +83,7 @@
 "marcio@remessaonline.com.br",
 "marco@construtoraelevacao.com.br",
 "marina.foti@sfr.fr",
+"martin.brettenthaler@aurea-prima-advisory.com",
 "maudcotret@orange.fr",
 "mayra.recinos@gmail.com",
 "mcinvestsww@gmail.com",
@@ -117,11 +120,13 @@
 "salturo@fenoco.com.co",
 "samuel@lovenspa.fr",
 "sebastienlagnes@orange.fr",
+"speters58200@gmail.com",
 "st.bounaix@numericable.fr",
 "steve.lechaire@avantgarde-investment.ch",
 "sullyvanbeauroybtssio@gmail.com",
 "sylviecarvazo@gmail.com",
 "teddy.salmona@yahoo.fr",
+"theodore.joseph@bnpparibas.com",
 "thierry@lancry-international.com",
 "thierrypotok@yahoo.fr",
 "tiagofriedrich@quadfinancial.com.br",
@@ -139,5 +144,17 @@
 "PT": 17,
 "EN": 7,
 "ES": 9
+},
+"handoff": {
+"speters58200@gmail.com": {
+"seg": "B2C",
+"agent_email": "prizk@landquire.com",
+"contact_id": "lbbeLkwSl0UmlaQODst2",
+"first_reply_id": "6a7c897802d07dcaa4f5a241",
+"seen": [],
+"eaccount": "gueant.t@landquire.org",
+"wid": "6a4645cc305ead1e2243e94f",
+"subject": "Re: Pourquoi le housing manufacturé — et pourquoi Oswego County, New York"
+}
 }
 }
