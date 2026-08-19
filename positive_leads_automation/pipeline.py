@@ -284,14 +284,19 @@ def ghl_note(contact_id, body, user_id=None):
         return False
 
 
-def forward_to_team(l, agent_email):
+def forward_to_team(l, agent_email, to_agent=False):
     """Forward the prospect's positive reply to Thibaut + the assigned agent.
     Recipients are ONLY the addresses we set in to/cc (Thibaut, agent) -- the
-    prospect is never a recipient, so this can never reach the prospect."""
+    prospect is never a recipient, so this can never reach the prospect.
+    to_agent=True addresses the agent directly (cc Thibaut); otherwise to Thibaut."""
     if DRY:
         return True
-    to = THIB
-    cc = agent_email if agent_email and agent_email != THIB else ""
+    if to_agent and agent_email and agent_email != THIB:
+        to = agent_email
+        cc = THIB
+    else:
+        to = THIB
+        cc = agent_email if agent_email and agent_email != THIB else ""
     subj = l.get("subject") or "Reponse positive"
     if not subj.lower().startswith(("fwd", "tr", "fw")):
         subj = "Fwd: " + subj
@@ -302,6 +307,29 @@ def forward_to_team(l, agent_email):
         "reply_to_id": l["reply_to_id"], "from": l["eaccount"],
         "to": to, "cc": cc, "subject": subj, "body": body})
     return code in (200, 201)
+
+
+def forward_pending_b2b(state, users):
+    """B2B leads wait here until Paul's GHL automation assigns an owner; then the
+    reply is forwarded to that EXACT owner (+ Thibaut), so the agent who gets the
+    email is always the one tagged on the lead. Falls back to Thibaut after ~1h
+    if still unassigned, so nothing is lost."""
+    pending = state.get("b2b_pending", {})
+    sent = 0
+    for em in list(pending.keys()):
+        rec = pending[em]
+        rec["tries"] = rec.get("tries", 0) + 1
+        _, owner = ghl_lookup(em)
+        owner_email = users.get(owner) or ""
+        if owner_email:
+            if forward_to_team(rec, owner_email, to_agent=True):
+                sent += 1
+                pending.pop(em, None)
+        elif rec["tries"] >= 4:
+            forward_to_team(rec, "")
+            pending.pop(em, None)
+        time.sleep(0.2)
+    return sent
 
 
 def fetch_all_inbound():
@@ -357,6 +385,7 @@ def load_state():
     s.setdefault("processed", [])
     s.setdefault("rr", {"FR": 0, "PT": 0, "EN": 0, "ES": 0})
     s.setdefault("handoff", {})
+    s.setdefault("b2b_pending", {})
     return s
 
 
@@ -446,11 +475,15 @@ def main():
             c_id = (r.get("contact") or {}).get("id")
             if c_id or DRY:
                 state["processed"].append(l["email"])
-                # keep the reply content on the contact + forward it to Thibaut
-                # (the assigned agent is notified separately by Paul's GHL automation)
+                # keep the reply content on the contact, then defer the forward until
+                # Paul's GHL automation has assigned an owner -- so the forward ALWAYS
+                # goes to exactly the agent tagged on the lead, never a different one.
                 ghl_note(c_id, f"[Reponse positive - cold outreach]\nProspect: {l['email']}\n\n"
                                f"{(l.get('reply_text') or '')[:1500]}")
-                forward_to_team(l, "")
+                state["b2b_pending"][l["email"]] = {
+                    "reply_to_id": l["reply_to_id"], "eaccount": l["eaccount"], "wid": l["wid"],
+                    "subject": l.get("subject", ""), "email": l["email"],
+                    "reply_text": (l.get("reply_text") or "")[:2000], "tries": 0}
                 b2b_created.append((l["email"], lang, bool(phone)))
             else:
                 print("  B2B GHL FAIL", l["email"], str(r)[:120], file=sys.stderr)
@@ -472,8 +505,13 @@ def main():
             b2c_forwarded.append((l["email"], lang, agent_email or "unassigned"))
         time.sleep(0.2)
 
+    # B2B: forward the reply to each lead's GHL owner once assigned (== tagged agent).
+    pending_forwarded = forward_pending_b2b(state, users)
+
     if not DRY:
         save_state(state)
+    print("B2B forwarded to their GHL-assigned owner this run:", pending_forwarded,
+          "| still awaiting assignment:", len(state.get("b2b_pending", {})))
     print("B2B created in GHL (plusvibe / cold emailing / language, no agent):", len(b2b_created))
     print("B2C forwarded to agent + Thibaut (no GHL create):", len(b2c_forwarded))
     print("B2B by lang:", dict(Counter(x[1] for x in b2b_created)))
