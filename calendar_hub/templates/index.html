@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Calendar Hub</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='14' font-size='14'>📅</text></svg>">
+</head>
+<body data-configured="{{ 'yes' if configured else 'no' }}" data-default-tz="{{ default_tz }}">
+
+<header class="topbar">
+  <div class="brand">
+    <span class="brand-dot"></span>
+    <h1>Calendar Hub</h1>
+  </div>
+
+  <div class="daynav">
+    <button id="prev-day" class="icon-btn" title="Previous day (←)">‹</button>
+    <button id="today" class="ghost-btn" title="Today (T)">Today</button>
+    <input type="date" id="date-input">
+    <button id="next-day" class="icon-btn" title="Next day (→)">›</button>
+  </div>
+
+  <div class="topbar-right">
+    <span id="tz-label" class="tz"></span>
+    <button id="refresh" class="ghost-btn" title="Refresh (R)">Refresh</button>
+    <a class="primary-btn" href="/connect">+ Add Google account</a>
+  </div>
+</header>
+
+<div id="banner" class="banner hidden"></div>
+
+<main class="layout">
+  <aside class="sidebar">
+    <h2 class="side-title">Accounts</h2>
+    <ul id="account-list" class="account-list"></ul>
+    <p id="no-accounts" class="empty-hint hidden">
+      No accounts yet. Hit <strong>+ Add Google account</strong> and repeat it once
+      per client account — each one keeps its own colour here.
+    </p>
+
+    <h2 class="side-title">View</h2>
+    <label class="switch"><input type="checkbox" id="hide-declined" checked> <span>Hide declined</span></label>
+    <label class="switch"><input type="checkbox" id="hide-allday"> <span>Hide all-day</span></label>
+    <label class="switch"><input type="checkbox" id="compact"> <span>Compact rows</span></label>
+
+    <div class="shortcuts">
+      <h2 class="side-title">Shortcuts</h2>
+      <div><kbd>←</kbd><kbd>→</kbd> day</div>
+      <div><kbd>T</kbd> today &nbsp; <kbd>R</kbd> refresh</div>
+    </div>
+  </aside>
+
+  <section class="content">
+    <div class="day-head">
+      <h2 id="day-title">—</h2>
+      <span id="day-sub" class="day-sub"></span>
+    </div>
+
+    <div id="stats" class="stats"></div>
+    <div id="next-up" class="next-up hidden"></div>
+    <div id="agenda" class="agenda"></div>
+  </section>
+</main>
+
+<script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>
