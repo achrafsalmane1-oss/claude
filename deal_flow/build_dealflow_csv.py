@@ -57,9 +57,20 @@ for em,c in cands.items():
     if c['neg']>=2 and not c['interested']: continue
     body=' '.join(c['texts'])[:4000]
     mandate,msrc = extract_mandate(body, c['sector'], c['cids'], c['firm_type'])
+    # Otto's `company` field is whatever the prospecting list said -- on sell-side
+    # campaigns that is the TARGET business, not the replier's own firm. When the
+    # company looks like an operating trade business but the email domain is an
+    # investment firm, the domain is the truth.
+    _dom_core = c['domain'].rsplit('.',1)[0].replace('-',' ')
+    _company_is_target = bool(re.search(NEG_KW, (c['company'] or '').lower()))
+    _domain_is_firm = bool(re.search(r'(capital|equity|partners|invest|ventures?|holdings?|fund)', c['domain'].lower()))
+    firm_note = ''
+    if _domain_is_firm and (_company_is_target or not c['company']):
+        firm_note = f"company field is the outreach target; actual firm ~ {_dom_core}"
+
     conf = 'High' if (c['interested'] and c['human'] and c['pos']>0) else ('Medium' if c['interested'] or genuine else 'Low')
     out.append({'full_name':f"{c['first']} {c['last']}".strip(),'first_name':c['first'],'last_name':c['last'],
-      'title':c['title'],'firm':c['company'],'firm_type':c['firm_type'],
+      'title':c['title'],'firm':c['company'],'firm_type':c['firm_type'],'firm_note':firm_note,
       'linkedin':c['linkedin'],'email':em,'domain':c['domain'],'website':c['website'],
       'mandate':mandate,'mandate_source':msrc,
       'confidence':conf,'otto_interested_flag':'yes' if c['interested'] else 'no',
@@ -71,7 +82,7 @@ for em,c in cands.items():
 
 order={'High':0,'Medium':1,'Low':2}
 out.sort(key=lambda r:(order[r['confidence']], -r['pos_signals'], r['firm']))
-COLS=['full_name','first_name','last_name','title','firm','firm_type','linkedin','email','domain','website',
+COLS=['full_name','first_name','last_name','title','firm','firm_note','firm_type','linkedin','email','domain','website',
       'mandate','mandate_source','confidence','otto_interested_flag','replied_in_person',
       'pos_signals','neg_signals','campaigns','last_reply','reply_excerpt']
 with open('./pe_vc_ma_dealflow.csv','w',newline='',encoding='utf-8') as fh:
