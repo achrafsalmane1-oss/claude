@@ -23,6 +23,9 @@ class Plan:
     blurb: str
     highlights: list[str] = field(default_factory=list)
     featured: bool = False
+    # Internal plans bypass the credit ledger and every feature gate. They are
+    # for you and your staff, never for sale.
+    unlimited: bool = False
 
     @property
     def is_free(self) -> bool:
@@ -103,6 +106,22 @@ PLANS: dict[str, Plan] = {
             "50 seats",
             "Priority queue",
         ],
+    ),
+    # Not offered for sale and deliberately absent from PLAN_ORDER, so it never
+    # appears on the pricing page or the plan switcher. Assign it with:
+    #   python -m app.cli create-admin --email you@example.com
+    "internal": Plan(
+        code="internal",
+        name="Internal",
+        price_usd=0,
+        monthly_credits=0,  # ignored; see `unlimited`
+        max_seats=1_000,
+        max_depth=100,  # the engine's own ceiling
+        api_access=True,
+        email_enrichment=True,
+        unlimited=True,
+        blurb="Staff account. Not for sale.",
+        highlights=["Unlimited leads", "Every feature unlocked"],
     ),
 }
 

@@ -8,7 +8,7 @@
     <div>
       <h2>{{ plan.name }} plan</h2>
       <p class="muted">
-        {{ "{:,}".format(plan.monthly_credits) }} leads per month
+        {% if usage.unlimited %}Unlimited leads{% else %}{{ "{:,}".format(plan.monthly_credits) }} leads per month{% endif %}
         · {{ "{:,}".format(usage.used) }} used this period
         {% if account.subscription_status != 'none' %} · status: {{ account.subscription_status }}{% endif %}
       </p>
@@ -19,8 +19,18 @@
     </form>
     {% endif %}
   </div>
+  {% if not usage.unlimited %}
   <div class="meter"><div class="meter-fill" style="width: {{ usage.percent_used }}%"></div></div>
+  {% endif %}
 </section>
+
+{% if usage.unlimited %}
+<div class="alert alert-info">
+  This is an internal account with no lead cap and every feature unlocked. It is
+  not a purchasable plan — switching to one of the plans below gives up the
+  unlimited allowance.
+</div>
+{% endif %}
 
 {% if not billing_enabled %}
 <div class="alert alert-info">

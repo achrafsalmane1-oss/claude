@@ -88,3 +88,80 @@ def test_a_failed_engine_submission_is_not_charged(account, monkeypatch):
     response = account.post("/app/search", data={"keyword": "cafes", "max_depth": "2"})
     assert "unavailable" in response.text
     assert leads_left(account) == 100
+
+
+# --- Internal / unlimited accounts -----------------------------------------
+
+
+def make_admin(client, email="admin@example.com"):
+    """Create an unlimited admin via the CLI, then sign in as them."""
+    from app.cli import main
+
+    main(["create-admin", "--email", email, "--password", "a-good-long-password"])
+    client.post("/logout")
+    client.post("/login", data={"email": email, "password": "a-good-long-password"})
+    return client
+
+
+def test_cli_creates_an_unlimited_admin(client):
+    admin = make_admin(client)
+    body = admin.get("/app").text
+    assert "Unlimited" in body
+    assert "leads left" not in body
+
+
+def test_an_unlimited_account_is_never_exhausted(client):
+    admin = make_admin(client)
+    # Far beyond any paid plan's monthly allowance.
+    for index in range(6):
+        response = admin.post(
+            "/app/search", data={"keyword": f"gyms in City{index}", "max_depth": "50"}
+        )
+        assert "used all" not in response.text
+
+    # Six 50-page searches is 6,000 leads — far past every paid allowance.
+    body = admin.get("/app").text
+    assert "6,000" in body
+    assert "no cap on this account" in body
+
+
+def test_an_unlimited_account_bypasses_every_feature_gate(client):
+    admin = make_admin(client)
+    # Depth beyond Scale, plus email enrichment, in one search.
+    response = admin.post(
+        "/app/search",
+        data={"keyword": "cafes in Leeds", "max_depth": "60", "extract_emails": "1"},
+    )
+    assert "up to" not in response.text
+    assert "@" in response.text
+
+    # And the API, which the free plan cannot touch.
+    keys_page = admin.post("/app/api-keys", data={"name": "internal"})
+    assert "not included" not in keys_page.text
+
+
+def test_the_internal_plan_is_not_for_sale(client):
+    # It must not appear on the pricing page or the plan switcher.
+    assert "Internal" not in client.get("/pricing").text
+    admin = make_admin(client)
+    assert "Choose Internal" not in admin.get("/app/billing").text
+
+
+def test_cli_promotes_an_existing_user_rather_than_failing(account):
+    from app.cli import main
+
+    main(["create-admin", "--email", "owner@example.com", "--password", "a-new-long-password"])
+
+    account.post("/logout")
+    response = account.post(
+        "/login", data={"email": "owner@example.com", "password": "a-new-long-password"}
+    )
+    assert response.url.path == "/app"
+    assert "Unlimited" in response.text
+
+
+def test_cli_set_plan_moves_an_account(account):
+    from app.cli import main
+
+    main(["set-plan", "--email", "owner@example.com", "--plan", "scale"])
+    assert "100,000" in account.get("/app/billing").text

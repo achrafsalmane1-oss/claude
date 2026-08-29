@@ -11,8 +11,8 @@
       <a href="/app/billing" class="{{ 'active' if active == 'billing' }}">Billing</a>
     </nav>
     <div class="app-user">
-      <span class="usage-pill" title="{{ usage.used }} of {{ usage.included }} leads used this month">
-        {{ "{:,}".format(usage.remaining) }} leads left
+      <span class="usage-pill" title="{{ "{:,}".format(usage.used) }} leads used this month">
+        {% if usage.unlimited %}Unlimited{% else %}{{ "{:,}".format(usage.remaining) }} leads left{% endif %}
       </span>
       <form method="post" action="/logout"><button class="linkish" type="submit">Sign out</button></form>
     </div>

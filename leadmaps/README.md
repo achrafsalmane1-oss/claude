@@ -31,6 +31,31 @@ box it uses the **mock engine** (deterministic fake results) and **billing is
 disabled** (plan changes apply without payment), so the whole product is
 walkable with no external dependencies.
 
+### Give yourself an unlimited account
+
+Signing up through the site puts you on the free trial (100 leads). To get an
+account with no cap and every feature on:
+
+```bash
+python -m app.cli create-admin --email you@example.com
+```
+
+It prompts for a password, or generates one if you press enter. Sign in at
+`/login` with it. The account lands on the **Internal** plan: no lead ceiling,
+100-page searches, email enrichment and API access all on. That plan is
+deliberately absent from the pricing page and the plan switcher, so no customer
+can select it.
+
+Re-running the command on an existing email promotes that user and resets their
+password — that is how you recover a locked-out admin.
+
+```bash
+python -m app.cli list-accounts                              # who exists, on what plan
+python -m app.cli set-plan --email c@co.com --plan growth    # comp a customer
+```
+
+Run it against the same `DATABASE_URL` the app uses.
+
 Two switches turn it into a real business:
 
 | Switch | Development | Production |
@@ -38,7 +63,8 @@ Two switches turn it into a real business:
 | `ENGINE_MODE` | `mock` — fake results | `http` — a real scraper deployment |
 | `STRIPE_SECRET_KEY` | empty — free plan changes | set — real Stripe checkout |
 
-Deployment steps for both are in [docs/DEPLOY.md](docs/DEPLOY.md).
+Just want to click around? [docs/TRY-IT.md](docs/TRY-IT.md).
+Ready to deploy for real? [docs/DEPLOY.md](docs/DEPLOY.md).
 
 ## What is in the box
 
@@ -65,6 +91,10 @@ and what you enforce cannot drift apart.
 | Starter | $49 | 5,000 | 2 | 10 | ✓ | — |
 | Growth | $149 | 25,000 | 10 | 25 | ✓ | ✓ |
 | Scale | $399 | 100,000 | 50 | 50 | ✓ | ✓ |
+| Internal | — | unlimited | 1,000 | 100 | ✓ | ✓ |
+
+The Internal plan is for you and your staff. It is not listed on the pricing
+page and cannot be bought — assign it with the CLI above.
 
 **Billing** — Stripe Checkout, the customer billing portal, and webhooks for
 the subscription lifecycle (activation, upgrade, downgrade, cancellation,
@@ -90,10 +120,11 @@ app/
   billing.py     Stripe checkout, portal, webhook handling
   services.py    signup, job submission, syncing, CSV export
   security.py    password hashing, sessions, API keys
+  cli.py         create-admin, set-plan, list-accounts
   routes/        marketing, auth, dashboard, api_v1, webhooks
   templates/     Jinja2 pages
   static/css/    one hand-written stylesheet, no build step
-tests/           91 tests
+tests/           97 tests
 ```
 
 ## Tests
@@ -105,8 +136,8 @@ python -m pytest
 
 Covers auth, quota enforcement and exhaustion, job lifecycle, CSV export,
 cross-account isolation, API key auth and revocation, every REST endpoint,
-the engine adapter contract (against a mocked HTTP engine), and Stripe webhook
-handling.
+the engine adapter contract (against a mocked HTTP engine), Stripe webhook
+handling, and unlimited internal accounts.
 
 ## Renaming it
 

@@ -4,7 +4,7 @@
 <div class="app-grid">
   <section class="panel">
     <h1>New search</h1>
-    <p class="muted">One search can return up to {{ "{:,}".format(plan.max_depth * 20) }} businesses on your {{ plan.name }} plan.</p>
+    <p class="muted">One search can return up to {{ "{:,}".format(plan.max_depth * 20) }} businesses{% if not usage.unlimited %} on your {{ plan.name }} plan{% endif %}.</p>
     <form method="post" action="/app/search" class="stack">
       <label>What are you looking for?
         <input type="text" name="keyword" value="{{ prefill_keyword }}" placeholder="dentists in Manchester" required autofocus>
@@ -12,7 +12,7 @@
       <div class="field-row">
         <label>Pages to scrape
           <input type="number" name="max_depth" value="{{ default_depth }}" min="1" max="{{ plan.max_depth }}">
-          <small class="muted">~20 businesses per page. Max {{ plan.max_depth }} on {{ plan.name }}.</small>
+          <small class="muted">~20 businesses per page. Max {{ plan.max_depth }}{% if not usage.unlimited %} on {{ plan.name }}{% endif %}.</small>
         </label>
         <label>Language
           <select name="lang">
@@ -42,16 +42,19 @@
 
   <aside class="panel panel-side">
     <h2>This month</h2>
+    {% if not usage.unlimited %}
     <div class="meter"><div class="meter-fill" style="width: {{ usage.percent_used }}%"></div></div>
+    {% endif %}
     <p class="meter-label">
-      <strong>{{ "{:,}".format(usage.used) }}</strong> of {{ "{:,}".format(usage.included) }} leads used
+      <strong>{{ "{:,}".format(usage.used) }}</strong>
+      {% if usage.unlimited %}leads pulled — no cap on this account{% else %}of {{ "{:,}".format(usage.included) }} leads used{% endif %}
     </p>
     <dl class="stats">
       <dt>Plan</dt><dd>{{ plan.name }}</dd>
       <dt>Searches run</dt><dd>{{ job_count }}</dd>
       <dt>Period</dt><dd>{{ usage.period }}</dd>
     </dl>
-    {% if plan.is_free %}
+    {% if plan.is_free and not usage.unlimited %}
     <a class="btn btn-primary btn-block" href="/app/billing">Upgrade for more leads</a>
     {% endif %}
 

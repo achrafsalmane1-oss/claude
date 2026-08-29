@@ -39,18 +39,26 @@ class UsageSummary:
     included: int
 
     @property
+    def unlimited(self) -> bool:
+        return self.plan.unlimited
+
+    @property
     def remaining(self) -> int:
+        if self.unlimited:
+            return 0  # meaningless for an unlimited plan; use `unlimited` first
         return max(self.included - self.used, 0)
 
     @property
     def percent_used(self) -> int:
+        if self.unlimited:
+            return 0
         if self.included <= 0:
             return 100
         return min(int(round(self.used / self.included * 100)), 100)
 
     @property
     def is_exhausted(self) -> bool:
-        return self.remaining <= 0
+        return not self.unlimited and self.remaining <= 0
 
 
 def current_period(now: datetime | None = None) -> str:
@@ -108,6 +116,14 @@ def check_can_submit(
     customer-facing message when the search may not run.
     """
     plan = get_plan(account.plan_code)
+
+    if plan.unlimited:
+        if active_job_count(session, account) >= max_concurrent:
+            raise QuotaError(
+                f"You already have {max_concurrent} searches running. Wait for one to finish.",
+                code="too_many_jobs",
+            )
+        return estimate_credits(max_depth)
 
     if account.is_delinquent:
         raise QuotaError(
