@@ -20,14 +20,22 @@ services:
       PUBLIC_URL: "${PUBLIC_URL:-http://localhost:8000}"
       BRAND_NAME: "${BRAND_NAME:-LeadMaps}"
       SUPPORT_EMAIL: "${SUPPORT_EMAIL:-support@example.com}"
-      # Leave as "mock" to demo the product; switch to "http" once the engine is up.
-      ENGINE_MODE: "${ENGINE_MODE:-mock}"
+      # "local" scrapes real data from inside this container. It needs the
+      # host Docker socket mounted below, or ENGINE_BINARY baked into the image.
+      # Switch to "http" once you deploy the queued engine.
+      ENGINE_MODE: "${ENGINE_MODE:-local}"
+      ENGINE_BINARY: "${ENGINE_BINARY:-}"
+      ENGINE_PROXIES: "${ENGINE_PROXIES:-}"
       ENGINE_URL: "${ENGINE_URL:-http://engine:8080}"
       ENGINE_API_KEY: "${ENGINE_API_KEY:-}"
       STRIPE_SECRET_KEY: "${STRIPE_SECRET_KEY:-}"
       STRIPE_PUBLISHABLE_KEY: "${STRIPE_PUBLISHABLE_KEY:-}"
       STRIPE_WEBHOOK_SECRET: "${STRIPE_WEBHOOK_SECRET:-}"
       STRIPE_PRICES: "${STRIPE_PRICES:-}"
+    volumes:
+      # Lets ENGINE_MODE=local start scraper containers on the host. Drop this
+      # line if you use ENGINE_MODE=http, which needs no Docker access.
+      - /var/run/docker.sock:/var/run/docker.sock
     depends_on:
       postgres:
         condition: service_healthy

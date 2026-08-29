@@ -20,7 +20,11 @@
 {% if job.error %}<div class="alert alert-error">{{ job.error }}</div>{% endif %}
 
 {% if job.status in ('queued', 'running') %}
-<div class="alert alert-info">This search is still running. <a href="">Refresh</a> in a moment.</div>
+<meta http-equiv="refresh" content="10">
+<div class="alert alert-info">
+  This search is running — real scraping takes a minute or two per page.
+  This page refreshes itself every 10 seconds.
+</div>
 {% endif %}
 
 {% if rows %}

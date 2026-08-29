@@ -33,13 +33,29 @@ class Settings(BaseSettings):
     debug: bool = False
 
     # --- Scraping engine -------------------------------------------------
-    # "mock" runs a built-in fake engine (no external dependency, great for
-    # demos and tests). "http" talks to a google-maps-scraper SaaS instance.
-    engine_mode: str = "mock"
+    # "local" shells out to the google-maps-scraper CLI for real data with no
+    #         extra infrastructure. This is the default.
+    # "http"  talks to a full google-maps-scraper SaaS deployment (queue,
+    #         workers, admin UI) — the right choice at volume.
+    # "mock"  is a built-in fake engine for tests and UI work. Never sell it.
+    engine_mode: str = "local"
     engine_url: str = "http://localhost:8080"
     engine_api_key: str = ""
     engine_timeout: float = 30.0
     engine_poll_interval: int = 10
+
+    # --- Local engine ----------------------------------------------------
+    # Path to a google-maps-scraper binary. If empty, the scraper runs via
+    # Docker instead, which needs nothing installed but Docker itself.
+    engine_binary: str = ""
+    engine_docker_image: str = "gosom/google-maps-scraper:latest"
+    engine_workdir: str = "./scrape-jobs"
+    # Wall-clock ceiling for one search. Deep searches are slow; browser work is.
+    engine_job_timeout: int = 1800
+    # Passed through to the scraper's -c flag (parallel browser workers).
+    engine_concurrency: int = 4
+    # Comma-separated proxies. Strongly recommended at any real volume.
+    engine_proxies: str = ""
 
     # --- Billing ---------------------------------------------------------
     stripe_secret_key: str = ""

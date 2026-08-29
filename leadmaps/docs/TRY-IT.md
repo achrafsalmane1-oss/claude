@@ -30,14 +30,25 @@ $env:SECRET_KEY = -join ((1..32) | ForEach-Object { '{0:x2}' -f (Get-Random -Max
 
 ### What you are looking at
 
-The results are **fake**. `ENGINE_MODE` defaults to `mock`, which generates
-plausible, deterministic businesses so you can walk the whole product — search,
-job history, CSV export, API keys, billing — without deploying a scraper. The
-shape of the data is real; the businesses are not.
+**Real Google Maps data.** `ENGINE_MODE` defaults to `local`, which runs the
+google-maps-scraper CLI once per search. The first search pulls the scraper
+Docker image, so it is slower; after that expect roughly a minute per page.
+
+Searches run in the background — the job page refreshes itself until the rows
+land.
+
+Requirements: **Docker running**. Check with `docker info`. If you would rather
+not use Docker, build the scraper once and point at the binary:
+
+```bash
+git clone https://github.com/gosom/google-maps-scraper.git
+cd google-maps-scraper && go build -o google-maps-scraper .
+export ENGINE_BINARY=$PWD/google-maps-scraper
+```
 
 Try:
 
-- Run a search, then **Download CSV**
+- Run a search, wait for it to complete, then **Download CSV**
 - **API keys** → create one, then:
   ```bash
   curl -X POST http://localhost:8000/api/v1/searches \
@@ -46,6 +57,18 @@ Try:
   ```
 - **Billing** → switch plans (no payment, Stripe is off)
 - Sign out and sign up as a normal customer to see the free-trial limits bite
+
+### Use proxies before you scrape at volume
+
+Google rate-limits datacentre IPs hard. One or two searches from a laptop is
+fine; a working day of them is not. Set `ENGINE_PROXIES` to a comma-separated
+list before you run this for customers:
+
+```ini
+ENGINE_PROXIES=http://user:pass@proxy-host:8080,http://user:pass@other:8080
+```
+
+Symptoms of being rate-limited: searches that complete with zero rows.
 
 ## 2. With Docker
 
@@ -58,10 +81,11 @@ docker compose exec app python -m app.cli create-admin --email you@example.com
 
 Same app on http://localhost:8000, backed by Postgres instead of SQLite.
 
-## 3. With real scraped data
+## 3. At volume: the queued engine
 
-The mock engine is for evaluating the product. For real Google Maps data you
-need the scraping engine deployed — that is a separate service with its own
+`local` runs one scrape subprocess per search on the same box as the app. That
+is fine to launch on. When you need a real queue, retries and workers you can
+scale out, deploy the full scraping engine — a separate service with its own
 provisioning wizard, workers and database. Full steps in
 [DEPLOY.md](DEPLOY.md). Short version:
 
@@ -77,11 +101,11 @@ ENGINE_URL=https://your-engine
 ENGINE_API_KEY=...
 ```
 
-Restart, and searches hit real Google Maps. Nothing else changes — the
-dashboard, CSV export and API all work the same.
+Restart. Nothing else changes — the dashboard, CSV export and API all work the
+same.
 
-**Do not charge anyone while `ENGINE_MODE=mock`.** You would be selling
-generated data.
+**Never charge anyone while `ENGINE_MODE=mock`.** That mode returns generated
+data; it exists for tests and UI work only.
 
 ## Troubleshooting
 
@@ -93,9 +117,22 @@ if you skip it, but never do that in production.
 
 **Password rejected** — minimum 10 characters.
 
-**"The scraping engine is unavailable"** — only appears with
-`ENGINE_MODE=http`. This app cannot reach `ENGINE_URL`, or `ENGINE_API_KEY` is
-wrong.
+**"Neither ENGINE_BINARY nor Docker is available"** — start Docker, or set
+`ENGINE_BINARY` to a scraper binary.
 
-**Searches sit at "queued" forever** — the engine has no worker running.
-Provision one from its admin UI.
+**Searches complete with zero rows** — usually Google rate-limiting your IP.
+Set `ENGINE_PROXIES`. Also check the query returns results in Google Maps by
+hand.
+
+**Searches fail mentioning playwright or a browser** — the scraper downloads
+Chromium on first run. Give the first search longer, or raise
+`ENGINE_JOB_TIMEOUT`.
+
+**Searches are slow** — they are real. Roughly a minute per page of results;
+`max_depth: 3` is about three minutes.
+
+**A restart lost a running search** — `local` keeps in-flight scrapes in
+memory. Re-run it. `ENGINE_MODE=http` survives restarts.
+
+**"The scraping engine is unavailable"** — `http` mode only: this app cannot
+reach `ENGINE_URL`, or `ENGINE_API_KEY` is wrong.

@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import hashlib
 import random
+import threading
 from dataclasses import dataclass, field
 from typing import Any, Protocol
 
@@ -217,11 +218,36 @@ class MockEngine:
         return rows
 
 
+# One local engine per process: it holds the in-flight subprocess registry, so
+# a fresh instance per request would lose track of running scrapes.
+_local_engine: "Engine | None" = None
+_local_lock = threading.Lock()
+
+
 def build_engine(settings: Settings) -> Engine:
+    global _local_engine
+
     if settings.engine_mode == "http":
         return HTTPEngine(
             base_url=settings.engine_url,
             api_key=settings.engine_api_key,
             timeout=settings.engine_timeout,
         )
-    return MockEngine()
+
+    if settings.engine_mode == "mock":
+        return MockEngine()
+
+    with _local_lock:
+        if _local_engine is None:
+            from app.localengine import LocalEngine
+
+            _local_engine = LocalEngine(settings)
+        return _local_engine
+
+
+def reset_local_engine() -> None:
+    """Drop the cached local engine. Used by tests."""
+    global _local_engine
+
+    with _local_lock:
+        _local_engine = None

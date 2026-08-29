@@ -26,10 +26,12 @@ export SECRET_KEY=$(openssl rand -hex 32)
 uvicorn app.main:app --reload
 ```
 
-Open http://localhost:8000. Sign up, run a search, download a CSV. Out of the
-box it uses the **mock engine** (deterministic fake results) and **billing is
-disabled** (plan changes apply without payment), so the whole product is
-walkable with no external dependencies.
+Open http://localhost:8000. Sign up, run a search, download a CSV.
+
+Searches return **real Google Maps data**: the default `local` engine runs the
+google-maps-scraper CLI per search, which needs nothing but Docker. Billing
+starts **disabled**, so plan changes apply without payment until you add Stripe
+keys.
 
 ### Give yourself an unlimited account
 
@@ -58,10 +60,17 @@ Run it against the same `DATABASE_URL` the app uses.
 
 Two switches turn it into a real business:
 
-| Switch | Development | Production |
-|---|---|---|
-| `ENGINE_MODE` | `mock` — fake results | `http` — a real scraper deployment |
-| `STRIPE_SECRET_KEY` | empty — free plan changes | set — real Stripe checkout |
+| Setting | Value | Data | Needs |
+|---|---|---|---|
+| `ENGINE_MODE` | `local` *(default)* | real | Docker, or a scraper binary |
+| `ENGINE_MODE` | `http` | real | a full scraper deployment with workers |
+| `ENGINE_MODE` | `mock` | **fake** | nothing — tests and UI work only |
+
+`local` runs one scrape subprocess per search on a single box: right for
+launching and for modest volume. Move to `http` when you need a real queue,
+retries and horizontal workers.
+
+Billing is off until `STRIPE_SECRET_KEY` is set.
 
 Just want to click around? [docs/TRY-IT.md](docs/TRY-IT.md).
 Ready to deploy for real? [docs/DEPLOY.md](docs/DEPLOY.md).
@@ -116,7 +125,8 @@ app/
   models.py      Account, User, ApiKey, Job, UsageEvent
   plans.py       the commercial plan catalog — edit this to reprice
   quota.py       credit ledger, reservations, plan enforcement
-  engine.py      adapters to the scraper (HTTP) and a mock for dev/tests
+  engine.py      engine selection: local, http, or mock
+  localengine.py runs the scraper CLI as a subprocess — real data, no queue
   billing.py     Stripe checkout, portal, webhook handling
   services.py    signup, job submission, syncing, CSV export
   security.py    password hashing, sessions, API keys
@@ -124,7 +134,7 @@ app/
   routes/        marketing, auth, dashboard, api_v1, webhooks
   templates/     Jinja2 pages
   static/css/    one hand-written stylesheet, no build step
-tests/           97 tests
+tests/           116 tests
 ```
 
 ## Tests
