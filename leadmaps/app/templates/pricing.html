@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Pricing — {{ brand }}{% endblock %}
+{% block body %}
+<section class="wrap section">
+  <h1 class="center">Pricing</h1>
+  <p class="center lede">Flat monthly plans with a lead allowance. No per-seat surprises, no annual lock-in.</p>
+  {% include "_plan_grid.html" %}
+
+  <h2>What is included in every plan</h2>
+  <ul class="checklist">
+    <li>Unlimited searches within your lead allowance</li>
+    <li>CSV export of every result set</li>
+    <li>Business name, category, address, phone, website, rating, review count, coordinates, Maps link</li>
+    <li>Job history you can re-download at any time</li>
+  </ul>
+
+  <h2>Plan comparison</h2>
+  <div class="table-scroll">
+    <table class="compare">
+      <thead>
+        <tr><th>Feature</th>{% for plan in plans %}<th>{{ plan.name }}</th>{% endfor %}</tr>
+      </thead>
+      <tbody>
+        <tr><td>Monthly price</td>{% for plan in plans %}<td>{{ plan.price_label }}</td>{% endfor %}</tr>
+        <tr><td>Leads per month</td>{% for plan in plans %}<td>{{ "{:,}".format(plan.monthly_credits) }}</td>{% endfor %}</tr>
+        <tr><td>Seats</td>{% for plan in plans %}<td>{{ plan.max_seats }}</td>{% endfor %}</tr>
+        <tr><td>Pages per search</td>{% for plan in plans %}<td>{{ plan.max_depth }}</td>{% endfor %}</tr>
+        <tr><td>REST API</td>{% for plan in plans %}<td>{{ "Yes" if plan.api_access else "—" }}</td>{% endfor %}</tr>
+        <tr><td>Email enrichment</td>{% for plan in plans %}<td>{{ "Yes" if plan.email_enrichment else "—" }}</td>{% endfor %}</tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2>Need more than {{ "{:,}".format(plans[-1].monthly_credits) }} leads a month?</h2>
+  <p>Email <a href="mailto:{{ support_email }}">{{ support_email }}</a> and we will quote a volume plan.</p>
+</section>
+{% endblock %}

@@ -1,0 +1,20 @@
+<div class="plans">
+  {% for plan in plans %}
+  <article class="plan{% if plan.featured %} plan-featured{% endif %}">
+    {% if plan.featured %}<span class="plan-badge">Most popular</span>{% endif %}
+    <h3>{{ plan.name }}</h3>
+    <p class="plan-price">{{ plan.price_label }}{% if not plan.is_free %}<span>/mo</span>{% endif %}</p>
+    <p class="plan-blurb">{{ plan.blurb }}</p>
+    <ul class="plan-list">
+      {% for item in plan.highlights %}<li>{{ item }}</li>{% endfor %}
+    </ul>
+    {% if current_plan_code is defined and current_plan_code == plan.code %}
+      <span class="btn btn-ghost btn-block" aria-disabled="true">Current plan</span>
+    {% elif plan.is_free %}
+      <a class="btn btn-ghost btn-block" href="/signup">Start free</a>
+    {% else %}
+      <a class="btn btn-primary btn-block" href="{{ plan_cta_url|default('/signup?plan=') }}{{ plan.code }}">Choose {{ plan.name }}</a>
+    {% endif %}
+  </article>
+  {% endfor %}
+</div>

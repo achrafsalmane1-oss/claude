@@ -1,0 +1,34 @@
+{% extends "app_base.html" %}
+{% block title %}Jobs — {{ brand }}{% endblock %}
+{% block app_body %}
+<h1>Searches</h1>
+{% if jobs %}
+<div class="table-scroll">
+  <table class="data">
+    <thead>
+      <tr><th>Search</th><th>Status</th><th>Leads</th><th>Source</th><th>Created</th><th></th></tr>
+    </thead>
+    <tbody>
+      {% for job in jobs %}
+      <tr>
+        <td><a href="/app/jobs/{{ job.id }}">{{ job.keyword }}</a></td>
+        <td><span class="badge badge-{{ job.status }}">{{ job.status }}</span></td>
+        <td>{{ "{:,}".format(job.result_count) }}</td>
+        <td>{{ job.source }}</td>
+        <td>{{ job.created_at.strftime('%d %b %Y %H:%M') }}</td>
+        <td class="row-actions">
+          {% if job.status == 'completed' and job.result_count %}
+          <a class="btn btn-small" href="/app/jobs/{{ job.id }}/export.csv">CSV</a>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% if has_more %}<p><a class="btn btn-ghost" href="/app/jobs?page={{ page + 1 }}">Older searches →</a></p>{% endif %}
+{% if page > 1 %}<p><a class="btn btn-ghost" href="/app/jobs?page={{ page - 1 }}">← Newer</a></p>{% endif %}
+{% else %}
+<p class="muted">No searches yet. <a href="/app">Run one →</a></p>
+{% endif %}
+{% endblock %}

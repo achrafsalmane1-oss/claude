@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block body_class %}app-shell{% endblock %}
+{% block chrome %}
+<header class="app-header">
+  <div class="wrap header-inner">
+    <a class="brand" href="/app">📍 {{ brand }}</a>
+    <nav class="app-nav">
+      <a href="/app" class="{{ 'active' if active == 'search' }}">Search</a>
+      <a href="/app/jobs" class="{{ 'active' if active == 'jobs' }}">Jobs</a>
+      <a href="/app/api-keys" class="{{ 'active' if active == 'keys' }}">API keys</a>
+      <a href="/app/billing" class="{{ 'active' if active == 'billing' }}">Billing</a>
+    </nav>
+    <div class="app-user">
+      <span class="usage-pill" title="{{ usage.used }} of {{ usage.included }} leads used this month">
+        {{ "{:,}".format(usage.remaining) }} leads left
+      </span>
+      <form method="post" action="/logout"><button class="linkish" type="submit">Sign out</button></form>
+    </div>
+  </div>
+</header>
+{% endblock %}
+{% block footer %}{% endblock %}
+
+{% block body %}
+<main class="wrap app-main">
+  {% if account.is_delinquent %}
+  <div class="alert alert-error">
+    Your last payment failed, so searches are paused. <a href="/app/billing">Update your card</a> to resume.
+  </div>
+  {% endif %}
+  {% include "_flash.html" %}
+  {% block app_body %}{% endblock %}
+</main>
+{% endblock %}

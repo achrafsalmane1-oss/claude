@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block title %}{{ brand }} — {{ tagline }}{% endblock %}
+{% block description %}Pull verified local business leads — name, phone, website, rating, email — straight out of Google Maps. Export to CSV or pipe them into your CRM over the API.{% endblock %}
+
+{% block body %}
+<section class="hero">
+  <div class="wrap">
+    <p class="eyebrow">Local business lead data</p>
+    <h1>Every business on Google Maps,<br>as a clean lead list.</h1>
+    <p class="lede">
+      Type “dentists in Manchester”, get a spreadsheet of names, phone numbers, websites,
+      ratings and emails in minutes. No browser extensions, no copy-paste, no per-lead pricing games.
+    </p>
+    <form class="hero-search" action="/signup" method="get">
+      <input type="text" name="keyword" placeholder="e.g. plumbers in Austin, TX" aria-label="Search leads">
+      <button class="btn btn-primary btn-lg" type="submit">Get my first 100 leads free</button>
+    </form>
+    <p class="hero-note">No card required · 100 leads on the house · Cancel anytime</p>
+  </div>
+</section>
+
+<section class="wrap section">
+  <div class="cards">
+    <article class="card">
+      <h3>Search like a human</h3>
+      <p>One line of plain English, or precise coordinates plus a radius when you need to blanket a metro area grid by grid.</p>
+    </article>
+    <article class="card">
+      <h3>Fields that close deals</h3>
+      <p>Business name, category, full address, phone, website, star rating, review count, coordinates and Maps link — plus emails scraped from the business website.</p>
+    </article>
+    <article class="card">
+      <h3>CSV or API</h3>
+      <p>Download a spreadsheet, or POST a keyword to the REST API and let your CRM pull results down when the job finishes.</p>
+    </article>
+  </div>
+</section>
+
+<section class="band">
+  <div class="wrap">
+    <h2>Built for people who sell to local businesses</h2>
+    <div class="use-cases">
+      <div><strong>Agencies</strong><p>Build a prospect list for every service area you pitch, refreshed monthly.</p></div>
+      <div><strong>SDR teams</strong><p>Fill the top of funnel with businesses that match your ICP by category and rating.</p></div>
+      <div><strong>Field sales</strong><p>Territory lists with coordinates, ready to route.</p></div>
+      <div><strong>Data teams</strong><p>Hit the API on a schedule and land rows straight in your warehouse.</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="wrap section">
+  <h2 class="center">How it works</h2>
+  <ol class="steps">
+    <li><strong>Describe the list.</strong> Keyword, language, and how deep to paginate.</li>
+    <li><strong>We run the search.</strong> Jobs are queued and scraped in the background.</li>
+    <li><strong>Take the data.</strong> Preview in the dashboard, export CSV, or fetch it over the API.</li>
+  </ol>
+  <p class="center"><a class="btn btn-primary btn-lg" href="/signup">Start free →</a></p>
+</section>
+
+<section class="band">
+  <div class="wrap">
+    <h2 class="center">Simple, capped pricing</h2>
+    <p class="center muted">You are billed per lead delivered, bundled into a flat monthly plan. Unused leads do not roll over.</p>
+    {% include "_plan_grid.html" %}
+    <p class="center"><a href="/pricing">See full plan comparison →</a></p>
+  </div>
+</section>
+
+<section class="wrap section faq">
+  <h2>Questions people ask before signing up</h2>
+  <details><summary>What counts as a lead?</summary><p>One business row delivered to you. If a search returns 180 businesses, that is 180 leads off your monthly allowance. Failed searches are never charged.</p></details>
+  <details><summary>Do you have my data locked in?</summary><p>No. Every result set exports to CSV, and the API returns the same rows as JSON. Cancel and take your lists with you.</p></details>
+  <details><summary>Is scraping public business listings legal?</summary><p>You are responsible for how you use the data, including compliance with GDPR, CAN-SPAM and local marketing rules. See our <a href="/terms">terms</a>.</p></details>
+  <details><summary>Can I cancel?</summary><p>Yes, from the billing page, any time. You keep access until the end of the period you have paid for.</p></details>
+</section>
+{% endblock %}

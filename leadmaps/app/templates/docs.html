@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% block title %}API reference — {{ brand }}{% endblock %}
+{% block body %}
+<section class="wrap section prose">
+  <h1>API reference</h1>
+  <p class="lede">Submit a search, poll until it is done, take the rows. Available on Starter and above.</p>
+
+  <h2>Authentication</h2>
+  <p>Send your key in the <code>X-API-Key</code> header. Create keys in the <a href="/app/api-keys">dashboard</a>.</p>
+<pre><code>curl {{ public_url }}/api/v1/usage -H "X-API-Key: lm_live_..."</code></pre>
+
+  <h2>POST /api/v1/searches</h2>
+  <p>Queue a search. Responds <code>202</code> with the job id.</p>
+<pre><code>curl -X POST {{ public_url }}/api/v1/searches \
+  -H "X-API-Key: lm_live_..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "keyword": "dentists in Manchester",
+    "lang": "en",
+    "max_depth": 3,
+    "extract_emails": false
+  }'</code></pre>
+  <table class="data">
+    <thead><tr><th>Field</th><th>Type</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td><code>keyword</code></td><td>string</td><td>Required. What to search for.</td></tr>
+      <tr><td><code>lang</code></td><td>string</td><td>Two-letter language code. Default <code>en</code>.</td></tr>
+      <tr><td><code>max_depth</code></td><td>int</td><td>Pages to paginate, ~20 businesses each. Capped by your plan.</td></tr>
+      <tr><td><code>extract_emails</code></td><td>bool</td><td>Crawl each business website for emails. Growth and above.</td></tr>
+      <tr><td><code>geo_coordinates</code></td><td>string</td><td><code>"lat,lon"</code> to centre the search.</td></tr>
+      <tr><td><code>zoom</code></td><td>int</td><td>1–21. Map zoom when using coordinates.</td></tr>
+      <tr><td><code>radius</code></td><td>float</td><td>Search radius in kilometres.</td></tr>
+    </tbody>
+  </table>
+
+  <h2>GET /api/v1/searches/{id}</h2>
+  <p>Poll for status and results. <code>status</code> is one of <code>queued</code>, <code>running</code>, <code>completed</code>, <code>failed</code>, <code>cancelled</code>.</p>
+<pre><code>{
+  "id": "0f7c…",
+  "status": "completed",
+  "keyword": "dentists in Manchester",
+  "result_count": 60,
+  "results": [
+    {
+      "title": "Northern Dental Care",
+      "category": "Dentist",
+      "address": "12 High St, Manchester",
+      "phone": "+44 161 555 0198",
+      "web_site": "https://example.com",
+      "review_rating": 4.7,
+      "review_count": 214,
+      "latitude": 53.4808,
+      "longtitude": -2.2426,
+      "emails": []
+    }
+  ]
+}</code></pre>
+  <p>Pass <code>?include_results=false</code> to omit the rows.</p>
+
+  <h2>GET /api/v1/searches/{id}/results.csv</h2>
+  <p>The same rows as a CSV download.</p>
+
+  <h2>GET /api/v1/searches</h2>
+  <p>List your searches, newest first. Supports <code>limit</code> (max 100) and <code>offset</code>.</p>
+
+  <h2>GET /api/v1/usage</h2>
+  <p>Your plan, allowance and leads consumed this period.</p>
+<pre><code>{"plan": "growth", "period": "2026-08", "included": 25000, "used": 1840, "remaining": 23160}</code></pre>
+
+  <h2>Errors</h2>
+  <table class="data">
+    <thead><tr><th>Code</th><th>Meaning</th></tr></thead>
+    <tbody>
+      <tr><td>401</td><td>Missing, invalid or revoked API key.</td></tr>
+      <tr><td>402</td><td>Monthly lead allowance exhausted, or payment failed.</td></tr>
+      <tr><td>403</td><td>Your plan does not include the requested feature.</td></tr>
+      <tr><td>404</td><td>No such search on your account.</td></tr>
+      <tr><td>422</td><td>The request body did not validate.</td></tr>
+      <tr><td>429</td><td>Too many searches running at once.</td></tr>
+      <tr><td>503</td><td>The scraping engine is temporarily unavailable.</td></tr>
+    </tbody>
+  </table>
+  <p>An interactive OpenAPI explorer is at <a href="/api/docs">/api/docs</a>.</p>
+</section>
+{% endblock %}

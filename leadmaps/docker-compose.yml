@@ -1,0 +1,51 @@
+# The SaaS control plane: this app plus its database.
+#
+#   cp .env.example .env   # fill in SECRET_KEY and PUBLIC_URL
+#   docker compose up -d
+#
+# The scraping engine (google-maps-scraper) is deployed separately with its own
+# provisioning wizard, which creates its database, runs its migrations and makes
+# an admin user. See docs/DEPLOY.md. Once it is up, create an API key in its
+# admin UI and set ENGINE_MODE=http plus ENGINE_URL and ENGINE_API_KEY here.
+
+services:
+  app:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: "postgresql+psycopg://leadmaps:${POSTGRES_PASSWORD:-leadmaps}@postgres:5432/leadmaps"
+      SECRET_KEY: "${SECRET_KEY:?generate one with openssl rand -hex 32}"
+      PUBLIC_URL: "${PUBLIC_URL:-http://localhost:8000}"
+      BRAND_NAME: "${BRAND_NAME:-LeadMaps}"
+      SUPPORT_EMAIL: "${SUPPORT_EMAIL:-support@example.com}"
+      # Leave as "mock" to demo the product; switch to "http" once the engine is up.
+      ENGINE_MODE: "${ENGINE_MODE:-mock}"
+      ENGINE_URL: "${ENGINE_URL:-http://engine:8080}"
+      ENGINE_API_KEY: "${ENGINE_API_KEY:-}"
+      STRIPE_SECRET_KEY: "${STRIPE_SECRET_KEY:-}"
+      STRIPE_PUBLISHABLE_KEY: "${STRIPE_PUBLISHABLE_KEY:-}"
+      STRIPE_WEBHOOK_SECRET: "${STRIPE_WEBHOOK_SECRET:-}"
+      STRIPE_PRICES: "${STRIPE_PRICES:-}"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: leadmaps
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:-leadmaps}"
+      POSTGRES_DB: leadmaps
+    volumes:
+      - app-db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U leadmaps"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  app-db:

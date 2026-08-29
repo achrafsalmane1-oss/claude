@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}{{ brand }}{% endblock %}</title>
+  <meta name="description" content="{% block description %}{{ tagline }}{% endblock %}">
+  <link rel="stylesheet" href="/static/css/app.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📍</text></svg>">
+</head>
+<body class="{% block body_class %}{% endblock %}">
+{% block chrome %}
+<header class="site-header">
+  <div class="wrap header-inner">
+    <a class="brand" href="/">📍 {{ brand }}</a>
+    <nav class="site-nav">
+      <a href="/pricing">Pricing</a>
+      <a href="/docs">API docs</a>
+      {% if user %}
+        <a class="btn btn-primary" href="/app">Dashboard</a>
+      {% else %}
+        <a href="/login">Sign in</a>
+        <a class="btn btn-primary" href="/signup">Start free</a>
+      {% endif %}
+    </nav>
+  </div>
+</header>
+{% endblock %}
+
+{% block body %}{% endblock %}
+
+{% block footer %}
+<footer class="site-footer">
+  <div class="wrap footer-inner">
+    <span>© {{ year }} {{ brand }}</span>
+    <nav>
+      <a href="/pricing">Pricing</a>
+      <a href="/docs">API</a>
+      <a href="/terms">Terms</a>
+      <a href="/privacy">Privacy</a>
+      <a href="mailto:{{ support_email }}">Contact</a>
+    </nav>
+  </div>
+</footer>
+{% endblock %}
+</body>
+</html>

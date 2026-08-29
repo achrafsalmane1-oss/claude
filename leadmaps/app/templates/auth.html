@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}{{ heading }} — {{ brand }}{% endblock %}
+{% block body %}
+<section class="wrap auth-wrap">
+  <div class="auth-card">
+    <h1>{{ heading }}</h1>
+    <p class="muted">{{ subheading }}</p>
+    {% include "_flash.html" %}
+    <form method="post" action="{{ action }}" class="stack">
+      <input type="hidden" name="next" value="{{ next_url }}">
+      {% if plan_code %}<input type="hidden" name="plan" value="{{ plan_code }}">{% endif %}
+      {% if mode == 'signup' %}
+      <label>Work email
+        <input type="email" name="email" value="{{ email }}" required autocomplete="email" autofocus>
+      </label>
+      <label>Company
+        <input type="text" name="company_name" value="{{ company_name }}" placeholder="Acme Agency" autocomplete="organization">
+      </label>
+      <label>Password
+        <input type="password" name="password" required minlength="10" autocomplete="new-password">
+        <small class="muted">At least 10 characters.</small>
+      </label>
+      {% else %}
+      <label>Email
+        <input type="email" name="email" value="{{ email }}" required autocomplete="email" autofocus>
+      </label>
+      <label>Password
+        <input type="password" name="password" required autocomplete="current-password">
+      </label>
+      {% endif %}
+      <button class="btn btn-primary btn-block btn-lg" type="submit">{{ submit_label }}</button>
+    </form>
+    <p class="auth-alt">{{ alt_text }} <a href="{{ alt_href }}">{{ alt_label }}</a></p>
+  </div>
+</section>
+{% endblock %}

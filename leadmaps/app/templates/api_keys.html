@@ -1,0 +1,63 @@
+{% extends "app_base.html" %}
+{% block title %}API keys — {{ brand }}{% endblock %}
+{% block app_body %}
+<h1>API keys</h1>
+
+{% if not plan.api_access %}
+<div class="alert alert-info">
+  The API is available on Starter and above. <a href="/app/billing">Upgrade →</a>
+</div>
+{% endif %}
+
+{% if new_key %}
+<div class="alert alert-ok">
+  <p><strong>Copy this key now — it will not be shown again.</strong></p>
+  <code class="key-reveal">{{ new_key }}</code>
+</div>
+{% endif %}
+
+<section class="panel">
+  <h2>Create a key</h2>
+  <form method="post" action="/app/api-keys" class="inline-form">
+    <input type="text" name="name" placeholder="Production" required>
+    <button class="btn btn-primary" type="submit">Create key</button>
+  </form>
+</section>
+
+{% if keys %}
+<div class="table-scroll">
+  <table class="data">
+    <thead><tr><th>Name</th><th>Key</th><th>Created</th><th>Last used</th><th>Status</th><th></th></tr></thead>
+    <tbody>
+      {% for key in keys %}
+      <tr>
+        <td>{{ key.name }}</td>
+        <td><code>{{ key.prefix }}…</code></td>
+        <td>{{ key.created_at.strftime('%d %b %Y') }}</td>
+        <td>{{ key.last_used_at.strftime('%d %b %Y %H:%M') if key.last_used_at else '—' }}</td>
+        <td>{{ 'Active' if key.is_active else 'Revoked' }}</td>
+        <td class="row-actions">
+          {% if key.is_active %}
+          <form method="post" action="/app/api-keys/{{ key.id }}/revoke">
+            <button class="btn btn-small btn-danger" type="submit">Revoke</button>
+          </form>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<p class="muted">No keys yet.</p>
+{% endif %}
+
+<section class="panel">
+  <h2>Quick start</h2>
+<pre><code>curl -X POST {{ public_url }}/api/v1/searches \
+  -H "X-API-Key: YOUR_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"keyword": "dentists in Manchester", "max_depth": 3}'</code></pre>
+  <p><a href="/docs">Full API reference →</a></p>
+</section>
+{% endblock %}

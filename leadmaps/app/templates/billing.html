@@ -1,0 +1,34 @@
+{% extends "app_base.html" %}
+{% block title %}Billing — {{ brand }}{% endblock %}
+{% block app_body %}
+<h1>Billing</h1>
+
+<section class="panel">
+  <div class="job-head">
+    <div>
+      <h2>{{ plan.name }} plan</h2>
+      <p class="muted">
+        {{ "{:,}".format(plan.monthly_credits) }} leads per month
+        · {{ "{:,}".format(usage.used) }} used this period
+        {% if account.subscription_status != 'none' %} · status: {{ account.subscription_status }}{% endif %}
+      </p>
+    </div>
+    {% if billing_enabled and account.stripe_customer_id %}
+    <form method="post" action="/app/billing/portal">
+      <button class="btn btn-ghost" type="submit">Manage payment method</button>
+    </form>
+    {% endif %}
+  </div>
+  <div class="meter"><div class="meter-fill" style="width: {{ usage.percent_used }}%"></div></div>
+</section>
+
+{% if not billing_enabled %}
+<div class="alert alert-info">
+  Stripe is not configured, so plan changes apply immediately without payment.
+  Set <code>STRIPE_SECRET_KEY</code> and <code>STRIPE_PRICES</code> to start charging.
+</div>
+{% endif %}
+
+<h2>Change plan</h2>
+{% include "_plan_grid.html" %}
+{% endblock %}

@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}{{ heading }} — {{ brand }}{% endblock %}
+{% block body %}
+<section class="wrap section prose">
+  <h1>{{ heading }}</h1>
+  <p class="muted">Last updated {{ updated }}</p>
+  <div class="alert alert-info">
+    This is a starting template, not legal advice. Have a lawyer review it before you take payment.
+  </div>
+  {{ body|safe }}
+</section>
+{% endblock %}

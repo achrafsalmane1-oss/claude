@@ -1,0 +1,47 @@
+{% extends "app_base.html" %}
+{% block title %}{{ job.keyword }} — {{ brand }}{% endblock %}
+{% block app_body %}
+<p><a href="/app/jobs">← All searches</a></p>
+<div class="job-head">
+  <div>
+    <h1>{{ job.keyword }}</h1>
+    <p class="muted">
+      <span class="badge badge-{{ job.status }}">{{ job.status }}</span>
+      · {{ "{:,}".format(job.result_count) }} leads
+      · {{ job.max_depth }} page{{ '' if job.max_depth == 1 else 's' }}
+      · {{ job.created_at.strftime('%d %b %Y %H:%M') }}
+    </p>
+  </div>
+  {% if job.status == 'completed' and job.result_count %}
+  <a class="btn btn-primary" href="/app/jobs/{{ job.id }}/export.csv">Download CSV</a>
+  {% endif %}
+</div>
+
+{% if job.error %}<div class="alert alert-error">{{ job.error }}</div>{% endif %}
+
+{% if job.status in ('queued', 'running') %}
+<div class="alert alert-info">This search is still running. <a href="">Refresh</a> in a moment.</div>
+{% endif %}
+
+{% if rows %}
+<p class="muted">Showing {{ rows|length }} of {{ "{:,}".format(job.result_count) }} rows. Download the CSV for the full list.</p>
+<div class="table-scroll">
+  <table class="data">
+    <thead><tr><th>Business</th><th>Category</th><th>Address</th><th>Phone</th><th>Website</th><th>Rating</th><th>Emails</th></tr></thead>
+    <tbody>
+      {% for row in rows %}
+      <tr>
+        <td>{{ row.get('title', '') }}</td>
+        <td>{{ row.get('category', '') }}</td>
+        <td>{{ row.get('address', '') }}</td>
+        <td>{{ row.get('phone', '') }}</td>
+        <td>{% if row.get('web_site') %}<a href="{{ row['web_site'] }}" rel="nofollow noopener" target="_blank">{{ row['web_site']|replace('https://', '')|replace('http://', '') }}</a>{% endif %}</td>
+        <td>{{ row.get('review_rating', '') }}{% if row.get('review_count') %} ({{ row['review_count'] }}){% endif %}</td>
+        <td>{{ (row.get('emails') or [])|join(', ') }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+{% endblock %}

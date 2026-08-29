@@ -1,0 +1,73 @@
+{% extends "app_base.html" %}
+{% block title %}Search — {{ brand }}{% endblock %}
+{% block app_body %}
+<div class="app-grid">
+  <section class="panel">
+    <h1>New search</h1>
+    <p class="muted">One search can return up to {{ "{:,}".format(plan.max_depth * 20) }} businesses on your {{ plan.name }} plan.</p>
+    <form method="post" action="/app/search" class="stack">
+      <label>What are you looking for?
+        <input type="text" name="keyword" value="{{ prefill_keyword }}" placeholder="dentists in Manchester" required autofocus>
+      </label>
+      <div class="field-row">
+        <label>Pages to scrape
+          <input type="number" name="max_depth" value="{{ default_depth }}" min="1" max="{{ plan.max_depth }}">
+          <small class="muted">~20 businesses per page. Max {{ plan.max_depth }} on {{ plan.name }}.</small>
+        </label>
+        <label>Language
+          <select name="lang">
+            {% for code, label in languages %}
+            <option value="{{ code }}"{% if code == 'en' %} selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </label>
+      </div>
+      <label class="checkbox {{ 'disabled' if not plan.email_enrichment }}">
+        <input type="checkbox" name="extract_emails" value="1" {{ 'disabled' if not plan.email_enrichment }}>
+        Find email addresses on business websites
+        {% if not plan.email_enrichment %}<span class="tag">Growth+</span>{% endif %}
+      </label>
+      <details class="advanced">
+        <summary>Advanced targeting</summary>
+        <div class="field-row">
+          <label>Coordinates <input type="text" name="geo_coordinates" placeholder="53.4808,-2.2426"></label>
+          <label>Zoom <input type="number" name="zoom" min="1" max="21" placeholder="14"></label>
+          <label>Radius (km) <input type="number" name="radius" step="0.1" min="0" placeholder="5"></label>
+        </div>
+        <p class="muted small">Use coordinates to blanket a specific area rather than trusting the keyword's implied location.</p>
+      </details>
+      <button class="btn btn-primary btn-lg" type="submit">Run search</button>
+    </form>
+  </section>
+
+  <aside class="panel panel-side">
+    <h2>This month</h2>
+    <div class="meter"><div class="meter-fill" style="width: {{ usage.percent_used }}%"></div></div>
+    <p class="meter-label">
+      <strong>{{ "{:,}".format(usage.used) }}</strong> of {{ "{:,}".format(usage.included) }} leads used
+    </p>
+    <dl class="stats">
+      <dt>Plan</dt><dd>{{ plan.name }}</dd>
+      <dt>Searches run</dt><dd>{{ job_count }}</dd>
+      <dt>Period</dt><dd>{{ usage.period }}</dd>
+    </dl>
+    {% if plan.is_free %}
+    <a class="btn btn-primary btn-block" href="/app/billing">Upgrade for more leads</a>
+    {% endif %}
+
+    <h2>Recent searches</h2>
+    {% if recent_jobs %}
+    <ul class="mini-list">
+      {% for job in recent_jobs %}
+      <li>
+        <a href="/app/jobs/{{ job.id }}">{{ job.keyword }}</a>
+        <span class="badge badge-{{ job.status }}">{{ job.status }}</span>
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p class="muted">Nothing yet — run your first search.</p>
+    {% endif %}
+  </aside>
+</div>
+{% endblock %}
