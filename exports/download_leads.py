@@ -1,6 +1,6 @@
 import json, urllib.request, urllib.error, time, csv, os, sys
 
-TOKEN = os.environ["SB_TOKEN"]
+TOKEN = os.environ.get("SB_TOKEN") or open("/home/user/claude/exports/.token").read().strip()
 BASE = "https://send.shieldsoutbound.com/api/leads?pagination_type=cursor"
 OUT = "/home/user/claude/exports/shields_outbound_leads.csv"
 STATE = "/home/user/claude/exports/state.json"
