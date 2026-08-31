@@ -137,6 +137,7 @@
 "rrenaudin@atakama-technologies.com",
 "salturo@fenoco.com.co",
 "samuel@lovenspa.fr",
+"sanjeev@avataar.vc",
 "sebastienlagnes@orange.fr",
 "speters58200@gmail.com",
 "st.bounaix@numericable.fr",
@@ -177,5 +178,15 @@
 "subject": "Re: Pourquoi le housing manufacturé — et pourquoi Oswego County, New York"
 }
 },
-"b2b_pending": {}
+"b2b_pending": {
+"sanjeev@avataar.vc": {
+"reply_to_id": "6a94ceb002d07dcaa45d31cc",
+"eaccount": "guean.thibaut@landquiresearch.info",
+"wid": "6a3179f64517eb5ecd7c1642",
+"subject": "Re: US land",
+"email": "sanjeev@avataar.vc",
+"reply_text": "Yes, please forward the details to kumars@dci.stanford.edu\n\nThanks!\nSanjeev K.\n\n________________________________\nFrom: Thibaut Gueant <guean.thibaut@landquiresearch.info>\nSent: Friday, August 28, 2026 7:01 AM\nTo: Sanjeev Kumar <sanjeev@avataar.vc>\nSubject: US land\n\nYou don't often get email from guean.thibaut@landquiresearch.info. Learn why this is important<https://aka.ms/LearnAboutSenderIdentification>\nSanjeev, quick question about your investments.\n\nMost investors enter US real estate after the development phase, when yields are already compressed.\n\nWe operate at the land-entitlement stage: we source off-market land, secure development approvals, then resell to national homebuilders. That's the phase where value creation is highest.\n\n100% entitlement success rate to date. Structured SPVs with defined exits in 18 to 36 months.\n\nWorth me sharing an overview of our current projects?\n\nBest regards,\nThibaut Guéant\nLandQuire\n",
+"tries": 1
+}
+}
 }
