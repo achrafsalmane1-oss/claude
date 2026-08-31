@@ -67,6 +67,23 @@ EN = [("Mathieu", "NSXvGpjwu2kq3I6bhCO5"), ("PierreR", "fSr7OAL4VXxZIngOL7Ey"),
 ES = [("Carlos", "fQjewvPSzRh3ui2ZCf2W")]
 POOLS = {"FR": FR, "PT": BR, "EN": EN, "ES": ES}
 
+# US desk: every positive coming from an EN campaign is handled by Kevin and
+# Sophie, alternating. The index lives in state.json so the rotation survives
+# across runs instead of restarting at Kevin every time.
+US_POOL = [("Kevin", "7l60QOUa5c2EvVr96frH"), ("Sophie", "PIudlTQkBqQCWJ2bVL0l")]
+
+
+def is_us(lang):
+    """US desk = the English-language campaigns."""
+    return lang == "EN"
+
+
+def us_agent(state):
+    """Next US-desk agent, round-robin, persisted in state."""
+    i = state.get("us_rr", 0) % len(US_POOL)
+    state["us_rr"] = i + 1
+    return US_POOL[i]
+
 # GHL user id -> email (for CC), used to CC the assigned agent
 UID2EMAIL = {
     "aBXFUOaJTNd3S6xuoe2p": "fdepart@landquire.com", "NSXvGpjwu2kq3I6bhCO5": "mverloove@landquire.com",
@@ -386,6 +403,7 @@ def load_state():
     s.setdefault("rr", {"FR": 0, "PT": 0, "EN": 0, "ES": 0})
     s.setdefault("handoff", {})
     s.setdefault("b2b_pending", {})
+    s.setdefault("us_rr", 0)
     return s
 
 
@@ -471,6 +489,10 @@ def main():
             if fn: body["firstName"] = fn
             if ln: body["lastName"] = ln
             if phone: body["phone"] = phone
+            us_name = us_id = ""
+            if is_us(lang):
+                us_name, us_id = us_agent(state)
+                body["assignedTo"] = us_id
             r = ghl_upsert(body)
             c_id = (r.get("contact") or {}).get("id")
             if c_id or DRY:
@@ -480,17 +502,28 @@ def main():
                 # goes to exactly the agent tagged on the lead, never a different one.
                 ghl_note(c_id, f"[Reponse positive - cold outreach]\nProspect: {l['email']}\n\n"
                                f"{(l.get('reply_text') or '')[:1500]}")
-                state["b2b_pending"][l["email"]] = {
-                    "reply_to_id": l["reply_to_id"], "eaccount": l["eaccount"], "wid": l["wid"],
-                    "subject": l.get("subject", ""), "email": l["email"],
-                    "reply_text": (l.get("reply_text") or "")[:2000], "tries": 0}
-                b2b_created.append((l["email"], lang, bool(phone)))
+                if us_id:
+                    # we own the assignment here, so there is nothing to wait for:
+                    # forward straight to the US-desk agent we just tagged.
+                    forward_to_team(l, users.get(us_id, ""), to_agent=True)
+                    b2b_created.append((l["email"], lang, bool(phone), us_name))
+                else:
+                    state["b2b_pending"][l["email"]] = {
+                        "reply_to_id": l["reply_to_id"], "eaccount": l["eaccount"], "wid": l["wid"],
+                        "subject": l.get("subject", ""), "email": l["email"],
+                        "reply_text": (l.get("reply_text") or "")[:2000], "tries": 0}
+                    b2b_created.append((l["email"], lang, bool(phone), ""))
             else:
                 print("  B2B GHL FAIL", l["email"], str(r)[:120], file=sys.stderr)
         else:
             # ---- B2C: do NOTHING in GHL. Forward the reply to Thibaut + agent. ----
             contact_id, owner = ghl_lookup(l["email"])
             agent_email = users.get(owner) or ""
+            if is_us(lang):
+                us_name, us_id = us_agent(state)
+                agent_email = users.get(us_id, "") or agent_email
+                if contact_id and not owner:      # never steal an existing owner
+                    ghl_upsert({"locationId": LOC, "email": l["email"], "assignedTo": us_id})
             note = (f"[Réponse positive B2C — à reprendre en main]\n"
                     f"Prospect: {l['email']}\nAgent assigné: {agent_email or 'non assigné'}\n\n"
                     f"{(l.get('reply_text') or '')[:1500]}")
@@ -512,9 +545,13 @@ def main():
         save_state(state)
     print("B2B forwarded to their GHL-assigned owner this run:", pending_forwarded,
           "| still awaiting assignment:", len(state.get("b2b_pending", {})))
-    print("B2B created in GHL (plusvibe / cold emailing / language, no agent):", len(b2b_created))
+    us_named = [x for x in b2b_created if len(x) > 3 and x[3]]
+    print("B2B created in GHL (plusvibe / cold emailing / language):", len(b2b_created),
+          "| of which routed to the US desk:", len(us_named))
     print("B2C forwarded to agent + Thibaut (no GHL create):", len(b2c_forwarded))
     print("B2B by lang:", dict(Counter(x[1] for x in b2b_created)))
+    if us_named:
+        print("US desk split:", dict(Counter(x[3] for x in us_named)))
 
 
 if __name__ == "__main__":
