@@ -1,0 +1,5 @@
+# Never commit exported personal data, run state, or logs
+*.csv
+state.json
+progress.log
+runner.out
