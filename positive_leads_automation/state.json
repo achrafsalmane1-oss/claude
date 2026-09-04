@@ -47,6 +47,7 @@
 "eric@shibata.com.br",
 "eugenio@adelanttocash.com",
 "eva.zajicova@engelvoelkers.com",
+"everton@wsave.com.br",
 "fabio.silva@redemudamundo.com.br",
 "fayecal.nader@proton.me",
 "fdebrabant@prodster.eu",
@@ -121,6 +122,7 @@
 "nicolas.moreau@teyliom.com",
 "nicolas.vincent@buyerside.be",
 "nicolas@keytchens.com",
+"ochatillon@trajectives.com",
 "oscar.garcia@proagomarketing.lu",
 "ouldchakmadji@live.fr",
 "oyhenartb@aol.com",
@@ -128,6 +130,7 @@
 "patrick01710@gmail.com",
 "paul.vandenberghe@orange.fr",
 "paul_nugent@outlook.com",
+"paulo.martins@targetdata.com.br",
 "peter.garre@bopro.be",
 "pfpelletier@outlook.com",
 "phellings@angelteam.fr",
@@ -194,6 +197,34 @@
 "subject": "Re: Pourquoi le housing manufacturé — et pourquoi Oswego County, New York"
 }
 },
-"b2b_pending": {},
+"b2b_pending": {
+"everton@wsave.com.br": {
+"reply_to_id": "6a9af25802d07dcaa482b562",
+"eaccount": "thibaut_guea@landquiresearch.info",
+"wid": "6a3179f64517eb5ecd7c1642",
+"subject": "Re: última mensagem",
+"email": "everton@wsave.com.br",
+"reply_text": "Boa tarde.\nTudo bem?\nPode me enviar, pf.\nObrigado.\n\nEnviado do meu iPhone\n\n> Em 4 de set. de 2026, à(s) 11:44, Thibaut Gueant <thibaut_guea@landquiresearch.info> escreveu:\n> \n> ﻿ Everton, não vou insistir mais.\n> \n> Se o mercado de terrenos nos EUA não é um assunto para si neste momento, sem problema: diga-me e encerro o seu processo.\n> \n> Se quiser apenas ver como é um dos nossos projetos antes de decidir, envio-lhe um exemplo concreto: o terreno, as aprovações obtidas, o calendário de saída e a rentabilidade alvo.\n> \n> Basta uma palavra.\n> \n> Atenciosamente,\n> Thibaut Guéant\n> LandQuire\n",
+"tries": 1
+},
+"ochatillon@trajectives.com": {
+"reply_to_id": "6a9aedd402d07dcaa482704d",
+"eaccount": "thbt_gu@landquiresearch.info",
+"wid": "6a3179f64517eb5ecd7c1642",
+"subject": "Re: dernier message",
+"email": "ochatillon@trajectives.com",
+"reply_text": "Bonjour Thibaut,\n\nMerci pour vos propositions.\n\nPouvez-vous m’envoyer quelques trackings sur ce que vous avez fait ? \nEt quels sont les minimums de mises que vous exigez?\n\nBien à vous \nOlivier Chatillon \n\nExecutive Coach\nSuperviseur\n06-34-16-34-07\n\nLead with trust and build the world you want to see \n\n> Le 4 sept. 2026 à 17:48, Thibaut Gueant <thbt_gu@landquiresearch.info> a écrit :\n> \n> ﻿ Olivier, je ne vais pas insister davantage.\n> \n> Si le foncier américain n'est pas un sujet pour vous en ce moment, aucun souci : dites-le moi et je clôture votre dossier.\n> \n> Si en revanche vous voulez simplement voir à quoi ressemble un projet concret avant de vous décider, je vous envoie un exemple : le terrain, les autorisations obtenues, le calendrier de sortie et le rendement visé.\n> \n> Un mot de votre part suffit.\n> \n> Bien à vous,\n> Thibaut Guéant\n> LandQuire\n",
+"tries": 1
+},
+"paulo.martins@targetdata.com.br": {
+"reply_to_id": "6a9acee602d07dcaa4803d9c",
+"eaccount": "thibautg@landquireco.info",
+"wid": "6a3179f64517eb5ecd7c1642",
+"subject": "Re: terreno americano",
+"email": "paulo.martins@targetdata.com.br",
+"reply_text": "Olá Thibaut, tenho interesse em saber mais sobre esse projeto\n\nObter o Outlook para iOS<https://aka.ms/o0ukef>\n________________________________\nDe: Thibaut Gueant <thibautg@landquireco.info>\nEnviado: quinta-feira, setembro 3, 2026 5:11 PM\nPara: Paulo Martins <paulo.martins@targetdata.com.br>\nAssunto: terreno americano\n\nATENÇÃO: Este e-mail é externo e pode ser malicioso. Recomendamos extrema cautela ao clicar em links ou abrir anexos.\n\nPaulo, uma pergunta rápida sobre seus investimentos.\n\nA maioria dos investidores entra no mercado imobiliário americano após a fase de desenvolvimento, quando os rendimentos já estão comprimidos.\n\nNós atuamos na fase de urbanização: identificamos terrenos fora do mercado, obtemos as aprovações de desenvolvimento e revendemos às construtoras nacionais. É a fase em que a valorização é maior.\n\n100% de sucesso nas aprovações até hoje. SPVs estruturados com saídas definidas em 18 a 36 meses.\n\nVale a pena eu compartilhar uma visão dos nossos projetos atuais?\n\nAtenciosamente,\nThibaut Guéant\nLandQuire\n",
+"tries": 1
+}
+},
 "us_rr": 2
 }
