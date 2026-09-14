@@ -106,7 +106,12 @@ BODY = {
 STATE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "state.json")
 
 
+class PlusVibeDown(Exception):
+    """PlusVibe answered nothing usable after every retry (outage, expired plan...)."""
+
+
 def pv_get(path, retries=6):
+    last = ""
     for a in range(retries):
         try:
             req = urllib.request.Request(PVBASE + path,
@@ -115,11 +120,20 @@ def pv_get(path, retries=6):
                 return json.loads(r.read())
         except urllib.error.HTTPError as e:
             if e.code in (429, 500, 502, 503):
+                # keep the body: a 500 here is usually "not authorized to access
+                # this feature", i.e. the subscription lapsed -- say so in the log
+                # instead of blowing up later on a None.
+                try: last = f"HTTP {e.code}: {e.read()[:300].decode('utf-8', 'replace')}"
+                except Exception: last = f"HTTP {e.code}"
                 time.sleep(min(2 ** a, 15)); continue
             raise
-        except Exception:
-            if a == retries - 1: raise
+        except Exception as e:
+            last = f"{type(e).__name__}: {e}"
+            if a == retries - 1: break
             time.sleep(2)
+    # Never return None: callers immediately do d.get(...) / iterate the result,
+    # and a silent None turns an outage into an unreadable AttributeError.
+    raise PlusVibeDown(f"{path} unreachable after {retries} tries -- {last or 'no response'}")
 
 
 def pv_post(path, body):
@@ -419,6 +433,8 @@ def campaign_langs():
         try:
             for c in pv_get(f"/campaign/list?workspace_id={wid}&limit=100"):
                 cl[c["id"]] = lang_of(c.get("name", ""))
+        except PlusVibeDown:
+            raise
         except Exception as e:
             print("campaign list err", e, file=sys.stderr)
     return cl
@@ -555,4 +571,12 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except PlusVibeDown as e:
+        # An outage or a lapsed subscription must read as exactly that in the run
+        # log. Nothing is written to state, so every positive is still picked up
+        # on the next run once PlusVibe answers again.
+        print(f"PLUSVIBE UNAVAILABLE -- nothing processed, will retry next run.\n  {e}",
+              file=sys.stderr)
+        sys.exit(1)
