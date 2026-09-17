@@ -120,6 +120,7 @@
 "maciel@clickgalpoes.com.br",
 "marcello@eutheniacapital.fr",
 "marcelo.carletti@spxcapital.com",
+"marcelo@parluto.com.br",
 "marcio@remessaonline.com.br",
 "marco.mattoso@efinternational.com.br",
 "marco@construtoraelevacao.com.br",
@@ -249,6 +250,16 @@
 "subject": "Être parmi les invités de demain"
 }
 },
-"b2b_pending": {},
+"b2b_pending": {
+"marcelo@parluto.com.br": {
+"reply_to_id": "6aabd15102d07dcaa4e18e79",
+"eaccount": "thibautg@landquire.info",
+"wid": "6a3179f64517eb5ecd7c1642",
+"subject": "Re: última mensagem",
+"email": "marcelo@parluto.com.br",
+"reply_text": "Mande-me conhecer, sem compromisso.\n\nMarcelo Carlos Parluto\n________________________________\nDe: Thibaut Gueant <thibautg@landquire.info>\nEnviado: Thursday, 17 September 2026 14:31:59\nPara: Marcelo | Parluto Advogados <marcelo@parluto.com.br>\nAssunto: última mensagem\n\nMarcelo, não vou insistir mais.\n\nSe o mercado de terrenos nos EUA não é um assunto para si neste momento, sem problema: diga-me e encerro o seu processo.\n\nSe quiser apenas ver como é um dos nossos projetos antes de decidir, envio-lhe um exemplo concreto: o terreno, as aprovações obtidas, o calendário de saída e a rentabilidade alvo.\n\nBasta uma palavra.\n\nAtenciosamente,\nThibaut Guéant\nLandQuire\n",
+"tries": 1
+}
+},
 "us_rr": 1
 }
