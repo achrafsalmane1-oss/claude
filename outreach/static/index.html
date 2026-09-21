@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Outreach</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📡</text></svg>">
+<link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+<div id="app">
+  <aside class="sidebar">
+    <div class="brand"><span class="dot"></span> Outreach</div>
+    <nav id="nav">
+      <a href="#/dashboard" data-view="dashboard"><span>Dashboard</span></a>
+      <a href="#/contacts" data-view="contacts"><span>Contacts</span><b id="badge-contacts"></b></a>
+      <a href="#/sequences" data-view="sequences"><span>Sequences</span></a>
+      <a href="#/campaigns" data-view="campaigns"><span>Campaigns</span><b id="badge-campaigns"></b></a>
+      <a href="#/tasks" data-view="tasks"><span>Today's queue</span><b id="badge-tasks"></b></a>
+      <a href="#/inbox" data-view="inbox"><span>Master inbox</span><b id="badge-inbox"></b></a>
+      <a href="#/reports" data-view="reports"><span>Reports</span></a>
+      <a href="#/settings" data-view="settings"><span>Settings</span></a>
+    </nav>
+    <div class="sidebar-foot">
+      <div id="mode-pill" class="pill">…</div>
+      <button class="btn ghost sm" id="btn-tick" title="Run the scheduler now">Run scheduler</button>
+      <div class="muted xs" id="engine-info"></div>
+    </div>
+  </aside>
+  <main id="main"><div class="loading">Loading…</div></main>
+</div>
+<div id="modal-root"></div>
+<div id="toast-root"></div>
+<script src="/static/app.js"></script>
+</body>
+</html>
