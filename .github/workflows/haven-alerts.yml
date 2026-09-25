@@ -1,7 +1,9 @@
-name: Haven - alerte reponse positive
+name: Haven - pont Slack / PlusVibe
 
 # Surveille le workspace HSC (Haven St Capital) dans PlusVibe et poste dans
 # le canal Slack #positivereplies des qu'une reponse est etiquetee INTERESTED.
+# Dans l'autre sens, tout message ecrit dans un fil Slack part au prospect via
+# PlusVibe, avec BCC_TO en copie cachee.
 
 on:
   schedule:
@@ -29,10 +31,12 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Alerte Slack Haven
+      - name: Pont Slack <-> PlusVibe
         env:
           PLUSVIBE_API_KEY: ${{ secrets.PLUSVIBE_API_KEY }}
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+          SLACK_CHANNEL_ID: ${{ vars.SLACK_CHANNEL_ID || 'C0C4L761EMA' }}
+          BCC_TO: ${{ vars.BCC_TO || 'achraf@havenstcapital.com' }}
           DRY_RUN: ${{ github.event.inputs.dry_run }}
         run: python haven_alerts/alert.py
 

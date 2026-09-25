@@ -1,22 +1,32 @@
 # -*- coding: utf-8 -*-
-"""Haven St Capital -- alerte Slack sur reponse positive.
+"""Haven St Capital -- pont bidirectionnel PlusVibe <-> Slack.
 
-Surveille le workspace HSC dans PlusVibe. Des qu'une reponse porte le label
-INTERESTED, poste le lead dans le canal Slack via un webhook entrant.
+Sens 1 (entrant)  : toute reponse etiquetee INTERESTED dans le workspace HSC
+                    est postee dans le canal Slack. Le fil Slack devient le
+                    point de discussion de ce prospect.
+Sens 2 (sortant)  : tout message ecrit par un humain DANS ce fil Slack est
+                    envoye au prospect via PlusVibe, avec BCC_TO en copie
+                    cachee pour pouvoir reprendre l'echange par email.
+
+Le prospect ne voit jamais Slack. Les messages du bot ne sont jamais renvoyes.
 
 Variables d'environnement :
-  PLUSVIBE_API_KEY    (obligatoire)
-  SLACK_WEBHOOK_URL   (obligatoire) -- webhook entrant du canal #positivereplies
-  HSC_WORKSPACE_ID    (defaut 6a4d2d81fed50998a91ac742)
-  DRY_RUN=1           journalise sans rien poster
+  PLUSVIBE_API_KEY   (obligatoire)
+  SLACK_BOT_TOKEN    (obligatoire) jeton xoxb- de l'app Slack
+  SLACK_CHANNEL_ID   (defaut C0C4L761EMA -- #positivereplies)
+  BCC_TO             (defaut achraf@havenstcapital.com)
+  HSC_WORKSPACE_ID   (defaut 6a4d2d81fed50998a91ac742)
+  DRY_RUN=1          journalise sans rien envoyer
 """
-import json, os, re, sys, time, urllib.request, urllib.error
+import json, os, re, sys, time, urllib.request, urllib.error, urllib.parse
 
 KEY   = os.environ.get("PLUSVIBE_API_KEY", "")
-HOOK  = os.environ.get("SLACK_WEBHOOK_URL", "")
-BASE  = "https://api.plusvibe.ai/api/v1"
+TOKEN = os.environ.get("SLACK_BOT_TOKEN", "")
+CHAN  = os.environ.get("SLACK_CHANNEL_ID", "C0C4L761EMA")
+BCC   = os.environ.get("BCC_TO", "achraf@havenstcapital.com")
 WID   = os.environ.get("HSC_WORKSPACE_ID", "6a4d2d81fed50998a91ac742")
 DRY   = os.environ.get("DRY_RUN", "") not in ("", "0", "false", "False")
+BASE  = "https://api.plusvibe.ai/api/v1"
 STATE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "state.json")
 
 QUOTE = [r"\bOn\s+.{3,200}?\s+wrote\s*:", r"\bLe\s+.{3,200}?\s+a\s+(?:é|e)crit\s*:",
@@ -28,6 +38,7 @@ class PlusVibeDown(Exception):
     """PlusVibe n'a rien renvoye d'exploitable apres tous les essais."""
 
 
+# ---------------------------------------------------------------- PlusVibe
 def pv_get(path, retries=5):
     last = ""
     for a in range(retries):
@@ -49,21 +60,46 @@ def pv_get(path, retries=5):
     raise PlusVibeDown(f"{path} injoignable apres {retries} essais -- {last or 'aucune reponse'}")
 
 
-def slack(text):
+def pv_reply(rec, text):
+    """Envoie le message au prospect, avec l'utilisateur en copie cachee."""
     if DRY:
-        print("  [DRY] " + text.replace("\n", " | ")[:160])
+        print(f"  [DRY] -> {rec['email']} (bcc {BCC}) : {text[:70]}")
         return True
-    data = json.dumps({"text": text}).encode()
-    req = urllib.request.Request(HOOK, data=data, method="POST",
-                                 headers={"Content-Type": "application/json"})
+    body = {"reply_to_id": rec["reply_to_id"], "from": rec["eaccount"],
+            "to": rec["email"], "cc": "", "bcc": BCC,
+            "subject": rec.get("subject", ""), "body": text.replace("\n", "<br>")}
+    req = urllib.request.Request(BASE + f"/unibox/emails/reply?workspace_id={WID}",
+        data=json.dumps(body).encode(), method="POST",
+        headers={"x-api-key": KEY, "Content-Type": "application/json", "User-Agent": "curl/8.5.0"})
+    try:
+        with urllib.request.urlopen(req, timeout=40) as r:
+            return r.status in (200, 201)
+    except urllib.error.HTTPError as e:
+        print("  envoi refuse:", e.code, e.read()[:200], file=sys.stderr)
+        return False
+
+
+# -------------------------------------------------------------------- Slack
+def slack(method, payload=None, get=False):
+    url = "https://slack.com/api/" + method
+    if get:
+        url += "?" + urllib.parse.urlencode(payload or {})
+        req = urllib.request.Request(url, headers={"Authorization": "Bearer " + TOKEN})
+    else:
+        req = urllib.request.Request(url, data=json.dumps(payload or {}).encode(), method="POST",
+            headers={"Authorization": "Bearer " + TOKEN,
+                     "Content-Type": "application/json; charset=utf-8"})
     for a in range(4):
         try:
             with urllib.request.urlopen(req, timeout=30) as r:
-                return r.status == 200
+                d = json.loads(r.read())
+                if not d.get("ok"):
+                    print(f"  slack {method}: {d.get('error')}", file=sys.stderr)
+                return d
         except Exception as e:
             if a == 3:
-                print("  echec Slack:", e, file=sys.stderr)
-                return False
+                print(f"  slack {method} echec: {e}", file=sys.stderr)
+                return {"ok": False}
             time.sleep(2 * (a + 1))
 
 
@@ -78,13 +114,21 @@ def clean(it):
     return t[:cut].strip()[:700]
 
 
+# -------------------------------------------------------------------- etat
 def load_state():
     try: s = json.load(open(STATE))
     except Exception: s = {}
-    s.setdefault("alerted", [])
+    s.setdefault("alerted", [])     # ids de messages PlusVibe deja postes
+    s.setdefault("threads", {})     # ts Slack -> contexte du prospect
     return s
 
 
+def save_state(s):
+    s["alerted"] = s["alerted"][-2000:]
+    json.dump(s, open(STATE, "w"), indent=1, ensure_ascii=False)
+
+
+# ------------------------------------------------------------ sens entrant
 def fetch_interested():
     out, trail = [], None
     while True:
@@ -98,45 +142,87 @@ def fetch_interested():
     return out
 
 
-def main():
-    if not KEY:
-        print("PLUSVIBE_API_KEY absent.", file=sys.stderr); sys.exit(1)
-    if not HOOK and not DRY:
-        print("SLACK_WEBHOOK_URL absent.", file=sys.stderr); sys.exit(1)
-    state = load_state()
+def post_new(state):
     seen = set(state["alerted"])
-    items = fetch_interested()
-    new = [i for i in items if i.get("id") not in seen]
-    print(f"INTERESTED: {len(items)} | nouvelles: {len(new)} | DRY_RUN={DRY}")
-    sent = 0
+    new = [i for i in fetch_interested() if i.get("id") not in seen]
+    posted = 0
     for it in new:
         fa = (it.get("from_address_json") or [{}])[0]
         name = fa.get("name") or ""
         em = (it.get("from_address_email") or "").strip()
-        txt = ("\n".join("> " + l for l in clean(it).split("\n"))) or "> (message vide)"
+        quoted = "\n".join("> " + l for l in (clean(it) or "(message vide)").split("\n"))
         msg = (f"🟢 *Nouvelle réponse positive — Haven*\n\n"
                f"*{name or em}* — `{em}`\n"
                f"Objet : {it.get('subject','')}\n"
                f"Boîte : {it.get('eaccount','')}\n"
                f"Reçue : {(it.get('timestamp_created') or '')[:16].replace('T',' ')} UTC\n\n"
-               f"{txt}")
-        if slack(msg):
-            sent += 1
+               f"{quoted}\n\n"
+               f"_Réponds dans ce fil : ton message part au prospect, avec toi en copie cachée._")
+        if DRY:
+            print("  [DRY] post Slack ->", em); posted += 1
+            state["alerted"].append(it["id"]); continue
+        r = slack("chat.postMessage", {"channel": CHAN, "text": msg})
+        if r.get("ok"):
+            posted += 1
             state["alerted"].append(it["id"])
+            state["threads"][r["ts"]] = {
+                "email": em, "eaccount": it.get("eaccount"),
+                "reply_to_id": it.get("id"), "subject": it.get("subject", ""),
+                "sent": []}
             print("  poste ->", em)
-        else:
-            print("  ECHEC ->", em, file=sys.stderr)
-        time.sleep(0.3)
+        time.sleep(0.4)
+    return posted
+
+
+# ------------------------------------------------------------ sens sortant
+def push_replies(state):
+    me = slack("auth.test", {}, get=True).get("user_id") if not DRY else None
+    sent = 0
+    for ts, rec in list(state["threads"].items()):
+        d = slack("conversations.replies", {"channel": CHAN, "ts": ts, "limit": 50}, get=True)
+        if not d.get("ok"): continue
+        for m in d.get("messages", []):
+            if m.get("ts") == ts:            # le message d'alerte lui-meme
+                continue
+            if m.get("bot_id") or m.get("user") == me or m.get("subtype"):
+                continue                      # jamais renvoyer nos propres messages
+            if m["ts"] in rec["sent"]:
+                continue
+            text = (m.get("text") or "").strip()
+            if not text:
+                continue
+            if pv_reply(rec, text):
+                sent += 1
+                rec["sent"].append(m["ts"])
+                if not DRY:
+                    slack("chat.postMessage", {"channel": CHAN, "thread_ts": ts,
+                          "text": f"✅ Envoyé à {rec['email']} — tu es en copie cachée sur {BCC}"})
+                print("  envoye ->", rec["email"])
+            else:
+                if not DRY:
+                    slack("chat.postMessage", {"channel": CHAN, "thread_ts": ts,
+                          "text": "⚠️ L'envoi a échoué, le prospect n'a rien reçu."})
+            time.sleep(0.3)
+    return sent
+
+
+def main():
+    if not KEY:
+        print("PLUSVIBE_API_KEY absent.", file=sys.stderr); sys.exit(1)
+    if not TOKEN and not DRY:
+        print("SLACK_BOT_TOKEN absent.", file=sys.stderr); sys.exit(1)
+    state = load_state()
+    p = post_new(state)
+    s = push_replies(state)
     if not DRY:
-        state["alerted"] = state["alerted"][-2000:]
-        json.dump(state, open(STATE, "w"), indent=1)
-    print(f"alertes postees: {sent}")
+        save_state(state)
+    print(f"nouvelles reponses postees: {p} | messages envoyes aux prospects: {s} | DRY_RUN={DRY}")
 
 
 if __name__ == "__main__":
     try:
         main()
     except PlusVibeDown as e:
-        print(f"PLUSVIBE INDISPONIBLE -- aucune alerte, nouvel essai au prochain passage.\n  {e}",
+        print(f"PLUSVIBE INDISPONIBLE -- rien traite, nouvel essai au prochain passage.\n  {e}",
               file=sys.stderr)
         sys.exit(1)
