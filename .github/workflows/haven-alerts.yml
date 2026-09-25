@@ -5,9 +5,11 @@ name: Haven - pont Slack / PlusVibe
 # Dans l'autre sens, tout message ecrit dans un fil Slack part au prospect via
 # PlusVibe, avec BCC_TO en copie cachee.
 
+# Plus de planification propre ici : GitHub etrangle les workflows planifies de
+# ce depot et deux planifications se partagent le meme budget. Le pont tourne
+# desormais dans "Positive leads pipeline", a chaque passage de celui-ci.
+# Ce fichier reste pour un declenchement manuel immediat.
 on:
-  schedule:
-    - cron: "*/5 * * * *"      # toutes les 5 minutes (cadence best-effort GitHub)
   workflow_dispatch:
     inputs:
       dry_run:
