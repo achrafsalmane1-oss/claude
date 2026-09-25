@@ -1,7 +1,7 @@
 name: Haven - alerte reponse positive
 
-# Surveille le workspace HSC (Haven St Capital) dans PlusVibe et envoie une
-# alerte a achraf@havenstcapital.com des qu'une reponse est etiquetee INTERESTED.
+# Surveille le workspace HSC (Haven St Capital) dans PlusVibe et poste dans
+# le canal Slack #positivereplies des qu'une reponse est etiquetee INTERESTED.
 
 on:
   schedule:
@@ -29,10 +29,10 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Alerte Haven
+      - name: Alerte Slack Haven
         env:
           PLUSVIBE_API_KEY: ${{ secrets.PLUSVIBE_API_KEY }}
-          ALERT_TO: ${{ vars.HAVEN_ALERT_TO || 'achraf@havenstcapital.com' }}
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
           DRY_RUN: ${{ github.event.inputs.dry_run }}
         run: python haven_alerts/alert.py
 
