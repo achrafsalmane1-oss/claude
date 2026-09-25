@@ -1,0 +1,50 @@
+name: Haven - alerte reponse positive
+
+# Surveille le workspace HSC (Haven St Capital) dans PlusVibe et envoie une
+# alerte a achraf@havenstcapital.com des qu'une reponse est etiquetee INTERESTED.
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"      # toutes les 5 minutes (cadence best-effort GitHub)
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "1 pour journaliser sans envoyer"
+        required: false
+        default: "0"
+
+concurrency:
+  group: haven-alerts
+  cancel-in-progress: false     # jamais deux passages en parallele
+
+permissions:
+  contents: write               # pour committer l'etat de deduplication
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Alerte Haven
+        env:
+          PLUSVIBE_API_KEY: ${{ secrets.PLUSVIBE_API_KEY }}
+          ALERT_TO: ${{ vars.HAVEN_ALERT_TO || 'achraf@havenstcapital.com' }}
+          DRY_RUN: ${{ github.event.inputs.dry_run }}
+        run: python haven_alerts/alert.py
+
+      - name: Sauvegarde de l'etat
+        if: ${{ github.event.inputs.dry_run != '1' }}
+        run: |
+          git config user.name  "haven-bot"
+          git config user.email "bot@haven.local"
+          if ! git diff --quiet -- haven_alerts/state.json; then
+            git add haven_alerts/state.json
+            git commit -m "chore: etat alertes Haven [skip ci]"
+            git push
+          else
+            echo "Aucun changement d'etat."
+          fi
