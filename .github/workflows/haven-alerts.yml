@@ -5,10 +5,11 @@ name: Haven - pont Slack / PlusVibe
 # Dans l'autre sens, tout message ecrit dans un fil Slack part au prospect via
 # PlusVibe, avec BCC_TO en copie cachee.
 
-# Plus de planification propre ici : GitHub etrangle les workflows planifies de
-# ce depot et deux planifications se partagent le meme budget. Le pont tourne
-# desormais dans "Positive leads pipeline", a chaque passage de celui-ci.
-# Ce fichier reste pour un declenchement manuel immediat.
+# DESACTIVE. Les alertes Haven passent desormais par le webhook Slack natif de
+# PlusVibe, configure dans l'interface PlusVibe (campagne HAVEN - B2B PRODUCTS
+# - WARM, evenement "All Email Replies"). Ce pont ne tourne plus : aucune
+# planification, et le declenchement manuel ci-dessous est laisse uniquement
+# pour pouvoir le relancer un jour en connaissance de cause.
 on:
   workflow_dispatch:
     inputs:
