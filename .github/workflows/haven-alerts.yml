@@ -37,6 +37,7 @@ jobs:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
           SLACK_CHANNEL_ID: ${{ vars.SLACK_CHANNEL_ID || 'C0C4L761EMA' }}
           BCC_TO: ${{ vars.BCC_TO || 'achraf@havenstcapital.com' }}
+          SLACK_MENTION: ${{ vars.SLACK_MENTION || 'U0C5AT75UCQ' }}
           DRY_RUN: ${{ github.event.inputs.dry_run }}
         run: python haven_alerts/alert.py
 

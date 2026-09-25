@@ -14,6 +14,8 @@ Variables d'environnement :
   PLUSVIBE_API_KEY   (obligatoire)
   SLACK_BOT_TOKEN    (obligatoire) jeton xoxb- de l'app Slack
   SLACK_CHANNEL_ID   (defaut C0C4L761EMA -- #positivereplies)
+  SLACK_MENTION      (defaut U0C5AT75UCQ) identifiant Slack mentionne sur chaque
+                     alerte, pour declencher la notification telephone
   BCC_TO             (defaut achraf@havenstcapital.com)
   HSC_WORKSPACE_ID   (defaut 6a4d2d81fed50998a91ac742)
   DRY_RUN=1          journalise sans rien envoyer
@@ -23,6 +25,7 @@ import json, os, re, sys, time, urllib.request, urllib.error, urllib.parse
 KEY   = os.environ.get("PLUSVIBE_API_KEY", "")
 TOKEN = os.environ.get("SLACK_BOT_TOKEN", "")
 CHAN  = os.environ.get("SLACK_CHANNEL_ID", "C0C4L761EMA")
+WHO   = os.environ.get("SLACK_MENTION", "U0C5AT75UCQ")
 BCC   = os.environ.get("BCC_TO", "achraf@havenstcapital.com")
 WID   = os.environ.get("HSC_WORKSPACE_ID", "6a4d2d81fed50998a91ac742")
 DRY   = os.environ.get("DRY_RUN", "") not in ("", "0", "false", "False")
@@ -151,13 +154,17 @@ def post_new(state):
         name = fa.get("name") or ""
         em = (it.get("from_address_email") or "").strip()
         quoted = "\n".join("> " + l for l in (clean(it) or "(message vide)").split("\n"))
-        msg = (f"🟢 *Nouvelle réponse positive — Haven*\n\n"
+        # La mention en tete declenche la notification push sur telephone.
+        ping = f"<@{WHO}> " if WHO else ""
+        msg = (f"{ping}🟢 *Nouvelle réponse positive — Haven*\n\n"
                f"*{name or em}* — `{em}`\n"
                f"Objet : {it.get('subject','')}\n"
                f"Boîte : {it.get('eaccount','')}\n"
                f"Reçue : {(it.get('timestamp_created') or '')[:16].replace('T',' ')} UTC\n\n"
                f"{quoted}\n\n"
-               f"_Réponds dans ce fil : ton message part au prospect, avec toi en copie cachée._")
+               f"💬 *Pour répondre :* écris directement dans ce fil. "
+               f"Ton message part au prospect depuis la boîte Haven, "
+               f"et tu reçois une copie cachée sur {BCC}.")
         if DRY:
             print("  [DRY] post Slack ->", em); posted += 1
             state["alerted"].append(it["id"]); continue
