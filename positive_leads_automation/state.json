@@ -154,6 +154,7 @@
 "mcinvestsww@gmail.com",
 "michel@sigtax.com",
 "miguel.barbas@sabrab.com",
+"miriam.bellarbi@corpiya.com",
 "mjfguidi@yahoo.fr",
 "mmarum@terra.com.br",
 "mmenard433@gmail.com",
@@ -307,8 +308,18 @@
 "eaccount": "gueant.t@getlandquire.org",
 "wid": "6a4645cc305ead1e2243e94f",
 "subject": "Hola"
+},
+"miriam.bellarbi@corpiya.com": {
+"seg": "B2C",
+"agent_email": "kevinlanson@landquire.com",
+"contact_id": "KrWIafiyewMFmv2ZuKrC",
+"first_reply_id": "6ab6e80002d07dcaa44354bd",
+"seen": [],
+"eaccount": "guant.t@trylandquire.org",
+"wid": "6a4645cc305ead1e2243e94f",
+"subject": "RE: What we decided to make public"
 }
 },
 "b2b_pending": {},
-"us_rr": 2
+"us_rr": 1
 }
