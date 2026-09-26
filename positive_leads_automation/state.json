@@ -132,6 +132,7 @@
 "luis@montante.com.br",
 "luiz.liuzzi@kironcapital.com.br",
 "luiz.prado@makalupartners.com",
+"lydoanvuong@gmail.com",
 "m.bonneau@solentproduction.com",
 "m.chatila@mail.com",
 "m.legrand@atalante-hotels.com",
@@ -318,6 +319,16 @@
 "eaccount": "guant.t@trylandquire.org",
 "wid": "6a4645cc305ead1e2243e94f",
 "subject": "RE: What we decided to make public"
+},
+"lydoanvuong@gmail.com": {
+"seg": "B2C",
+"agent_email": "fdepart@landquire.com",
+"contact_id": "wvubzqjWA1swx6zsL3mu",
+"first_reply_id": "6ab70fa302d07dcaa443e1a2",
+"seen": [],
+"eaccount": "tgueant@hello.landquire.org",
+"wid": "6a4645cc305ead1e2243e94f",
+"subject": "Re: Ce que nous avons décidé de rendre public"
 }
 },
 "b2b_pending": {},
