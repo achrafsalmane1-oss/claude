@@ -14,7 +14,10 @@
   "6aba6ae902d07dcaa44f3772",
   "6aba68a202d07dcaa44ee7e8",
   "6aba676202d07dcaa44eb5b3",
-  "6aba672202d07dcaa44eaacc"
+  "6aba672202d07dcaa44eaacc",
+  "6abae6c802d07dcaa459a142",
+  "6abac43b02d07dcaa458441d",
+  "6abac43b02d07dcaa4584418"
  ],
  "threads": {
   "1790344253.481149": {
@@ -119,6 +122,27 @@
    "email": "tbrevard@7afunding.com",
    "eaccount": "patriciaanderson@connect.havenstlabs.com",
    "reply_to_id": "6aba672202d07dcaa44eaacc",
+   "subject": "Re: small businesses seeking SBA loans looking for funding",
+   "sent": []
+  },
+  "1790639341.129179": {
+   "email": "mmayer@processtech.com",
+   "eaccount": "mjones@hello.havenstlabs.com",
+   "reply_to_id": "6abae6c802d07dcaa459a142",
+   "subject": "Re: valve and control solutions buyers",
+   "sent": []
+  },
+  "1790639341.695519": {
+   "email": "achraf@havenstcapital.com",
+   "eaccount": "patriciaanderson@connect.havenstlabs.com",
+   "reply_to_id": "6abac43b02d07dcaa458441d",
+   "subject": "Re: small businesses seeking SBA loans looking for funding",
+   "sent": []
+  },
+  "1790639342.219939": {
+   "email": "tbrevard@7afunding.com",
+   "eaccount": "patriciaanderson@connect.havenstlabs.com",
+   "reply_to_id": "6abac43b02d07dcaa4584418",
    "subject": "Re: small businesses seeking SBA loans looking for funding",
    "sent": []
   }
