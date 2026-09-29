@@ -234,6 +234,8 @@ const S = {
   focus: null, thread: null, filter: "", chanFilter: "", pending: new Set(),
 };
 const activePlay = () => S.plays.find((p) => p.id === S.meta.active) || S.plays[0] || null;
+const startable = () => S.contacts.filter((c) => (!c.play || c.state === "idle") && c.status !== "out" && c.status !== "replied");
+const running = () => S.contacts.filter((c) => c.state === "running");
 const playById = (id) => S.plays.find((p) => p.id === id) || null;
 
 const LKEY = "outreach.v1";
@@ -256,6 +258,11 @@ const local = {
 };
 function saveLocal() {
   return local.write({ v: 1, contacts: S.contacts, plays: S.plays, meta: S.meta, savedAt: new Date().toISOString() });
+}
+
+async function useCap(n) {
+  try { return typeof claude !== "undefined" && claude.use ? await claude.use(n) : null; }
+  catch (e) { return null; }
 }
 
 async function writeDoc(path, data, merge) {
@@ -412,7 +419,7 @@ const cleanLi = (v) => { let s = String(v || "").trim(); if (/^(www\.)?linkedin\
 </script>
 <script>
 /* ------------------------------------------------------------------ views */
-const NAV = [["queue", "Queue"], ["people", "People"], ["playbook", "Playbook"], ["inbox", "Inbox"], ["numbers", "Numbers"]];
+const NAV = [["queue", "Queue"], ["people", "People"], ["playbook", "Playbook"], ["inbox", "Inbox"], ["numbers", "Numbers"], ["setup", "Setup"]];
 
 function renderNav() {
   const chip = $("#mode-chip");
@@ -437,7 +444,8 @@ function renderAll() {
   if (!S.ready) { el.innerHTML = bootView(); return; }
   el.innerHTML =
     (S.mode === "local" && !local.ok ? `<div class="banner">This browser is blocking site storage, so nothing you do here is being saved. Turn off private browsing, or allow site data for claude.ai, then reload.</div>` : "") +
-    ({ queue: viewQueue, people: viewPeople, playbook: viewPlaybook, inbox: viewInbox, numbers: viewNumbers }[S.view] || viewQueue)();
+    ({ queue: viewQueue, people: viewPeople, playbook: viewPlaybook, inbox: viewInbox, numbers: viewNumbers, setup: viewSetup }[S.view] || viewQueue)();
+  if (S.view === "setup") wireRestore();
 }
 
 const bootView = () => `<div class="card pad empty">
@@ -452,23 +460,29 @@ function viewQueue() {
   S.contacts.filter((x) => x.play && x.state === "running" && x.due && x.due <= today())
     .forEach((x) => { const st = stepsOf(x)[x.step]; if (st) counts[st.ch]++; });
 
+  const anyRunning = running().length;
   const head = `<div class="spread">
-    <div><h1>Queue</h1><p class="muted sm">${q.length ? `${q.length} ${q.length === 1 ? "person is" : "people are"} due today. Work down the list — each one takes a few seconds.` : "Nothing due right now."}</p></div>
-    <div class="row">
+    <div><h1>${q.length ? "Today's queue" : anyRunning ? "Queue" : "Set up your outreach"}</h1>
+      <p class="muted sm">${q.length
+        ? `${q.length} ${q.length === 1 ? "person is" : "people are"} due. Each one takes a few seconds.`
+        : anyRunning ? "Nothing due right now." : "Four steps and you're sending. You're partway there already."}</p></div>
+    ${q.length ? `<div class="row">
       ${["", "call", "linkedin", "email"].map((k) => `<button class="btn ${S.chanFilter === k ? "" : "ghost"} sm" data-act="chan" data-c="${k}">${k ? CH[k] : "All"}${k && counts[k] ? " " + counts[k] : ""}</button>`).join("")}
-    </div></div>`;
+    </div>` : ""}</div>`;
 
   if (!q.length) {
-    const waiting = S.contacts.filter((x) => x.state === "running").length;
-    return head + `<div class="card pad empty">
-      <h2>${waiting ? "All caught up" : "No one is in a sequence yet"}</h2>
-      <p class="muted sm" style="max-width:46ch">${waiting
-        ? `${waiting} ${waiting === 1 ? "person is" : "people are"} still in the playbook — their next step is scheduled for a later day.`
-        : "Import your leads, then start the playbook on them. Steps they can't receive (no phone, no LinkedIn) get skipped automatically."}</p>
-      <div class="row" style="justify-content:center">
-        <button class="btn" data-act="import">Import a CSV</button>
-        <button class="btn ghost" data-act="nav" data-v="people">Open people</button>
-      </div></div>`;
+    const waiting = running().length;
+    if (waiting) {
+      const next = S.contacts.filter((c) => c.state === "running" && c.due).sort((a, b) => a.due.localeCompare(b.due))[0];
+      return head + `<div class="card pad empty">
+        <h2>All caught up</h2>
+        <p class="muted sm" style="max-width:46ch">${waiting} ${waiting === 1 ? "person is" : "people are"} in the sequence. The next touch is due ${next ? esc(next.due) : "soon"} — it'll be waiting here for you.</p>
+        <div class="row" style="justify-content:center">
+          ${startable().length ? `<button class="btn" data-act="start-all">Start ${startable().length} more</button>` : ""}
+          <button class="btn ghost" data-act="nav" data-v="numbers">See the numbers</button>
+        </div></div>`;
+    }
+    return head + setupChecklist();
   }
 
   const k = card(c), st = k.st, gate = gateOf(st);
@@ -497,13 +511,12 @@ function viewQueue() {
       </div>
 
       <div class="field-line">
+        ${!isLi && c.linkedin ? `<a class="btn ghost sm" href="${esc(c.linkedin)}" target="_blank" rel="noopener">Profile</a>` : ""}
         ${contactVal ? (gate === "linkedin"
           ? `<a class="btn ghost sm" href="${esc(contactVal)}" target="_blank" rel="noopener">Open profile</a>
              <button class="btn ghost sm" data-act="copy" data-text="${esc(contactVal)}" data-label="Profile URL">Copy URL</button>`
           : `<span class="copyable">${esc(contactVal)}</span>
              <button class="btn ghost sm" data-act="copy" data-text="${esc(contactVal)}" data-label="${gate === "phone" ? "Number" : "Address"}">Copy</button>`) : ""}
-        ${isCall && c.phone ? `<a class="btn ghost sm" href="tel:${esc(c.phone)}">Dial</a>` : ""}
-        ${isEmail && c.email ? `<a class="btn sm" href="${esc(gmailUrl(c.email, k.subject, k.body))}" target="_blank" rel="noopener">Open in Gmail</a>` : ""}
         <button class="btn ghost sm" data-act="thread" data-id="${c.id}">History</button>
       </div>
 
@@ -514,11 +527,13 @@ function viewQueue() {
       <div>
         <p class="xs dim" style="margin-bottom:6px">${isCall ? "WHAT TO SAY" : "MESSAGE"}</p>
         <div class="script" id="msg-box">${esc(k.body)}</div>
-        <div class="row" style="margin-top:8px">
-          <button class="btn ghost sm" data-act="copy" data-text="${esc(k.body)}" data-label="Message">Copy ${isCall ? "script" : "message"}</button>
-          ${isEmail ? `<span class="dim xs">Opens Gmail with it filled in — you press send.</span>`
-            : isLi ? `<span class="dim xs">Paste it into LinkedIn, then log what happened.</span>`
-            : `<span class="dim xs">Dial, talk, then log the outcome.</span>`}
+        <div class="row" style="margin-top:10px">
+          ${isEmail && c.email ? `<a class="btn" href="${esc(composeUrl(c.email, k.subject, k.body))}" target="_blank" rel="noopener">Write this email →</a>` : ""}
+          ${isLi && c.linkedin ? `<a class="btn" href="${esc(c.linkedin)}" target="_blank" rel="noopener">Open their profile →</a>` : ""}
+          ${isCall && c.phone ? `<a class="btn" href="tel:${esc(c.phone)}">Dial ${esc(c.phone)}</a>` : ""}
+          <button class="btn ghost" data-act="copy" data-text="${esc(k.body)}" data-label="Message">Copy ${isCall ? "script" : "message"}</button>
+          <span class="dim xs">${isEmail ? `Opens ${MAIL_APPS[S.meta.mailApp || "gmail"]} filled in — you press send, then log it below.`
+            : isLi ? "Paste it into LinkedIn, then log it below." : "On a phone this opens your dialer."}</span>
         </div>
       </div>
 
@@ -548,6 +563,75 @@ function viewQueue() {
   </div></div>` : ""}`;
 }
 
+function setupChecklist() {
+  const play = activePlay(), steps = play ? (play.steps || []).length : 0;
+  const ready = startable().length;
+  const row = (n, done, title, detail, btn) => `<div class="card pad row" style="gap:14px;align-items:flex-start">
+    <span class="step-n" style="background:${done ? "var(--good)" : "var(--brand)"};color:#fff">${done ? "✓" : n}</span>
+    <span class="grow" style="min-width:170px"><strong>${title}</strong><span class="muted sm" style="display:block">${detail}</span></span>
+    ${btn}</div>`;
+  return `<div class="stack">
+    ${row(1, S.contacts.length > 0, "Add your leads",
+      S.contacts.length ? `${S.contacts.length} contacts loaded.` : "A CSV from Clay, Apollo, Sales Navigator or a spreadsheet.",
+      `<button class="btn ${S.contacts.length ? "ghost" : ""}" data-act="import">${S.contacts.length ? "Import more" : "Import CSV"}</button>`)}
+    ${row(2, steps > 0, "Write the playbook",
+      steps ? `${steps} steps: ${(play.steps || []).map((x) => CH[x.ch]).join(" → ")}` : "The order of touches — email, LinkedIn, call.",
+      `<button class="btn ${steps ? "ghost" : ""}" data-act="nav" data-v="playbook">${steps ? "Edit steps" : "Build it"}</button>`)}
+    ${row(3, false, "Start the sequence",
+      ready ? `${ready} ${ready === 1 ? "person is" : "people are"} ready to enter “${esc(play ? play.name : "your playbook")}”.`
+        : S.contacts.length ? "Everyone is already in a sequence or has replied." : "Add leads first.",
+      `<button class="btn" data-act="start-all" ${ready && steps ? "" : "disabled"}>Start on ${ready}</button>`)}
+    ${row(4, false, "Work the queue",
+      "Each day this page hands you who to email, message and call — one at a time.",
+      `<button class="btn ghost" data-act="nav" data-v="setup">How sending works</button>`)}
+  </div>`;
+}
+
+/* ---- setup: what each channel actually does ------------------------- */
+const MAIL_APPS = { gmail: "Gmail", outlook: "Outlook on the web", mailto: "Whatever my computer uses" };
+function composeUrl(to, subject, body) {
+  const app = S.meta.mailApp || "gmail";
+  if (app === "outlook") return "https://outlook.office.com/mail/deeplink/compose?to=" + encodeURIComponent(to || "") +
+    "&subject=" + encodeURIComponent(subject || "") + "&body=" + encodeURIComponent(body || "");
+  if (app === "mailto") return "mailto:" + encodeURIComponent(to || "") + "?subject=" + encodeURIComponent(subject || "") +
+    "&body=" + encodeURIComponent(body || "");
+  return gmailUrl(to, subject, body);
+}
+
+function viewSetup() {
+  const chan = (ch, title, status, statusKind, what, extra) => `<div class="card">
+    <div class="chan-strip ${ch}"></div>
+    <div class="pad stack">
+      <div class="spread"><h2>${title}</h2><span class="tag ${statusKind}">${status}</span></div>
+      <p class="muted sm">${what}</p>${extra || ""}</div></div>`;
+  return `<div><h1>Setup</h1><p class="muted sm">What this page does on each channel, and what it can't.</p></div>
+  ${chan("email", "Email", "Ready", "good",
+    `Every email step opens a compose window with the address, subject and message already filled in. You press send, so it leaves your real mailbox and lands in your sent folder — no mailbox password goes anywhere near this page.`,
+    `<label class="f" style="max-width:320px"><span>Open emails in</span><select id="s-mail">
+      ${Object.entries(MAIL_APPS).map(([k, v]) => `<option value="${k}" ${(S.meta.mailApp || "gmail") === k ? "selected" : ""}>${v}</option>`).join("")}
+    </select></label>
+    <p class="dim xs">Automatic sending — where the tool sends on a schedule without you — needs a program running on a computer with your mailbox password. That's the desktop version of this tool, not a web page.</p>`)}
+  ${chan("linkedin", "LinkedIn", "By hand", "warn",
+    `LinkedIn steps hand you the written message and a link to the profile. You paste, send, and tap the outcome. There is no free or safe way for a web page to send LinkedIn messages for you — the tools that do it run a browser session on your account and risk a ban, and LinkedIn's own API doesn't allow cold outreach.`)}
+  ${chan("call", "Phone", "Click to dial", "warn",
+    `Call steps show the number, your script filled in with their details, and one-tap outcomes. On a phone the Dial button opens your dialer; on a desktop it needs a calling app installed. Actually placing calls from the page would need a paid phone carrier account.`)}
+  <div class="card pad stack">
+    <h2>You</h2>
+    <div class="grid2">
+      <label class="f"><span>Your name</span><input type="text" id="s-sender2" value="${esc(S.meta.sender || "")}" placeholder="Used by {{sender}} in call scripts"></label>
+      <label class="f"><span>Where your work is saved</span>
+        <div class="row"><span class="tag ${S.mode === "cloud" ? "good" : ""}">${S.mode === "cloud" ? "Synced to your account" : "This browser only"}</span></div></label>
+    </div>
+    <label class="f"><span>Signature — pulled in by {{signature}}</span><textarea id="s-sig2" rows="3">${esc(S.meta.signature || "")}</textarea></label>
+    <div class="row">
+      <button class="btn" data-act="save-setup">Save</button>
+      <button class="btn ghost" data-act="backup">Back up everything</button>
+      <label class="btn ghost" style="cursor:pointer">Restore a backup<input type="file" id="s-restore" accept=".json,application/json" hidden></label>
+    </div>
+    ${S.mode === "local" ? `<p class="dim xs">Your list lives in this browser on this device. Clearing browsing data erases it — take a backup after a big import.</p>` : ""}
+  </div>`;
+}
+
 /* ---- people --------------------------------------------------------- */
 function viewPeople() {
   const f = S.filter.toLowerCase();
@@ -564,7 +648,10 @@ function viewPeople() {
   ${S.contacts.length ? `
   <div class="row">
     <input type="search" id="q" placeholder="Search name, company, email…" value="${esc(S.filter)}" style="max-width:320px">
-    ${play ? `<button class="btn ghost sm" data-act="start-all">Start “${esc(play.name)}” on everyone not yet in it</button>` : ""}
+    <span class="grow"></span>
+    ${play && startable().length
+      ? `<button class="btn" data-act="start-all">Start sequence on ${startable().length}</button>`
+      : `<span class="tag good">${running().length} in sequence</span>`}
   </div>
   <div class="card scroll-x"><table class="tbl">
     <thead><tr><th>Name</th><th>Channels</th><th>Company</th><th>Stage</th><th>Last touch</th><th></th></tr></thead>
@@ -583,7 +670,10 @@ function viewPeople() {
             : c.state === "running" ? `<span class="tag">Step ${Math.min(c.step + 1, steps.length || 1)}/${steps.length || "?"}</span>`
             : c.state === "finished" ? '<span class="tag">Finished</span>' : '<span class="tag">Not started</span>'}</td>
         <td class="sm dim">${esc(ago(c.lastAt))}</td>
-        <td><button class="btn ghost sm" data-act="thread" data-id="${c.id}">Open</button></td>
+        <td><div class="row" style="flex-wrap:nowrap;gap:6px">
+          ${(!c.play || c.state === "idle") && c.status !== "out" && play
+            ? `<button class="btn sm" data-act="start-one" data-id="${c.id}">Start</button>` : ""}
+          <button class="btn ghost sm" data-act="thread" data-id="${c.id}">Open</button></div></td>
       </tr>`;
     }).join("")}</tbody></table>
     ${rows.length > 300 ? `<p class="dim xs pad">Showing the first 300 of ${rows.length}. Search to narrow it down.</p>` : ""}
@@ -859,7 +949,7 @@ function confirmSheet(title, text, label, act, id) {
 
 /* ------------------------------------------------------------- CSV export */
 async function exportCsv(what) {
-  const dl = await claude.use("downloads");
+  const dl = await useCap("downloads");
   let head, lines;
   if (what === "activity") {
     head = ["when", "name", "company", "channel", "direction", "outcome", "subject", "body", "note"];
@@ -977,20 +1067,23 @@ document.addEventListener("click", async (e) => {
       toast(text ? "Reply logged — sequence stopped" : "Saved");
       break;
     }
-    case "start-one": if (guard() && c && play) { await startSequence(c, play.id); closeSheet(); renderAll(); toast("Playbook started"); } break;
+    case "start-one": if (guard() && c && play) { await startSequence(c, play.id); closeSheet(); if (S.mode === "local") saveLocal(); renderAll(); toast(name(c) + " is in the sequence"); } break;
     case "start-all": {
       if (!guard() || !play) break;
-      const targets = S.contacts.filter((x) => !x.play && x.status !== "out");
-      if (!targets.length) { toast("Everyone is already in it"); break; }
+      const targets = startable();
+      if (!targets.length) { toast("Everyone is already in a sequence"); break; }
+      if (!(play.steps || []).length) { toast("Add a step to the playbook first", true); break; }
       confirmSheet("Start the playbook", `${targets.length} ${targets.length === 1 ? "person" : "people"} will enter “${play.name}”. Steps they can't receive get skipped automatically.`, "Start on " + targets.length, "do-start-all");
       break;
     }
     case "do-start-all": {
       closeSheet();
-      const targets = S.contacts.filter((x) => !x.play && x.status !== "out");
+      const targets = startable();
       let n = 0;
       for (const t of targets) { await startSequence(t, play.id); n++; }
-      renderAll(); toast(`Started on ${n}`);
+      if (S.mode === "local") saveLocal();
+      S.view = "queue"; renderAll();
+      toast(`Started on ${n} — your queue is ready`);
       break;
     }
     case "sample": {
@@ -1016,7 +1109,7 @@ document.addEventListener("click", async (e) => {
 
     case "backup": {
       const payload = JSON.stringify({ v: 1, contacts: S.contacts, plays: S.plays, meta: S.meta, savedAt: new Date().toISOString() }, null, 2);
-      const dl = await claude.use("downloads");
+      const dl = await useCap("downloads");
       if (dl) {
         try { await dl.save({ filename: "outreach-backup-" + today() + ".json", data: payload }); toast("Backup saved"); }
         catch (err) { await copy(payload, "Backup"); }
@@ -1035,6 +1128,13 @@ document.addEventListener("click", async (e) => {
       break;
     }
 
+    case "save-setup": {
+      S.meta.sender = $("#s-sender2") ? $("#s-sender2").value.trim() : S.meta.sender;
+      S.meta.signature = $("#s-sig2") ? $("#s-sig2").value : S.meta.signature;
+      if ($("#s-mail")) S.meta.mailApp = $("#s-mail").value;
+      await saveMeta(); renderAll(); toast("Saved");
+      break;
+    }
     case "save-settings":
       S.meta.sender = $("#s-sender").value.trim();
       S.meta.signature = $("#s-sig").value;
@@ -1145,11 +1245,11 @@ async function runImport(btn) {
 /* ------------------------------------------------------------------- boot */
 async function boot() {
   renderAll();
-  try { S.db = await claude.use("db"); } catch (e) { S.db = null; }
+  S.db = await useCap("db");
   let canWrite = false;
   if (S.db) {
     try {
-      const user = await claude.use("user");
+      const user = await useCap("user");
       canWrite = user && typeof user.can === "function" ? (await user.can("data.write")) !== false : true;
     } catch (e) { canWrite = true; }
   }
