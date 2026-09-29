@@ -162,6 +162,7 @@ hr{border:0;border-top:1px solid var(--line-soft);margin:0}
 
 <div class="bar"><div class="bar-in">
   <span class="logo"><i></i> Outreach</span>
+  <span class="tag" id="mode-chip" title="Checking where your work is saved"></span>
   <nav id="nav"></nav>
 </div></div>
 <main><div id="app" class="wrap"></div></main>
@@ -228,12 +229,34 @@ function blanks(tpl, c) {
 
 /* ------------------------------------------------------------------ state */
 const S = {
-  db: null, canWrite: null, ready: false, view: "queue",
+  db: null, mode: "local", canWrite: null, ready: false, view: "queue",
   contacts: [], plays: [], meta: { signature: "", sender: "", active: "" },
   focus: null, thread: null, filter: "", chanFilter: "", pending: new Set(),
 };
 const activePlay = () => S.plays.find((p) => p.id === S.meta.active) || S.plays[0] || null;
 const playById = (id) => S.plays.find((p) => p.id === id) || null;
+
+const LKEY = "outreach.v1";
+const local = {
+  ok: true,
+  read() {
+    try { return JSON.parse(localStorage.getItem(LKEY) || "null"); }
+    catch (e) { this.ok = false; return null; }
+  },
+  write(payload) {
+    try { localStorage.setItem(LKEY, JSON.stringify(payload)); this.ok = true; return true; }
+    catch (e) {
+      this.ok = false;
+      toast(/quota|exceeded/i.test(String(e && e.name) + String(e && e.message))
+        ? "This browser is out of storage — export a backup and remove old contacts"
+        : "This browser is blocking storage, so nothing is being saved", true);
+      return false;
+    }
+  },
+};
+function saveLocal() {
+  return local.write({ v: 1, contacts: S.contacts, plays: S.plays, meta: S.meta, savedAt: new Date().toISOString() });
+}
 
 async function writeDoc(path, data, merge) {
   if (!S.db) { toast("Storage not available in this view", true); return false; }
@@ -248,19 +271,37 @@ async function writeDoc(path, data, merge) {
   }
   toast("Could not save — check your connection", true); return false;
 }
-const saveContact = (c) => writeDoc("contacts/" + c.id, c);
-const savePlay = (p) => writeDoc("plays/" + p.id, p);
-const saveMeta = () => writeDoc("meta/app", S.meta);
+const saveContact = (c) => (S.mode === "cloud" ? writeDoc("contacts/" + c.id, c) : saveLocal());
+const savePlay = (p) => (S.mode === "cloud" ? writeDoc("plays/" + p.id, p) : saveLocal());
+const saveMeta = () => (S.mode === "cloud" ? writeDoc("meta/app", S.meta) : saveLocal());
+const dropContact = (c) => (S.mode === "cloud" ? S.db.doc("contacts/" + c.id).delete().catch(() => {}) : saveLocal());
 
 async function loadAll() {
-  const [cs, ps, m] = await Promise.all([
-    S.db.collection("contacts").limit(1000).get(),
-    S.db.collection("plays").limit(50).get(),
-    S.db.doc("meta/app").get(),
-  ]);
-  S.contacts = cs.docs.map((d) => ({ id: d.id, ...d.data() }));
-  S.plays = ps.docs.map((d) => ({ id: d.id, ...d.data() }));
-  if (m.exists) S.meta = { ...S.meta, ...m.data() };
+  if (S.mode === "cloud") {
+    const [cs, ps, m] = await Promise.all([
+      S.db.collection("contacts").limit(1000).get(),
+      S.db.collection("plays").limit(50).get(),
+      S.db.doc("meta/app").get(),
+    ]);
+    S.contacts = cs.docs.map((d) => ({ id: d.id, ...d.data() }));
+    S.plays = ps.docs.map((d) => ({ id: d.id, ...d.data() }));
+    if (m.exists) S.meta = { ...S.meta, ...m.data() };
+    return;
+  }
+  const saved = local.read();
+  if (saved) {
+    S.contacts = saved.contacts || [];
+    S.plays = saved.plays || [];
+    S.meta = { ...S.meta, ...(saved.meta || {}) };
+  }
+  // A shared playbook the owner wrote is readable even without write access — adopt it once.
+  if (!S.plays.length && S.db) {
+    try {
+      const ps = await S.db.collection("plays").limit(50).get();
+      const shared = ps.docs.map((d) => ({ id: d.id, ...d.data() }));
+      if (shared.length) { S.plays = shared; S.meta.active = shared[0].id; saveLocal(); }
+    } catch (e) { /* not readable in this view */ }
+  }
 }
 
 /* ------------------------------------------------------- waterfall engine */
@@ -374,6 +415,14 @@ const cleanLi = (v) => { let s = String(v || "").trim(); if (/^(www\.)?linkedin\
 const NAV = [["queue", "Queue"], ["people", "People"], ["playbook", "Playbook"], ["inbox", "Inbox"], ["numbers", "Numbers"]];
 
 function renderNav() {
+  const chip = $("#mode-chip");
+  if (chip && S.ready) {
+    chip.textContent = S.mode === "cloud" ? "Synced" : "On this device";
+    chip.className = "tag " + (S.mode === "cloud" ? "good" : "");
+    chip.title = S.mode === "cloud"
+      ? "Saved to this page's shared storage — everyone with edit access sees the same list."
+      : "Saved in this browser on this device. Nobody else can see it. Back it up from Settings.";
+  }
   const due = S.ready ? queue().length : 0;
   const unread = S.contacts.filter((c) => c.status === "replied" && !c.seen).length;
   $("#nav").innerHTML = NAV.map(([id, label]) => {
@@ -387,7 +436,7 @@ function renderAll() {
   const el = $("#app");
   if (!S.ready) { el.innerHTML = bootView(); return; }
   el.innerHTML =
-    (S.canWrite === false ? `<div class="banner">You're viewing this in read-only mode. Ask whoever shared it to give you <strong>Contributor</strong> access so your logged calls and replies save.</div>` : "") +
+    (S.mode === "local" && !local.ok ? `<div class="banner">This browser is blocking site storage, so nothing you do here is being saved. Turn off private browsing, or allow site data for claude.ai, then reload.</div>` : "") +
     ({ queue: viewQueue, people: viewPeople, playbook: viewPlaybook, inbox: viewInbox, numbers: viewNumbers }[S.view] || viewQueue)();
 }
 
@@ -766,9 +815,39 @@ function settingsSheet() {
       <label class="f"><span>Signature — drop it into a message with {{signature}}</span>
         <textarea id="s-sig" rows="4" placeholder="Achraf\\nGrowth @ Company\\n+1 555 000 111">${esc(S.meta.signature || "")}</textarea></label>
       <hr>
-      <p class="muted sm">Emails open in Gmail with everything filled in — you press send, so they come from your real mailbox and land in your sent folder. Nothing is sent by this page on its own.</p>
-      <p class="dim xs">Data is stored with this page, shared by everyone who has edit access to the link.</p>`,
+      <h3>Where your work is saved</h3>
+      ${S.mode === "cloud"
+        ? `<p class="muted sm">Saved to this page's shared storage, because you're signed in with edit access. Anyone else with edit access sees the same list, on any device.</p>`
+        : `<p class="muted sm">Saved in this browser, on this device — no account needed. Nobody else can see it, and it won't follow you to another browser or phone. Clearing your browsing data erases it, so take a backup now and then.</p>`}
+      <div class="row">
+        <button class="btn ghost sm" data-act="backup">Back up everything</button>
+        <label class="btn ghost sm" style="cursor:pointer">Restore a backup<input type="file" id="s-restore" accept=".json,application/json" hidden></label>
+        <span class="dim xs">${S.contacts.length} contacts · ${S.contacts.reduce((n, c) => n + (c.log || []).length, 0)} logged touches</span>
+      </div>
+      <hr>
+      <p class="muted sm">Emails open in Gmail with everything filled in — you press send, so they go from your real mailbox and land in your sent folder. Nothing is sent by this page on its own.</p>`,
     footer: `<button class="btn ghost" data-act="close">Cancel</button><button class="btn" data-act="save-settings">Save</button>`,
+  });
+  wireRestore();
+}
+
+function wireRestore() {
+  const inp = $("#s-restore");
+  if (!inp) return;
+  inp.addEventListener("change", (e) => {
+    const file = e.target.files[0]; if (!file) return;
+    const r = new FileReader();
+    r.onload = () => {
+      let data;
+      try { data = JSON.parse(String(r.result)); }
+      catch (err) { toast("That file isn't a backup from this page", true); return; }
+      if (!data || !Array.isArray(data.contacts)) { toast("That backup has no contacts in it", true); return; }
+      window.__restore = data;
+      confirmSheet("Restore this backup?",
+        `It holds ${data.contacts.length} contacts${data.savedAt ? ", saved " + ago(data.savedAt) : ""}. This replaces everything currently in the page.`,
+        "Replace with backup", "do-restore");
+    };
+    r.readAsText(file);
   });
 }
 
@@ -831,7 +910,10 @@ document.addEventListener("click", async (e) => {
   const c = id ? S.contacts.find((x) => x.id === id) : null;
   const play = activePlay();
 
-  const guard = () => { if (S.canWrite === false) { toast("You have view-only access here", true); return false; } return true; };
+  const guard = () => {
+    if (S.mode === "local" && !local.ok) { toast("This browser isn't letting the page save anything", true); return false; }
+    return true;
+  };
 
   switch (act) {
     case "nav": S.view = el.dataset.v; S.filter = ""; renderAll(); window.scrollTo({ top: 0 }); break;
@@ -931,6 +1013,27 @@ document.addEventListener("click", async (e) => {
       break;
     }
     case "do-import": await runImport(el); break;
+
+    case "backup": {
+      const payload = JSON.stringify({ v: 1, contacts: S.contacts, plays: S.plays, meta: S.meta, savedAt: new Date().toISOString() }, null, 2);
+      const dl = await claude.use("downloads");
+      if (dl) {
+        try { await dl.save({ filename: "outreach-backup-" + today() + ".json", data: payload }); toast("Backup saved"); }
+        catch (err) { await copy(payload, "Backup"); }
+      } else await copy(payload, "Backup");
+      break;
+    }
+    case "do-restore": {
+      const data = window.__restore; if (!data) break;
+      closeSheet();
+      S.contacts = data.contacts || [];
+      S.plays = (data.plays || []).length ? data.plays : S.plays;
+      S.meta = { ...S.meta, ...(data.meta || {}) };
+      if (S.mode === "cloud") { for (const c of S.contacts) await saveContact(c); for (const p of S.plays) await savePlay(p); await saveMeta(); }
+      else saveLocal();
+      renderAll(); toast(`Restored ${S.contacts.length} contacts`);
+      break;
+    }
 
     case "save-settings":
       S.meta.sender = $("#s-sender").value.trim();
@@ -1042,28 +1145,31 @@ async function runImport(btn) {
 /* ------------------------------------------------------------------- boot */
 async function boot() {
   renderAll();
-  const db = await claude.use("db");
-  if (!db) {
-    S.ready = true; S.canWrite = false;
-    $("#app").innerHTML = `<div class="card pad empty"><h2>Storage isn't available in this view</h2>
-      <p class="muted sm" style="max-width:46ch">This page keeps its contacts and history in shared storage. Open it from the original link while signed in to claude.ai.</p></div>`;
-    return;
+  try { S.db = await claude.use("db"); } catch (e) { S.db = null; }
+  let canWrite = false;
+  if (S.db) {
+    try {
+      const user = await claude.use("user");
+      canWrite = user && typeof user.can === "function" ? (await user.can("data.write")) !== false : true;
+    } catch (e) { canWrite = true; }
   }
-  S.db = db;
-  try {
-    const user = await claude.use("user");
-    if (user) S.canWrite = user.can ? await user.can("data.write") : null;
-  } catch (e) { S.canWrite = null; }
+  // Cloud storage needs a signed-in account with edit access. Everyone else
+  // keeps their work in this browser, so the page works straight from a link.
+  S.mode = S.db && canWrite ? "cloud" : "local";
+  if (S.mode === "local") local.read();
+
   try { await loadAll(); }
   catch (e) { toast("Could not load your data — reload the page", true); }
+  if (!S.plays.length) await seedStarter();
 
-  // walk anyone past steps they can't receive, so the queue is honest on arrival
-  if (S.canWrite !== false) {
-    for (const c of S.contacts) { const r = settle(c); if (r.changed) await saveContact(c); }
-  }
+  let moved = false;
+  for (const c of S.contacts) { const r = settle(c); if (r.changed) { moved = true; if (S.mode === "cloud") await saveContact(c); } }
+  if (moved && S.mode === "local") saveLocal();
+
   S.ready = true;
   renderAll();
 
+  if (S.mode !== "cloud") return;
   S.db.collection("contacts").limit(1000).onSnapshot((snap) => {
     if (!S.ready) return;
     const open = !!$(".sheet-bg");
