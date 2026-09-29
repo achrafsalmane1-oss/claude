@@ -906,8 +906,21 @@ def main():
     if not args.no_engine:
         engine.start_background()
 
-    server = ThreadingHTTPServer((args.host, args.port), Handler)
-    url = "http://%s:%s" % (args.host, args.port)
+    server = None
+    port = args.port
+    for attempt in range(10):  # the friendly launchers pass no port; just find a free one
+        try:
+            server = ThreadingHTTPServer((args.host, port), Handler)
+            break
+        except OSError:
+            print("Port %s is busy, trying %s…" % (port, port + 1))
+            port += 1
+    if server is None:
+        print("Could not find a free port between %s and %s." % (args.port, port))
+        sys.exit(1)
+    if port != args.port:
+        db.set_settings({"base_url": "http://%s:%s" % (args.host, port)})
+    url = "http://%s:%s" % (args.host, port)
     print("Outreach MVP running at %s  (Ctrl+C to stop)" % url)
     print("Database: %s" % db.DB_PATH)
     if db.get_settings().get("dry_run") == "1":

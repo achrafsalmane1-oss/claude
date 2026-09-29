@@ -12,6 +12,10 @@ No pip install, no npm install, no API keys, no vendor account.
 python3 outreach/app.py --open        # http://127.0.0.1:8000
 ```
 
+Not comfortable in a terminal, or handing this to someone who isn't? Double-click
+`start-mac.command` (macOS) or `start-windows.bat` (Windows) instead, and read
+**[SETUP.md](SETUP.md)** — the same instructions written for a non-technical user.
+
 That's the whole setup. First run creates `outreach/data/outreach.db` and starts
 in **dry run** — the full waterfall executes and every email is recorded, but
 nothing leaves your machine until you configure SMTP.
