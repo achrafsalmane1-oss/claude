@@ -16,6 +16,12 @@ Not comfortable in a terminal, or handing this to someone who isn't? Double-clic
 `start-mac.command` (macOS) or `start-windows.bat` (Windows) instead, and read
 **[SETUP.md](SETUP.md)** — the same instructions written for a non-technical user.
 
+**Nothing to install at all?** `hosted/index.html` is a second build of the same
+waterfall that runs as a shared web page — no download, no Python, works on a phone.
+It trades away automatic sending: email steps open a prefilled Gmail compose window
+that you send yourself, so every channel becomes queue-and-log. Everything else
+(import, waterfall, gates, queue, inbox, reporting) behaves the same.
+
 That's the whole setup. First run creates `outreach/data/outreach.db` and starts
 in **dry run** — the full waterfall executes and every email is recorded, but
 nothing leaves your machine until you configure SMTP.

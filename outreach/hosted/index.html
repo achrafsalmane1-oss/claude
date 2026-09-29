@@ -1,0 +1,1079 @@
+<title>Outreach Waterfall</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@500;600;700&family=Public+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: fixed top bar over one focused column; the queue works one card at a time.
+   Chrome stays graphite — the only hues are the three channels and state. */
+:root{
+  --paper:#f5f5f3; --card:#fffffe; --sunk:#ececea; --line:#dedddb; --line-soft:#eae9e6;
+  --ink:#16181c; --ink-2:#5c6069; --ink-3:#8b8f98;
+  --brand:#16181c; --brand-ink:#fffffe; --focus:#3d6ef5;
+  --email:#2f5fd0; --email-bg:#e7edfb; --li:#0a66c2; --li-bg:#e3eefa; --call:#15803d; --call-bg:#e3f3e8;
+  --warn:#9a5b00; --warn-bg:#fbf0dd; --bad:#b3261e; --bad-bg:#fbeae8; --good:#15803d; --good-bg:#e3f3e8;
+  --display:"Familjen Grotesk",Georgia,serif; --body:"Public Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+  --r:12px; --shadow:0 1px 2px rgba(20,22,28,.05),0 6px 20px rgba(20,22,28,.05);
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --paper:#0f1115; --card:#171a20; --sunk:#1e222a; --line:#2a2f39; --line-soft:#232830;
+  --ink:#e9eaee; --ink-2:#a2a8b4; --ink-3:#757c89;
+  --brand:#e9eaee; --brand-ink:#12141a; --focus:#7f9dff;
+  --email:#8aa9f5; --email-bg:#1a2340; --li:#6fb3f0; --li-bg:#12293f; --call:#63c98a; --call-bg:#13301f;
+  --warn:#dfa145; --warn-bg:#33270f; --bad:#f08d85; --bad-bg:#361a18; --good:#63c98a; --good-bg:#13301f;
+  --shadow:none; color-scheme:dark;
+}}
+:root[data-theme="dark"]{
+  --paper:#0f1115; --card:#171a20; --sunk:#1e222a; --line:#2a2f39; --line-soft:#232830;
+  --ink:#e9eaee; --ink-2:#a2a8b4; --ink-3:#757c89;
+  --brand:#e9eaee; --brand-ink:#12141a; --focus:#7f9dff;
+  --email:#8aa9f5; --email-bg:#1a2340; --li:#6fb3f0; --li-bg:#12293f; --call:#63c98a; --call-bg:#13301f;
+  --warn:#dfa145; --warn-bg:#33270f; --bad:#f08d85; --bad-bg:#361a18; --good:#63c98a; --good-bg:#13301f;
+  --shadow:none; color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased}
+h1,h2,h3{font-family:var(--display);margin:0;text-wrap:balance;letter-spacing:-.015em}
+h1{font-size:1.45rem;font-weight:700}
+h2{font-size:1.1rem;font-weight:600}
+h3{font-size:.95rem;font-weight:600}
+p{margin:0}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--focus);outline-offset:2px;border-radius:6px}
+
+/* shell */
+.bar{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:color-mix(in srgb,var(--paper) 88%,transparent);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+.bar-in{max-width:1080px;margin:0 auto;padding-block:10px;padding-inline:16px;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.logo{font-family:var(--display);font-weight:700;font-size:1rem;display:flex;align-items:center;gap:8px;letter-spacing:-.02em}
+.logo i{width:9px;height:9px;border-radius:50%;background:var(--call);display:block;flex:none}
+nav{display:flex;gap:2px;margin-inline-start:auto;flex-wrap:wrap}
+nav button{background:none;border:0;padding:6px 11px;border-radius:99px;color:var(--ink-2);font-weight:500;cursor:pointer;font-size:.9rem;display:flex;gap:6px;align-items:center}
+nav button:hover{background:var(--sunk);color:var(--ink)}
+nav button[aria-current="true"]{background:var(--brand);color:var(--brand-ink);font-weight:600}
+nav b{font-size:.7rem;background:var(--warn-bg);color:var(--warn);border-radius:99px;padding:1px 6px;font-weight:700}
+nav button[aria-current="true"] b{background:color-mix(in srgb,var(--brand-ink) 22%,transparent);color:var(--brand-ink)}
+main{max-width:1080px;margin:0 auto;padding-inline:16px;padding-block:22px 80px}
+.wrap{display:flex;flex-direction:column;gap:16px}
+
+/* generic */
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow)}
+.pad{padding:18px}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.spread{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.muted{color:var(--ink-2)} .dim{color:var(--ink-3)} .sm{font-size:.85rem} .xs{font-size:.76rem}
+.mono{font-family:var(--mono);font-size:.84rem}
+.btn{background:var(--brand);color:var(--brand-ink);border:1px solid transparent;border-radius:9px;padding:8px 14px;font-weight:600;font-size:.9rem;cursor:pointer;white-space:nowrap;font-family:var(--body)}
+.btn:hover{opacity:.88} .btn:active{transform:translateY(1px)}
+.btn.ghost{background:transparent;color:var(--ink);border-color:var(--line)}
+.btn.ghost:hover{background:var(--sunk);opacity:1}
+.btn.sm{padding:5px 10px;font-size:.82rem;border-radius:7px}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn.danger{background:var(--bad);color:#fff}
+input[type=text],input[type=number],input[type=search],select,textarea{width:100%;background:var(--card);border:1px solid var(--line);border-radius:9px;padding:8px 11px;outline:none}
+input:focus,select:focus,textarea:focus{border-color:var(--focus)}
+textarea{font-family:var(--mono);font-size:.85rem;line-height:1.6;resize:vertical;min-height:90px}
+label.f{display:block} label.f>span{display:block;font-size:.76rem;color:var(--ink-2);font-weight:600;margin-bottom:5px;letter-spacing:.02em;text-transform:uppercase}
+.check{display:flex;gap:8px;align-items:center;font-size:.9rem} .check input{width:auto}
+.tag{display:inline-flex;align-items:center;gap:5px;font-size:.72rem;font-weight:700;padding:3px 9px;border-radius:99px;background:var(--sunk);color:var(--ink-2);letter-spacing:.02em}
+.tag.email{background:var(--email-bg);color:var(--email)}
+.tag.linkedin{background:var(--li-bg);color:var(--li)}
+.tag.call{background:var(--call-bg);color:var(--call)}
+.tag.good{background:var(--good-bg);color:var(--good)} .tag.bad{background:var(--bad-bg);color:var(--bad)}
+.tag.warn{background:var(--warn-bg);color:var(--warn)}
+.avatar{width:36px;height:36px;border-radius:10px;background:var(--sunk);color:var(--ink-2);display:grid;place-items:center;font-weight:700;font-size:.8rem;flex:none;font-family:var(--display)}
+.empty{text-align:center;padding:48px 20px;display:flex;flex-direction:column;gap:10px;align-items:center}
+.empty h2{font-size:1.15rem}
+.stack{display:flex;flex-direction:column;gap:12px}
+hr{border:0;border-top:1px solid var(--line-soft);margin:0}
+
+/* queue focus card */
+.focus-head{display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap}
+.chan-strip{height:4px;border-radius:var(--r) var(--r) 0 0}
+.chan-strip.email{background:var(--email)} .chan-strip.linkedin{background:var(--li)} .chan-strip.call{background:var(--call)}
+.script{background:var(--sunk);border:1px solid var(--line-soft);border-radius:10px;padding:14px;font-family:var(--mono);font-size:.85rem;line-height:1.65;white-space:pre-wrap;word-break:break-word;max-height:340px;overflow:auto}
+.field-line{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:.88rem}
+.copyable{font-family:var(--mono);font-size:.84rem;background:var(--sunk);border-radius:7px;padding:3px 8px;user-select:all;word-break:break-all}
+.disp{display:flex;flex-wrap:wrap;gap:6px}
+.disp button{border:1px solid var(--line);background:var(--card);border-radius:8px;padding:7px 12px;font-size:.85rem;cursor:pointer;font-weight:500}
+.disp button:hover{border-color:var(--ink-3)}
+.disp button[aria-pressed="true"]{background:var(--brand);color:var(--brand-ink);border-color:transparent;font-weight:600}
+.upnext{display:flex;flex-direction:column;gap:1px;background:var(--line-soft);border-radius:var(--r);overflow:hidden;border:1px solid var(--line)}
+.up{display:flex;gap:11px;align-items:center;padding:11px 14px;background:var(--card);cursor:pointer;text-align:left;border:0;width:100%;font:inherit;color:inherit}
+.up:hover{background:var(--sunk)}
+.up[aria-current="true"]{background:var(--sunk)}
+.up .who{font-weight:600;font-size:.9rem}
+.grow{flex:1;min-width:0}
+.trunc{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* people table */
+.tbl{width:100%;border-collapse:collapse;font-size:.88rem}
+.tbl th{text-align:left;font-size:.7rem;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-3);font-weight:700;padding:10px 12px;border-bottom:1px solid var(--line)}
+.tbl td{padding:10px 12px;border-bottom:1px solid var(--line-soft);vertical-align:middle}
+.tbl tr:last-child td{border-bottom:0}
+.scroll-x{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.dot-list{display:flex;gap:4px}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--line)}
+.dot.on.email{background:var(--email)} .dot.on.linkedin{background:var(--li)} .dot.on.call{background:var(--call)}
+
+/* steps */
+.step{border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--card)}
+.step-top{display:flex;gap:10px;align-items:center;padding:10px 13px;background:var(--sunk);flex-wrap:wrap}
+.step-n{width:24px;height:24px;border-radius:7px;background:var(--brand);color:var(--brand-ink);display:grid;place-items:center;font-size:.75rem;font-weight:700;flex:none}
+.step-body{padding:14px;display:flex;flex-direction:column;gap:12px;border-top:1px solid var(--line-soft)}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg button{border:0;background:var(--card);padding:6px 11px;font-size:.82rem;cursor:pointer;font-weight:600;color:var(--ink-2)}
+.seg button[aria-pressed="true"][data-c="email"]{background:var(--email-bg);color:var(--email)}
+.seg button[aria-pressed="true"][data-c="linkedin"]{background:var(--li-bg);color:var(--li)}
+.seg button[aria-pressed="true"][data-c="call"]{background:var(--call-bg);color:var(--call)}
+.tok{font-family:var(--mono);font-size:.76rem;background:var(--sunk);border:1px solid var(--line-soft);border-radius:5px;padding:1px 5px;cursor:pointer}
+
+/* inbox */
+.thread{display:flex;flex-direction:column;gap:10px;max-height:46vh;overflow:auto;padding-right:4px}
+.msg{border:1px solid var(--line-soft);border-radius:10px;padding:11px 13px;background:var(--sunk);white-space:pre-wrap;word-break:break-word;font-size:.88rem}
+.msg.in{background:var(--email-bg);border-color:transparent}
+.msg .meta{display:flex;gap:8px;align-items:center;font-size:.72rem;color:var(--ink-3);margin-bottom:6px;flex-wrap:wrap}
+
+/* numbers */
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px}
+.kpi{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:14px 16px}
+.kpi .n{font-family:var(--display);font-size:1.75rem;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.1}
+.kpi .l{font-size:.72rem;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-2);font-weight:700;margin-top:4px}
+.kpi .d{font-size:.78rem;color:var(--ink-3);margin-top:3px}
+.meter{height:8px;border-radius:99px;background:var(--sunk);overflow:hidden}
+.meter>i{display:block;height:100%;border-radius:99px;background:var(--brand)}
+
+/* sheet */
+.sheet-bg{position:fixed;inset:0;background:rgba(12,14,18,.45);z-index:40;display:grid;place-items:center;padding:16px}
+.sheet{background:var(--card);border:1px solid var(--line);border-radius:16px;width:min(760px,100%);max-height:88vh;overflow:auto;box-shadow:0 24px 70px rgba(0,0,0,.28)}
+.sheet header{position:sticky;top:0;background:var(--card);border-bottom:1px solid var(--line);padding:15px 18px;display:flex;justify-content:space-between;align-items:center;gap:10px;z-index:1}
+.sheet .in{padding:18px;display:flex;flex-direction:column;gap:14px}
+.sheet footer{position:sticky;bottom:0;background:var(--card);border-top:1px solid var(--line);padding:13px 18px;display:flex;gap:8px;justify-content:flex-end}
+.x{background:none;border:0;font-size:1.3rem;line-height:1;color:var(--ink-3);cursor:pointer;padding:4px}
+#toasts{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));z-index:60;display:flex;flex-direction:column;gap:8px;align-items:center;pointer-events:none}
+.toast{background:var(--brand);color:var(--brand-ink);padding:9px 16px;border-radius:99px;font-size:.87rem;font-weight:600;box-shadow:0 8px 26px rgba(0,0,0,.22);animation:pop .16s ease-out}
+.toast.bad{background:var(--bad);color:#fff}
+@keyframes pop{from{opacity:0;transform:translateY(8px)}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+.banner{border:1px solid var(--line);background:var(--warn-bg);color:var(--warn);border-radius:10px;padding:10px 14px;font-size:.86rem;font-weight:500}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:620px){.grid2{grid-template-columns:1fr}nav{width:100%;margin-inline-start:0;overflow-x:auto}}
+</style>
+
+<div class="bar"><div class="bar-in">
+  <span class="logo"><i></i> Outreach</span>
+  <nav id="nav"></nav>
+</div></div>
+<main><div id="app" class="wrap"></div></main>
+<div id="sheet-root"></div>
+<div id="toasts"></div>
+<script>
+/* ---------------------------------------------------------------- helpers */
+const $ = (s, r = document) => r.querySelector(s);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const CH = { email: "Email", linkedin: "LinkedIn", call: "Call" };
+const GATE = { email: "email", linkedin: "linkedin", call: "phone" };
+const today = () => new Date().toISOString().slice(0, 10);
+const addDays = (n) => { const d = new Date(); d.setDate(d.getDate() + (n || 0)); return d.toISOString().slice(0, 10); };
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+const name = (c) => [c.first, c.last].filter(Boolean).join(" ") || c.email || c.phone || "Unnamed";
+const inits = (c) => ((c.first || "")[0] || "") + ((c.last || "")[0] || "") || "?";
+const pct = (n, d) => (d ? Math.round((n / d) * 100) : 0);
+const ago = (iso) => {
+  if (!iso) return "";
+  const m = Math.round((Date.now() - new Date(iso).getTime()) / 60000);
+  if (m < 1) return "just now"; if (m < 60) return m + "m ago";
+  if (m < 1440) return Math.round(m / 60) + "h ago";
+  if (m < 10080) return Math.round(m / 1440) + "d ago";
+  return new Date(iso).toLocaleDateString();
+};
+function toast(msg, bad) {
+  const t = document.createElement("div");
+  t.className = "toast" + (bad ? " bad" : ""); t.textContent = msg;
+  $("#toasts").appendChild(t); setTimeout(() => t.remove(), 3600);
+}
+async function copy(text, label) {
+  try { await navigator.clipboard.writeText(text); toast((label || "Copied") + " copied"); }
+  catch (e) { toast("Select the text and copy manually", true); }
+}
+const gmailUrl = (to, su, body) =>
+  "https://mail.google.com/mail/?view=cm&fs=1" +
+  (to ? "&to=" + encodeURIComponent(to) : "") +
+  (su ? "&su=" + encodeURIComponent(su) : "") +
+  (body ? "&body=" + encodeURIComponent(body) : "");
+
+/* merge tags: {{first}} and {{first|there}} */
+const TOKEN = /\{\{\s*([a-zA-Z0-9_.]+)\s*(?:\|([^}]*?))?\s*\}\}/g;
+function ctx(c) {
+  const o = { first: c.first || "", last: c.last || "", email: c.email || "", phone: c.phone || "",
+    company: c.company || "", title: c.title || "", linkedin: c.linkedin || "",
+    name: name(c), signature: S.meta.signature || "", sender: S.meta.sender || "" };
+  Object.entries(c.custom || {}).forEach(([k, v]) => { if (!(k in o)) o[k] = String(v ?? ""); });
+  return o;
+}
+function render(tpl, c) {
+  const o = ctx(c);
+  return String(tpl || "").replace(TOKEN, (_, k, fb) => {
+    const v = o[k];
+    return v && String(v).trim() ? v : (fb || "").trim();
+  });
+}
+function blanks(tpl, c) {
+  const o = ctx(c), out = new Set();
+  String(tpl || "").replace(TOKEN, (_, k, fb) => {
+    if (!(o[k] && String(o[k]).trim()) && !(fb || "").trim()) out.add(k); return "";
+  });
+  return [...out];
+}
+
+/* ------------------------------------------------------------------ state */
+const S = {
+  db: null, canWrite: null, ready: false, view: "queue",
+  contacts: [], plays: [], meta: { signature: "", sender: "", active: "" },
+  focus: null, thread: null, filter: "", chanFilter: "", pending: new Set(),
+};
+const activePlay = () => S.plays.find((p) => p.id === S.meta.active) || S.plays[0] || null;
+const playById = (id) => S.plays.find((p) => p.id === id) || null;
+
+async function writeDoc(path, data, merge) {
+  if (!S.db) { toast("Storage not available in this view", true); return false; }
+  for (let i = 0; i < 3; i++) {
+    try { merge ? await S.db.doc(path).update(data) : await S.db.doc(path).set(data); return true; }
+    catch (e) {
+      if (e && e.code === "invalid_argument") { S.canWrite = false; renderAll(); toast("You have view-only access here", true); return false; }
+      if (e && (e.code === "unavailable" || e.code === "resource_exhausted")) { await new Promise((r) => setTimeout(r, 250 * (i + 1) + Math.random() * 200)); continue; }
+      if (e && e.code === "quota_exceeded") { toast("Storage is full — delete some contacts", true); return false; }
+      toast("Could not save: " + (e && e.message ? e.message : "unknown error"), true); return false;
+    }
+  }
+  toast("Could not save — check your connection", true); return false;
+}
+const saveContact = (c) => writeDoc("contacts/" + c.id, c);
+const savePlay = (p) => writeDoc("plays/" + p.id, p);
+const saveMeta = () => writeDoc("meta/app", S.meta);
+
+async function loadAll() {
+  const [cs, ps, m] = await Promise.all([
+    S.db.collection("contacts").limit(1000).get(),
+    S.db.collection("plays").limit(50).get(),
+    S.db.doc("meta/app").get(),
+  ]);
+  S.contacts = cs.docs.map((d) => ({ id: d.id, ...d.data() }));
+  S.plays = ps.docs.map((d) => ({ id: d.id, ...d.data() }));
+  if (m.exists) S.meta = { ...S.meta, ...m.data() };
+}
+
+/* ------------------------------------------------------- waterfall engine */
+function stepsOf(c) { const p = playById(c.play); return p ? p.steps || [] : []; }
+function gateOf(st) { return st.gate || GATE[st.ch] || ""; }
+function hasField(c, f) { return !!(f && String(c[f] || "").trim()); }
+
+/** Walk past steps this contact can't receive. Returns {changed, done}. */
+function settle(c) {
+  const steps = stepsOf(c);
+  if (!c.play || c.state !== "running" || !steps.length) return { changed: false };
+  let changed = false, guard = 0;
+  while (guard++ < steps.length + 1) {
+    if (c.step >= steps.length) { c.state = "finished"; c.due = null; return { changed: true }; }
+    const st = steps[c.step], gate = gateOf(st);
+    if (gate && !hasField(c, gate)) {
+      c.skips = (c.skips || 0) + 1;
+      c.log = [...(c.log || []), { ts: new Date().toISOString(), ch: st.ch, dir: "skip",
+        body: "Skipped step " + (c.step + 1) + " — no " + gate + " on file." }].slice(-60);
+      c.step += 1; changed = true;
+      c.due = c.step < steps.length ? addDays(steps[c.step].wait) : null;
+      continue;
+    }
+    break;
+  }
+  return { changed };
+}
+
+/** Everyone whose next step is due today or earlier, soonest first. */
+function queue() {
+  const t = today();
+  return S.contacts
+    .filter((c) => c.play && c.state === "running" && c.due && c.due <= t && stepsOf(c)[c.step])
+    .filter((c) => !S.chanFilter || stepsOf(c)[c.step].ch === S.chanFilter)
+    .sort((a, b) => (a.due < b.due ? -1 : a.due > b.due ? 1 : name(a).localeCompare(name(b))));
+}
+function card(c) {
+  const st = stepsOf(c)[c.step];
+  if (!st) return null;
+  return { st, subject: render(st.subj, c), body: render(st.body, c) };
+}
+
+async function advance(c, entry) {
+  const steps = stepsOf(c);
+  c.log = [...(c.log || []), entry].slice(-60);
+  c.touches = (c.touches || 0) + 1;
+  c.lastAt = entry.ts;
+  if (c.status === "new") c.status = "working";
+  c.step += 1;
+  if (c.step >= steps.length) { c.state = "finished"; c.due = null; }
+  else c.due = addDays(steps[c.step].wait);
+  settle(c);
+  await saveContact(c);
+}
+
+async function logReply(c, ch, text) {
+  c.log = [...(c.log || []), { ts: new Date().toISOString(), ch, dir: "in", body: text }].slice(-60);
+  c.status = "replied"; c.state = "replied"; c.due = null; c.lastAt = new Date().toISOString();
+  await saveContact(c);
+}
+
+async function startSequence(c, playId) {
+  const p = playById(playId); if (!p || !(p.steps || []).length) return;
+  c.play = p.id; c.step = 0; c.state = "running"; c.due = addDays(p.steps[0].wait);
+  if (c.status === "replied" || c.status === "out") c.status = "working";
+  settle(c);
+  await saveContact(c);
+}
+
+/* -------------------------------------------------------------- CSV parse */
+function parseCSV(text) {
+  const rows = []; let row = [], val = "", q = false;
+  text = text.replace(/\r\n?/g, "\n");
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (q) {
+      if (ch === '"') { if (text[i + 1] === '"') { val += '"'; i++; } else q = false; }
+      else val += ch;
+    } else if (ch === '"') q = true;
+    else if (ch === ",") { row.push(val); val = ""; }
+    else if (ch === "\n") { row.push(val); rows.push(row); row = []; val = ""; }
+    else val += ch;
+  }
+  if (val || row.length) { row.push(val); rows.push(row); }
+  return rows.filter((r) => r.some((x) => String(x).trim() !== ""));
+}
+const HINTS = {
+  first: ["first name", "firstname", "first", "given name", "fname"],
+  last: ["last name", "lastname", "last", "surname", "family name", "lname"],
+  email: ["email", "email address", "work email", "e-mail", "personal email", "email 1"],
+  phone: ["phone", "phone number", "mobile", "cell", "direct dial", "telephone", "mobile phone", "mobile number"],
+  linkedin: ["linkedin", "linkedin url", "linkedin profile", "li url", "profile url", "linkedin link"],
+  company: ["company", "company name", "organization", "organisation", "account", "employer"],
+  title: ["title", "job title", "position", "role", "headline"],
+};
+function guessMap(headers) {
+  const used = new Set();
+  return headers.map((h) => {
+    const k = String(h || "").trim().toLowerCase().replace(/[^a-z0-9 ]+/g, " ").replace(/\s+/g, " ").trim();
+    for (const [field, hints] of Object.entries(HINTS)) {
+      if (!used.has(field) && (hints.includes(k) || k.replace(/ /g, "_") === field)) { used.add(field); return field; }
+    }
+    return "custom";
+  });
+}
+const cleanPhone = (v) => String(v || "").replace(/[^\d+]/g, "");
+const cleanLi = (v) => { let s = String(v || "").trim(); if (/^(www\.)?linkedin\.com/i.test(s)) s = "https://" + s; return s; };
+</script>
+<script>
+/* ------------------------------------------------------------------ views */
+const NAV = [["queue", "Queue"], ["people", "People"], ["playbook", "Playbook"], ["inbox", "Inbox"], ["numbers", "Numbers"]];
+
+function renderNav() {
+  const due = S.ready ? queue().length : 0;
+  const unread = S.contacts.filter((c) => c.status === "replied" && !c.seen).length;
+  $("#nav").innerHTML = NAV.map(([id, label]) => {
+    const badge = id === "queue" && due ? `<b>${due}</b>` : id === "inbox" && unread ? `<b>${unread}</b>` : "";
+    return `<button data-act="nav" data-v="${id}" aria-current="${S.view === id}">${label}${badge}</button>`;
+  }).join("");
+}
+
+function renderAll() {
+  renderNav();
+  const el = $("#app");
+  if (!S.ready) { el.innerHTML = bootView(); return; }
+  el.innerHTML =
+    (S.canWrite === false ? `<div class="banner">You're viewing this in read-only mode. Ask whoever shared it to give you <strong>Contributor</strong> access so your logged calls and replies save.</div>` : "") +
+    ({ queue: viewQueue, people: viewPeople, playbook: viewPlaybook, inbox: viewInbox, numbers: viewNumbers }[S.view] || viewQueue)();
+}
+
+const bootView = () => `<div class="card pad empty">
+  <h2>Getting your list…</h2><p class="muted sm">Contacts, playbook and history load from shared storage.</p></div>`;
+
+/* ---- queue ---------------------------------------------------------- */
+function viewQueue() {
+  const q = queue();
+  if (!S.focus || !q.find((c) => c.id === S.focus)) S.focus = q[0] ? q[0].id : null;
+  const c = q.find((x) => x.id === S.focus);
+  const counts = { email: 0, linkedin: 0, call: 0 };
+  S.contacts.filter((x) => x.play && x.state === "running" && x.due && x.due <= today())
+    .forEach((x) => { const st = stepsOf(x)[x.step]; if (st) counts[st.ch]++; });
+
+  const head = `<div class="spread">
+    <div><h1>Queue</h1><p class="muted sm">${q.length ? `${q.length} ${q.length === 1 ? "person is" : "people are"} due today. Work down the list — each one takes a few seconds.` : "Nothing due right now."}</p></div>
+    <div class="row">
+      ${["", "call", "linkedin", "email"].map((k) => `<button class="btn ${S.chanFilter === k ? "" : "ghost"} sm" data-act="chan" data-c="${k}">${k ? CH[k] : "All"}${k && counts[k] ? " " + counts[k] : ""}</button>`).join("")}
+    </div></div>`;
+
+  if (!q.length) {
+    const waiting = S.contacts.filter((x) => x.state === "running").length;
+    return head + `<div class="card pad empty">
+      <h2>${waiting ? "All caught up" : "No one is in a sequence yet"}</h2>
+      <p class="muted sm" style="max-width:46ch">${waiting
+        ? `${waiting} ${waiting === 1 ? "person is" : "people are"} still in the playbook — their next step is scheduled for a later day.`
+        : "Import your leads, then start the playbook on them. Steps they can't receive (no phone, no LinkedIn) get skipped automatically."}</p>
+      <div class="row" style="justify-content:center">
+        <button class="btn" data-act="import">Import a CSV</button>
+        <button class="btn ghost" data-act="nav" data-v="people">Open people</button>
+      </div></div>`;
+  }
+
+  const k = card(c), st = k.st, gate = gateOf(st);
+  const contactVal = c[gate] || "";
+  const isCall = st.ch === "call", isLi = st.ch === "linkedin", isEmail = st.ch === "email";
+  const dispositions = isCall
+    ? ["Connected — interested", "Connected — not now", "Not a fit", "Left voicemail", "No answer", "Gatekeeper", "Booked meeting"]
+    : isLi ? ["Request sent", "Message sent", "Accepted", "Profile viewed"] : ["Sent"];
+  const overdue = c.due < today();
+
+  return head + `
+  <div class="card">
+    <div class="chan-strip ${st.ch}"></div>
+    <div class="pad stack">
+      <div class="focus-head">
+        <div class="avatar">${esc(inits(c))}</div>
+        <div class="grow">
+          <h2>${esc(name(c))}</h2>
+          <p class="muted sm">${esc([c.title, c.company].filter(Boolean).join(" · ") || "No title on file")}</p>
+        </div>
+        <div class="row">
+          <span class="tag ${st.ch}">${CH[st.ch]}</span>
+          <span class="tag">Step ${c.step + 1} of ${stepsOf(c).length}</span>
+          ${overdue ? `<span class="tag warn">Due ${esc(c.due)}</span>` : ""}
+        </div>
+      </div>
+
+      <div class="field-line">
+        ${contactVal ? (gate === "linkedin"
+          ? `<a class="btn ghost sm" href="${esc(contactVal)}" target="_blank" rel="noopener">Open profile</a>
+             <button class="btn ghost sm" data-act="copy" data-text="${esc(contactVal)}" data-label="Profile URL">Copy URL</button>`
+          : `<span class="copyable">${esc(contactVal)}</span>
+             <button class="btn ghost sm" data-act="copy" data-text="${esc(contactVal)}" data-label="${gate === "phone" ? "Number" : "Address"}">Copy</button>`) : ""}
+        ${isCall && c.phone ? `<a class="btn ghost sm" href="tel:${esc(c.phone)}">Dial</a>` : ""}
+        ${isEmail && c.email ? `<a class="btn sm" href="${esc(gmailUrl(c.email, k.subject, k.body))}" target="_blank" rel="noopener">Open in Gmail</a>` : ""}
+        <button class="btn ghost sm" data-act="thread" data-id="${c.id}">History</button>
+      </div>
+
+      ${isEmail && k.subject ? `<div><p class="xs dim" style="margin-bottom:4px">SUBJECT</p>
+        <div class="row"><span class="grow mono trunc">${esc(k.subject)}</span>
+        <button class="btn ghost sm" data-act="copy" data-text="${esc(k.subject)}" data-label="Subject">Copy</button></div></div>` : ""}
+
+      <div>
+        <p class="xs dim" style="margin-bottom:6px">${isCall ? "WHAT TO SAY" : "MESSAGE"}</p>
+        <div class="script" id="msg-box">${esc(k.body)}</div>
+        <div class="row" style="margin-top:8px">
+          <button class="btn ghost sm" data-act="copy" data-text="${esc(k.body)}" data-label="Message">Copy ${isCall ? "script" : "message"}</button>
+          ${isEmail ? `<span class="dim xs">Opens Gmail with it filled in — you press send.</span>`
+            : isLi ? `<span class="dim xs">Paste it into LinkedIn, then log what happened.</span>`
+            : `<span class="dim xs">Dial, talk, then log the outcome.</span>`}
+        </div>
+      </div>
+
+      <hr>
+      <div>
+        <p class="xs dim" style="margin-bottom:7px">LOG THE OUTCOME</p>
+        <div class="disp" id="disp">${dispositions.map((d, i) =>
+          `<button data-act="pick" data-d="${esc(d)}" aria-pressed="${i === 0 && !isCall}">${esc(d)}</button>`).join("")}</div>
+      </div>
+      ${isCall ? `<label class="f"><span>Notes</span><textarea id="note" rows="2" placeholder="What did they say? Anything to follow up on?"></textarea></label>` : ""}
+      <div class="row">
+        <button class="btn" data-act="done" data-id="${c.id}">Log &amp; next</button>
+        <button class="btn ghost" data-act="replied" data-id="${c.id}">They replied</button>
+        <button class="btn ghost" data-act="snooze" data-id="${c.id}">Tomorrow</button>
+        <button class="btn ghost" data-act="skip" data-id="${c.id}">Skip step</button>
+      </div>
+      <p class="dim xs">Logging moves them to step ${c.step + 2 <= stepsOf(c).length ? c.step + 2 : "— done"}${c.step + 1 < stepsOf(c).length ? `, due ${addDays(stepsOf(c)[c.step + 1].wait)}` : ""}.</p>
+    </div>
+  </div>
+
+  ${q.length > 1 ? `<div><p class="xs dim" style="margin:6px 0 8px">UP NEXT</p><div class="upnext">
+    ${q.slice(0, 12).map((x) => { const kk = card(x); return `<button class="up" data-act="focus" data-id="${x.id}" aria-current="${x.id === c.id}">
+      <span class="avatar" style="width:28px;height:28px;font-size:.7rem">${esc(inits(x))}</span>
+      <span class="grow"><span class="who">${esc(name(x))}</span>
+        <span class="dim xs trunc" style="display:block">${esc([x.company, kk ? kk.subject || kk.body.slice(0, 60) : ""].filter(Boolean).join(" · "))}</span></span>
+      <span class="tag ${kk.st.ch}">${CH[kk.st.ch]}</span></button>`; }).join("")}
+  </div></div>` : ""}`;
+}
+
+/* ---- people --------------------------------------------------------- */
+function viewPeople() {
+  const f = S.filter.toLowerCase();
+  const rows = S.contacts.filter((c) => !f ||
+    (name(c) + " " + (c.email || "") + " " + (c.company || "") + " " + (c.title || "") + " " + (c.phone || "")).toLowerCase().includes(f));
+  const play = activePlay();
+  return `<div class="spread">
+    <div><h1>People</h1><p class="muted sm">${S.contacts.length} ${S.contacts.length === 1 ? "contact" : "contacts"} · ${S.contacts.filter((c) => c.state === "running").length} in the playbook</p></div>
+    <div class="row">
+      <button class="btn ghost sm" data-act="export">Export CSV</button>
+      <button class="btn ghost sm" data-act="settings">Settings</button>
+      <button class="btn" data-act="import">Import CSV</button>
+    </div></div>
+  ${S.contacts.length ? `
+  <div class="row">
+    <input type="search" id="q" placeholder="Search name, company, email…" value="${esc(S.filter)}" style="max-width:320px">
+    ${play ? `<button class="btn ghost sm" data-act="start-all">Start “${esc(play.name)}” on everyone not yet in it</button>` : ""}
+  </div>
+  <div class="card scroll-x"><table class="tbl">
+    <thead><tr><th>Name</th><th>Channels</th><th>Company</th><th>Stage</th><th>Last touch</th><th></th></tr></thead>
+    <tbody>${rows.slice(0, 300).map((c) => {
+      const steps = stepsOf(c);
+      return `<tr>
+        <td><div class="row" style="flex-wrap:nowrap;gap:9px"><span class="avatar" style="width:30px;height:30px;font-size:.72rem">${esc(inits(c))}</span>
+          <span class="grow"><strong>${esc(name(c))}</strong><span class="dim xs trunc" style="display:block">${esc(c.title || c.email || "")}</span></span></div></td>
+        <td><span class="dot-list">
+          <span class="dot email ${c.email ? "on" : ""}" title="${c.email ? esc(c.email) : "no email"}"></span>
+          <span class="dot linkedin ${c.linkedin ? "on" : ""}" title="${c.linkedin ? "has LinkedIn" : "no LinkedIn"}"></span>
+          <span class="dot call ${c.phone ? "on" : ""}" title="${c.phone ? esc(c.phone) : "no phone"}"></span></span></td>
+        <td class="sm">${esc(c.company || "")}</td>
+        <td>${c.status === "replied" ? '<span class="tag good">Replied</span>'
+            : c.status === "out" ? '<span class="tag bad">Opted out</span>'
+            : c.state === "running" ? `<span class="tag">Step ${Math.min(c.step + 1, steps.length || 1)}/${steps.length || "?"}</span>`
+            : c.state === "finished" ? '<span class="tag">Finished</span>' : '<span class="tag">Not started</span>'}</td>
+        <td class="sm dim">${esc(ago(c.lastAt))}</td>
+        <td><button class="btn ghost sm" data-act="thread" data-id="${c.id}">Open</button></td>
+      </tr>`;
+    }).join("")}</tbody></table>
+    ${rows.length > 300 ? `<p class="dim xs pad">Showing the first 300 of ${rows.length}. Search to narrow it down.</p>` : ""}
+  </div>`
+  : `<div class="card pad empty">
+      <h2>No contacts yet</h2>
+      <p class="muted sm" style="max-width:48ch">Import a CSV from Clay, Apollo, Sales Navigator or a spreadsheet. Columns are matched automatically, and anything extra becomes a merge tag you can drop into messages.</p>
+      <div class="row" style="justify-content:center">
+        <button class="btn" data-act="import">Import CSV</button>
+        <button class="btn ghost" data-act="sample">Load 5 sample leads</button>
+      </div></div>`}`;
+}
+
+/* ---- playbook ------------------------------------------------------- */
+function viewPlaybook() {
+  const p = activePlay();
+  if (!p) return `<h1>Playbook</h1>
+    <div class="card pad empty"><h2>Build your waterfall</h2>
+    <p class="muted sm" style="max-width:48ch">A playbook is the order of touches: email, LinkedIn, call. When someone's missing the detail a step needs, that step is skipped and the next one runs straight away.</p>
+    <button class="btn" data-act="starter">Start from the 6-step waterfall</button></div>`;
+  const steps = p.steps || [];
+  return `<div class="spread">
+    <div><h1>Playbook</h1><p class="muted sm">${steps.length} steps · used by ${S.contacts.filter((c) => c.play === p.id).length} people</p></div>
+    <div class="row"><button class="btn ghost sm" data-act="settings">Settings</button><button class="btn" data-act="save-play">Save playbook</button></div></div>
+  <label class="f"><span>Playbook name</span><input type="text" id="p-name" value="${esc(p.name)}"></label>
+  <div class="stack">${steps.map((st, i) => `
+    <div class="step" data-i="${i}">
+      <div class="step-top">
+        <span class="step-n">${i + 1}</span>
+        <span class="seg">${Object.keys(CH).map((ch) => `<button data-act="chan-set" data-i="${i}" data-c="${ch}" aria-pressed="${st.ch === ch}">${CH[ch]}</button>`).join("")}</span>
+        <span class="row sm" style="gap:6px"><span class="dim">wait</span>
+          <input type="number" min="0" max="60" value="${st.wait || 0}" data-f="wait" data-i="${i}" style="width:68px"><span class="dim">days</span></span>
+        <span class="grow"></span>
+        <button class="btn ghost sm" data-act="step-up" data-i="${i}" ${i ? "" : "disabled"}>↑</button>
+        <button class="btn ghost sm" data-act="step-down" data-i="${i}" ${i === steps.length - 1 ? "disabled" : ""}>↓</button>
+        <button class="btn ghost sm" data-act="step-del" data-i="${i}">Remove</button>
+      </div>
+      <div class="step-body">
+        ${st.ch === "email" ? `<label class="f"><span>Subject</span><input type="text" data-f="subj" data-i="${i}" value="${esc(st.subj || "")}"></label>` : ""}
+        <label class="f"><span>${st.ch === "call" ? "Call script" : "Message"}</span>
+          <textarea data-f="body" data-i="${i}" rows="${st.ch === "call" ? 6 : 5}">${esc(st.body || "")}</textarea></label>
+        <div class="grid2">
+          <label class="f"><span>Needs</span><select data-f="gate" data-i="${i}">
+            <option value="" ${!st.gate ? "selected" : ""}>${GATE[st.ch]} (default for ${CH[st.ch]})</option>
+            <option value="email" ${st.gate === "email" ? "selected" : ""}>email</option>
+            <option value="phone" ${st.gate === "phone" ? "selected" : ""}>phone</option>
+            <option value="linkedin" ${st.gate === "linkedin" ? "selected" : ""}>linkedin</option>
+          </select></label>
+          <label class="f"><span>Preview against</span>
+            <button class="btn ghost sm" data-act="preview" data-i="${i}" style="width:100%">Preview with a real contact</button></label>
+        </div>
+      </div>
+    </div>`).join("")}</div>
+  <div class="row">
+    ${Object.keys(CH).map((ch) => `<button class="btn ghost sm" data-act="step-add" data-c="${ch}">+ ${CH[ch]} step</button>`).join("")}
+  </div>
+  <p class="dim xs">Merge tags: ${["first", "last", "company", "title", "signature"].map((t) => `<button class="tok" data-act="copy" data-text="{{${t}}}" data-label="Tag">{{${t}}}</button>`).join(" ")}
+  — plus any extra column from your CSV. Use <span class="tok">{{first|there}}</span> to set a fallback when the field is empty.</p>`;
+}
+
+/* ---- inbox ---------------------------------------------------------- */
+function viewInbox() {
+  const threads = S.contacts.filter((c) => (c.log || []).length)
+    .sort((a, b) => String(b.lastAt || "").localeCompare(String(a.lastAt || "")));
+  const replied = threads.filter((c) => c.status === "replied");
+  const list = S.filter === "replies" ? replied : threads;
+  return `<div class="spread">
+    <div><h1>Inbox</h1><p class="muted sm">Every touch and every reply, one thread per person.</p></div>
+    <div class="row">
+      <button class="btn ${S.filter === "replies" ? "" : "ghost"} sm" data-act="inbox-filter" data-f="replies">Replies ${replied.length || ""}</button>
+      <button class="btn ${S.filter === "replies" ? "ghost" : ""} sm" data-act="inbox-filter" data-f="">Everything</button>
+    </div></div>
+  ${list.length ? `<div class="upnext">${list.slice(0, 60).map((c) => {
+    const last = (c.log || [])[c.log.length - 1] || {};
+    return `<button class="up" data-act="thread" data-id="${c.id}">
+      <span class="avatar" style="width:30px;height:30px;font-size:.72rem">${esc(inits(c))}</span>
+      <span class="grow"><span class="spread" style="gap:8px"><span class="who">${esc(name(c))}</span>
+        <span class="dim xs">${esc(ago(c.lastAt))}</span></span>
+        <span class="dim xs trunc" style="display:block">${last.dir === "in" ? "↙ " : last.dir === "skip" ? "⤼ " : "↗ "}${esc((last.body || "").slice(0, 90))}</span></span>
+      ${c.status === "replied" ? '<span class="tag good">Replied</span>' : `<span class="tag ${last.ch || ""}">${CH[last.ch] || ""}</span>`}</button>`;
+  }).join("")}</div>`
+  : `<div class="card pad empty"><h2>Nothing here yet</h2>
+     <p class="muted sm">Sent emails, LinkedIn messages and logged calls all land here as a single thread per person.</p></div>`}`;
+}
+
+/* ---- numbers -------------------------------------------------------- */
+function viewNumbers() {
+  const all = S.contacts;
+  const logs = all.flatMap((c) => (c.log || []).map((l) => ({ ...l, c })));
+  const sent = (ch) => logs.filter((l) => l.dir === "out" && l.ch === ch).length;
+  const touched = all.filter((c) => (c.log || []).some((l) => l.dir === "out")).length;
+  const replies = all.filter((c) => c.status === "replied").length;
+  const skips = logs.filter((l) => l.dir === "skip").length;
+  const play = activePlay(), steps = play ? play.steps || [] : [];
+  const perStep = steps.map((st, i) => ({
+    i, ch: st.ch,
+    done: all.filter((c) => c.play === play.id && c.step > i && !(c.log || []).some((l) => l.dir === "skip" && l.body.includes("step " + (i + 1)))).length,
+    skipped: all.filter((c) => (c.log || []).some((l) => l.dir === "skip" && l.body.includes("step " + (i + 1)))).length,
+  }));
+  const dispo = {};
+  logs.filter((l) => l.ch === "call" && l.dir === "out" && l.outcome).forEach((l) => { dispo[l.outcome] = (dispo[l.outcome] || 0) + 1; });
+  const dispoRows = Object.entries(dispo).sort((a, b) => b[1] - a[1]);
+  const maxStep = Math.max(1, ...perStep.map((s) => s.done + s.skipped));
+
+  return `<div class="spread"><div><h1>Numbers</h1>
+    <p class="muted sm">Everything logged so far.</p></div>
+    <button class="btn ghost sm" data-act="export-activity">Export activity CSV</button></div>
+  <div class="kpis">
+    <div class="kpi"><div class="n">${all.length}</div><div class="l">Contacts</div><div class="d">${touched} touched</div></div>
+    <div class="kpi"><div class="n">${sent("email")}</div><div class="l">Emails</div><div class="d">logged as sent</div></div>
+    <div class="kpi"><div class="n">${sent("linkedin")}</div><div class="l">LinkedIn</div><div class="d">touches</div></div>
+    <div class="kpi"><div class="n">${sent("call")}</div><div class="l">Calls</div><div class="d">${dispoRows[0] ? esc(dispoRows[0][0]) + " most common" : "none logged"}</div></div>
+    <div class="kpi"><div class="n">${replies}</div><div class="l">Replies</div><div class="d">${pct(replies, touched)}% of people touched</div></div>
+    <div class="kpi"><div class="n">${skips}</div><div class="l">Steps skipped</div><div class="d">missing phone / email / LinkedIn</div></div>
+  </div>
+  <div class="grid2">
+    <div class="card pad stack">
+      <h3>Down the waterfall</h3>
+      ${perStep.length ? perStep.map((s) => `<div>
+        <div class="spread sm"><span><span class="tag ${s.ch}">${CH[s.ch]}</span> Step ${s.i + 1}</span>
+          <span class="mono">${s.done} done${s.skipped ? ` · ${s.skipped} skipped` : ""}</span></div>
+        <div class="meter" style="margin-top:5px"><i style="width:${pct(s.done, maxStep)}%"></i></div></div>`).join("")
+        : '<p class="muted sm">No playbook yet.</p>'}
+      <p class="dim xs">Skipped means the person had no phone, email or LinkedIn for that step, so the waterfall moved them on.</p>
+    </div>
+    <div class="card pad stack">
+      <h3>Call outcomes</h3>
+      ${dispoRows.length ? dispoRows.map(([k, n]) => `<div>
+        <div class="spread sm"><span>${esc(k)}</span><span class="mono">${n}</span></div>
+        <div class="meter" style="margin-top:5px"><i style="width:${pct(n, dispoRows.reduce((a, b) => a + b[1], 0))}%;background:var(--call)"></i></div></div>`).join("")
+        : '<p class="muted sm">No calls logged yet. Outcomes you pick in the queue show up here.</p>'}
+    </div>
+  </div>`;
+}
+</script>
+<script>
+/* ----------------------------------------------------------------- sheets */
+function sheet({ title, body, footer }) {
+  $("#sheet-root").innerHTML = `<div class="sheet-bg"><div class="sheet" role="dialog" aria-modal="true" aria-label="${esc(title)}">
+    <header><h2>${esc(title)}</h2><button class="x" data-act="close" aria-label="Close">&times;</button></header>
+    <div class="in">${body}</div>${footer ? `<footer>${footer}</footer>` : ""}</div></div>`;
+  $(".sheet-bg").addEventListener("click", (e) => { if (e.target.classList.contains("sheet-bg")) closeSheet(); });
+}
+const closeSheet = () => ($("#sheet-root").innerHTML = "");
+
+function threadSheet(id) {
+  const c = S.contacts.find((x) => x.id === id); if (!c) return;
+  const log = c.log || [];
+  const chans = [["email", c.email], ["linkedin", c.linkedin], ["call", c.phone]].filter(([, v]) => v);
+  sheet({
+    title: name(c),
+    body: `<div class="spread">
+        <div><p class="muted sm">${esc([c.title, c.company].filter(Boolean).join(" · ") || "No company on file")}</p>
+        <div class="row sm" style="margin-top:6px">
+          ${c.email ? `<span class="copyable">${esc(c.email)}</span>` : ""}
+          ${c.phone ? `<span class="copyable">${esc(c.phone)}</span>` : ""}
+          ${c.linkedin ? `<a class="btn ghost sm" href="${esc(c.linkedin)}" target="_blank" rel="noopener">LinkedIn</a>` : ""}
+        </div></div>
+        <div class="stack" style="gap:6px">
+          <select id="t-status" style="min-width:150px">
+            ${[["new", "Not started"], ["working", "In progress"], ["replied", "Replied"], ["out", "Opted out"]]
+              .map(([v, l]) => `<option value="${v}" ${c.status === v ? "selected" : ""}>${l}</option>`).join("")}
+          </select>
+          ${c.state === "running" ? `<span class="tag">Step ${c.step + 1} of ${stepsOf(c).length}, due ${esc(c.due || "—")}</span>`
+            : activePlay() ? `<button class="btn sm" data-act="start-one" data-id="${c.id}">Start playbook</button>` : ""}
+        </div></div>
+      <hr>
+      <div class="thread">${log.length ? log.slice().reverse().map((l) => `<div class="msg ${l.dir === "in" ? "in" : ""}">
+        <div class="meta"><span class="tag ${l.ch}">${CH[l.ch] || l.ch}</span>
+          <span>${l.dir === "in" ? "they replied" : l.dir === "skip" ? "skipped" : "you sent"}</span>
+          <span>${esc(ago(l.ts))}</span>${l.outcome ? `<span class="tag">${esc(l.outcome)}</span>` : ""}</div>
+        ${l.subj ? `<strong>${esc(l.subj)}</strong>\n` : ""}${esc(l.body || "")}${l.note ? `\n\n— ${esc(l.note)}` : ""}</div>`).join("")
+        : '<p class="muted sm">Nothing logged yet.</p>'}</div>
+      <hr>
+      <label class="f"><span>Log something they said</span>
+        <textarea id="t-reply" rows="3" placeholder="Paste their reply, or type what they said on the phone…"></textarea></label>
+      <div class="row">${chans.map(([ch], i) => `<button class="btn ${i ? "ghost" : ""} sm" data-act="t-chan" data-c="${ch}" aria-pressed="${i === 0}">${CH[ch]}</button>`).join("")}
+        <span class="dim xs">Logging a reply stops their sequence.</span></div>`,
+    footer: `<button class="btn ghost" data-act="close">Close</button>
+      <button class="btn" data-act="save-reply" data-id="${c.id}">Log reply</button>`,
+  });
+}
+
+function importSheet() {
+  sheet({
+    title: "Import contacts",
+    body: `<p class="muted sm">Any CSV works — Clay, Apollo, Sales Navigator, a spreadsheet. Columns are matched automatically and you can fix them on the next screen.</p>
+      <label class="f"><span>CSV file</span><input type="file" id="f-file" accept=".csv,text/csv"></label>
+      <label class="f"><span>…or paste the rows</span><textarea id="f-text" rows="5" placeholder="first_name,last_name,email,phone,linkedin_url,company,title"></textarea></label>
+      <div id="map-area"></div>`,
+    footer: `<button class="btn ghost" data-act="sample">Use sample data</button>
+      <button class="btn" data-act="map">Continue</button>`,
+  });
+  $("#f-file").addEventListener("change", (e) => {
+    const file = e.target.files[0]; if (!file) return;
+    const r = new FileReader();
+    r.onload = () => { $("#f-text").value = String(r.result); toast("File loaded — press Continue"); };
+    r.readAsText(file);
+  });
+}
+
+function mapSheet(text) {
+  const rows = parseCSV(text);
+  if (rows.length < 2) { toast("That CSV has no data rows", true); return; }
+  const headers = rows[0], guess = guessMap(headers), body = rows.slice(1);
+  const fields = ["first", "last", "email", "phone", "linkedin", "company", "title", "custom", "ignore"];
+  window.__import = { headers, body };
+  sheet({
+    title: "Check the columns",
+    body: `<p class="muted sm">${body.length} rows. Anything left as <em>custom</em> is kept and becomes a merge tag.</p>
+      <div class="scroll-x"><table class="tbl"><thead><tr><th>Column</th><th>Becomes</th><th>First row</th></tr></thead>
+      <tbody>${headers.map((h, i) => `<tr>
+        <td><strong class="sm">${esc(h)}</strong></td>
+        <td><select data-col="${i}" style="min-width:130px">${fields.map((f) =>
+          `<option value="${f}" ${guess[i] === f ? "selected" : ""}>${f === "custom" ? "custom field" : f}</option>`).join("")}</select></td>
+        <td class="dim sm trunc" style="max-width:220px">${esc((body[0] || [])[i] || "")}</td></tr>`).join("")}</tbody></table></div>
+      <label class="check"><input type="checkbox" id="f-dedupe" checked> Merge duplicates by email or LinkedIn URL</label>
+      ${body.length > 600 ? `<div class="banner">This hosted version holds about 1,000 contacts. Import your best ${Math.min(body.length, 600)} first, or use the desktop version for bigger lists.</div>` : ""}
+      <div id="prog"></div>`,
+    footer: `<button class="btn ghost" data-act="close">Cancel</button>
+      <button class="btn" data-act="do-import">Import ${Math.min(body.length, 600)} contacts</button>`,
+  });
+}
+
+function settingsSheet() {
+  sheet({
+    title: "Settings",
+    body: `<label class="f"><span>Your name</span><input type="text" id="s-sender" value="${esc(S.meta.sender || "")}" placeholder="How you sign off"></label>
+      <label class="f"><span>Signature — drop it into a message with {{signature}}</span>
+        <textarea id="s-sig" rows="4" placeholder="Achraf\\nGrowth @ Company\\n+1 555 000 111">${esc(S.meta.signature || "")}</textarea></label>
+      <hr>
+      <p class="muted sm">Emails open in Gmail with everything filled in — you press send, so they come from your real mailbox and land in your sent folder. Nothing is sent by this page on its own.</p>
+      <p class="dim xs">Data is stored with this page, shared by everyone who has edit access to the link.</p>`,
+    footer: `<button class="btn ghost" data-act="close">Cancel</button><button class="btn" data-act="save-settings">Save</button>`,
+  });
+}
+
+function confirmSheet(title, text, label, act, id) {
+  sheet({ title, body: `<p class="muted">${esc(text)}</p>`,
+    footer: `<button class="btn ghost" data-act="close">Cancel</button>
+      <button class="btn danger" data-act="${act}" ${id ? `data-id="${id}"` : ""}>${esc(label)}</button>` });
+}
+
+/* ------------------------------------------------------------- CSV export */
+async function exportCsv(what) {
+  const dl = await claude.use("downloads");
+  let head, lines;
+  if (what === "activity") {
+    head = ["when", "name", "company", "channel", "direction", "outcome", "subject", "body", "note"];
+    lines = S.contacts.flatMap((c) => (c.log || []).map((l) =>
+      [l.ts, name(c), c.company || "", l.ch, l.dir, l.outcome || "", l.subj || "", (l.body || "").replace(/\n/g, " "), l.note || ""]));
+  } else {
+    head = ["first", "last", "email", "phone", "linkedin", "company", "title", "stage", "step", "touches", "last_activity"];
+    lines = S.contacts.map((c) => [c.first, c.last, c.email, c.phone, c.linkedin, c.company, c.title,
+      c.status || "new", c.state === "running" ? c.step + 1 : "", c.touches || 0, c.lastAt || ""]);
+  }
+  const csv = [head, ...lines].map((r) => r.map((v) => {
+    const s = String(v ?? "");
+    return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+  }).join(",")).join("\n");
+  if (!dl) { await copy(csv, "CSV"); return; }
+  try { await dl.save({ filename: what === "activity" ? "outreach-activity.csv" : "outreach-contacts.csv", data: csv }); }
+  catch (e) { await copy(csv, "CSV"); }
+}
+
+/* ------------------------------------------------------------ sample data */
+const SAMPLE = [
+  { first: "Maya", last: "Ortiz", email: "maya@northwind.io", phone: "+15551234567", linkedin: "https://linkedin.com/in/mayaortiz", company: "Northwind Logistics", title: "VP Sales", custom: { note: "hiring 3 AEs" } },
+  { first: "Dev", last: "Patel", email: "dev@lumenics.com", phone: "", linkedin: "https://linkedin.com/in/devpatel", company: "Lumenics", title: "Head of Growth", custom: { note: "already uses Clay" } },
+  { first: "Sara", last: "Kim", email: "", phone: "+15559876543", linkedin: "https://linkedin.com/in/sarakim", company: "Brightpath", title: "Founder", custom: { note: "no email found" } },
+  { first: "Tom", last: "Weber", email: "tom@zephyrlabs.co", phone: "", linkedin: "", company: "Zephyr Labs", title: "COO", custom: { note: "series A last month" } },
+  { first: "Ana", last: "Rossi", email: "ana@finchpay.eu", phone: "", linkedin: "", company: "Finchpay", title: "CRO", custom: { note: "webinar lead" } },
+];
+const STARTER = {
+  name: "Starter waterfall",
+  steps: [
+    { ch: "email", wait: 0, subj: "quick question, {{first|there}}", body: "Hi {{first|there}},\n\nSaw {{company|your team}} and wanted to ask — how are you handling outbound right now?\n\nWe help teams like yours book more meetings without adding headcount. Worth ten minutes?\n\n{{signature}}", gate: "" },
+    { ch: "linkedin", wait: 1, body: "Hi {{first|there}} — came across {{company|your company}} and liked what you're building. Connecting.", gate: "" },
+    { ch: "email", wait: 2, subj: "re: quick question", body: "{{first|Hi}} — bumping this in case it slipped.\n\nWorth a quick look?", gate: "" },
+    { ch: "call", wait: 1, body: "Hi {{first|there}}, this is {{sender|me}} — I emailed you earlier this week about outbound at {{company|your company}}.\n\nOpener: did I catch you at a bad time?\nHook: teams your size lose deals to slow follow-up. We fix that.\nAsk: ten minutes Thursday or Friday?", gate: "" },
+    { ch: "linkedin", wait: 1, body: "{{first|Hey}} — tried you by email and phone. If outbound isn't a priority this quarter just say so and I'll stop.", gate: "" },
+    { ch: "email", wait: 3, subj: "closing the loop", body: "{{first|Hi}} — assuming the timing is wrong, so I'll close the loop here.\n\nIf that changes, just reply.\n\n{{signature}}", gate: "" },
+  ],
+};
+</script>
+<script>
+/* ---------------------------------------------------------------- actions */
+let pickedOutcome = "", threadChan = "email";
+
+document.addEventListener("click", async (e) => {
+  const el = e.target.closest("[data-act]");
+  if (!el) return;
+  const act = el.dataset.act, id = el.dataset.id;
+  const c = id ? S.contacts.find((x) => x.id === id) : null;
+  const play = activePlay();
+
+  const guard = () => { if (S.canWrite === false) { toast("You have view-only access here", true); return false; } return true; };
+
+  switch (act) {
+    case "nav": S.view = el.dataset.v; S.filter = ""; renderAll(); window.scrollTo({ top: 0 }); break;
+    case "close": closeSheet(); break;
+    case "copy": copy(el.dataset.text, el.dataset.label); break;
+    case "chan": S.chanFilter = el.dataset.c; S.focus = null; renderAll(); break;
+    case "focus": S.focus = id; pickedOutcome = ""; renderAll(); window.scrollTo({ top: 0, behavior: "smooth" }); break;
+    case "thread": threadChan = "email"; threadSheet(id); break;
+    case "import": if (guard()) importSheet(); break;
+    case "settings": settingsSheet(); break;
+    case "inbox-filter": S.filter = el.dataset.f; renderAll(); break;
+    case "export": exportCsv("contacts"); break;
+    case "export-activity": exportCsv("activity"); break;
+
+    case "pick":
+      pickedOutcome = el.dataset.d;
+      document.querySelectorAll('#disp [data-act="pick"]').forEach((b) => b.setAttribute("aria-pressed", b === el));
+      break;
+
+    case "done": {
+      if (!guard() || !c) break;
+      const k = card(c); if (!k) break;
+      el.disabled = true;
+      const noteEl = $("#note");
+      await advance(c, { ts: new Date().toISOString(), ch: k.st.ch, dir: "out",
+        subj: k.subject || "", body: k.body, outcome: pickedOutcome || (k.st.ch === "email" ? "Sent" : "Done"),
+        note: noteEl ? noteEl.value.trim() : "" });
+      pickedOutcome = ""; S.focus = null;
+      toast("Logged — next one up");
+      renderAll();
+      break;
+    }
+    case "skip": {
+      if (!guard() || !c) break;
+      const k = card(c);
+      await advance(c, { ts: new Date().toISOString(), ch: k.st.ch, dir: "skip", body: "Skipped step " + (c.step + 1) + " by hand." });
+      S.focus = null; renderAll(); toast("Skipped");
+      break;
+    }
+    case "snooze": {
+      if (!guard() || !c) break;
+      c.due = addDays(1); await saveContact(c); S.focus = null; renderAll(); toast("Back tomorrow");
+      break;
+    }
+    case "replied": if (c) { threadChan = stepsOf(c)[c.step] ? stepsOf(c)[c.step].ch : "email"; threadSheet(c.id); } break;
+    case "t-chan":
+      threadChan = el.dataset.c;
+      document.querySelectorAll('[data-act="t-chan"]').forEach((b) => { b.setAttribute("aria-pressed", b === el); b.classList.toggle("ghost", b !== el); });
+      break;
+    case "save-reply": {
+      if (!guard() || !c) break;
+      const text = $("#t-reply") ? $("#t-reply").value.trim() : "";
+      const status = $("#t-status") ? $("#t-status").value : null;
+      if (text) await logReply(c, threadChan, text);
+      else if (status && status !== c.status) {
+        c.status = status;
+        if (status === "out" || status === "replied") { c.state = status === "out" ? "stopped" : "replied"; c.due = null; }
+        await saveContact(c);
+      }
+      closeSheet(); S.focus = null; renderAll();
+      toast(text ? "Reply logged — sequence stopped" : "Saved");
+      break;
+    }
+    case "start-one": if (guard() && c && play) { await startSequence(c, play.id); closeSheet(); renderAll(); toast("Playbook started"); } break;
+    case "start-all": {
+      if (!guard() || !play) break;
+      const targets = S.contacts.filter((x) => !x.play && x.status !== "out");
+      if (!targets.length) { toast("Everyone is already in it"); break; }
+      confirmSheet("Start the playbook", `${targets.length} ${targets.length === 1 ? "person" : "people"} will enter “${play.name}”. Steps they can't receive get skipped automatically.`, "Start on " + targets.length, "do-start-all");
+      break;
+    }
+    case "do-start-all": {
+      closeSheet();
+      const targets = S.contacts.filter((x) => !x.play && x.status !== "out");
+      let n = 0;
+      for (const t of targets) { await startSequence(t, play.id); n++; }
+      renderAll(); toast(`Started on ${n}`);
+      break;
+    }
+    case "sample": {
+      if (!guard()) break;
+      closeSheet();
+      for (const s of SAMPLE) {
+        const rec = { id: "c" + uid(), ...s, status: "new", state: "idle", step: 0, play: "", due: null, touches: 0, log: [], createdAt: new Date().toISOString() };
+        S.contacts.push(rec); await saveContact(rec);
+      }
+      if (!S.plays.length) await seedStarter();
+      renderAll(); toast("5 sample leads added");
+      break;
+    }
+    case "starter": if (guard()) { await seedStarter(); renderAll(); toast("Playbook created — edit the copy"); } break;
+
+    case "map": {
+      const text = $("#f-text") ? $("#f-text").value.trim() : "";
+      if (!text) { toast("Pick a file or paste rows first", true); break; }
+      mapSheet(text);
+      break;
+    }
+    case "do-import": await runImport(el); break;
+
+    case "save-settings":
+      S.meta.sender = $("#s-sender").value.trim();
+      S.meta.signature = $("#s-sig").value;
+      await saveMeta(); closeSheet(); renderAll(); toast("Saved");
+      break;
+
+    /* playbook editing */
+    case "chan-set": { const p = activePlay(); p.steps[+el.dataset.i].ch = el.dataset.c; renderAll(); break; }
+    case "step-add": {
+      const p = activePlay() || { id: "p" + uid(), name: "My waterfall", steps: [] };
+      if (!S.plays.includes(p)) { S.plays.push(p); S.meta.active = p.id; }
+      p.steps.push({ ch: el.dataset.c, wait: p.steps.length ? 2 : 0, subj: "", body: "", gate: "" });
+      renderAll(); break;
+    }
+    case "step-del": { const p = activePlay(); p.steps.splice(+el.dataset.i, 1); renderAll(); break; }
+    case "step-up": { const p = activePlay(), i = +el.dataset.i; [p.steps[i - 1], p.steps[i]] = [p.steps[i], p.steps[i - 1]]; renderAll(); break; }
+    case "step-down": { const p = activePlay(), i = +el.dataset.i; [p.steps[i + 1], p.steps[i]] = [p.steps[i], p.steps[i + 1]]; renderAll(); break; }
+    case "save-play": {
+      if (!guard()) break;
+      const p = activePlay(); if (!p) break;
+      p.name = $("#p-name").value.trim() || "My waterfall";
+      readStepInputs(p);
+      await savePlay(p); S.meta.active = p.id; await saveMeta();
+      renderAll(); toast("Playbook saved");
+      break;
+    }
+    case "preview": {
+      const p = activePlay(); readStepInputs(p);
+      const st = p.steps[+el.dataset.i];
+      const who = S.contacts.find((x) => x.first) || SAMPLE[0];
+      const miss = blanks((st.subj || "") + " " + (st.body || ""), who);
+      sheet({ title: "Preview for " + name(who),
+        body: `${st.subj ? `<label class="f"><span>Subject</span><div class="script">${esc(render(st.subj, who))}</div></label>` : ""}
+          <label class="f"><span>${st.ch === "call" ? "Script" : "Message"}</span><div class="script">${esc(render(st.body, who))}</div></label>
+          ${miss.length ? `<div class="banner">These tags come out empty for this contact: ${esc(miss.join(", "))}. Give them a fallback like {{${esc(miss[0])}|there}}.</div>` : ""}`,
+        footer: `<button class="btn" data-act="close">Close</button>` });
+      break;
+    }
+  }
+});
+
+document.addEventListener("input", (e) => {
+  const el = e.target;
+  if (el.id === "q") { S.filter = el.value; const p = el.selectionStart; renderAll(); const n = $("#q"); if (n) { n.focus(); n.setSelectionRange(p, p); } }
+});
+
+function readStepInputs(p) {
+  if (!p) return;
+  document.querySelectorAll("[data-f]").forEach((inp) => {
+    const i = +inp.dataset.i, f = inp.dataset.f;
+    if (!p.steps[i]) return;
+    p.steps[i][f] = f === "wait" ? Math.max(0, +inp.value || 0) : inp.value;
+  });
+}
+
+async function seedStarter() {
+  const p = { id: "p" + uid(), ...STARTER };
+  S.plays.push(p); S.meta.active = p.id;
+  await savePlay(p); await saveMeta();
+}
+
+async function runImport(btn) {
+  const { headers, body } = window.__import || {};
+  if (!body) return;
+  const map = {};
+  document.querySelectorAll("[data-col]").forEach((s) => (map[+s.dataset.col] = s.value));
+  const dedupe = $("#f-dedupe") ? $("#f-dedupe").checked : true;
+  const rows = body.slice(0, 600);
+  btn.disabled = true;
+  const prog = $("#prog");
+  let made = 0, merged = 0, skipped = 0;
+
+  for (let n = 0; n < rows.length; n++) {
+    const r = rows[n];
+    const rec = { first: "", last: "", email: "", phone: "", linkedin: "", company: "", title: "", custom: {} };
+    headers.forEach((h, i) => {
+      const field = map[i], v = String(r[i] ?? "").trim();
+      if (!v || field === "ignore") return;
+      if (field === "custom") rec.custom[String(h).toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "")] = v;
+      else rec[field] = v;
+    });
+    rec.email = rec.email.toLowerCase();
+    rec.phone = cleanPhone(rec.phone);
+    rec.linkedin = cleanLi(rec.linkedin);
+    if (!rec.email && !rec.phone && !rec.linkedin) { skipped++; continue; }
+
+    let hit = null;
+    if (dedupe) hit = S.contacts.find((x) => (rec.email && x.email === rec.email) || (rec.linkedin && x.linkedin === rec.linkedin));
+    if (hit) {
+      ["first", "last", "email", "phone", "linkedin", "company", "title"].forEach((f) => { if (!hit[f] && rec[f]) hit[f] = rec[f]; });
+      hit.custom = { ...(hit.custom || {}), ...rec.custom };
+      await saveContact(hit); merged++;
+    } else {
+      const fresh = { id: "c" + uid(), ...rec, status: "new", state: "idle", step: 0, play: "", due: null, touches: 0, log: [], createdAt: new Date().toISOString() };
+      S.contacts.push(fresh);
+      const ok = await saveContact(fresh);
+      if (!ok) { S.contacts.pop(); break; }
+      made++;
+    }
+    if (prog && n % 5 === 0) prog.innerHTML = `<div class="meter"><i style="width:${pct(n + 1, rows.length)}%"></i></div>
+      <p class="dim xs" style="margin-top:6px">${n + 1} of ${rows.length}…</p>`;
+  }
+  if (!S.plays.length) await seedStarter();
+  closeSheet(); S.view = "people"; renderAll();
+  toast(`${made} added${merged ? `, ${merged} merged` : ""}${skipped ? `, ${skipped} without contact details` : ""}`);
+}
+
+/* ------------------------------------------------------------------- boot */
+async function boot() {
+  renderAll();
+  const db = await claude.use("db");
+  if (!db) {
+    S.ready = true; S.canWrite = false;
+    $("#app").innerHTML = `<div class="card pad empty"><h2>Storage isn't available in this view</h2>
+      <p class="muted sm" style="max-width:46ch">This page keeps its contacts and history in shared storage. Open it from the original link while signed in to claude.ai.</p></div>`;
+    return;
+  }
+  S.db = db;
+  try {
+    const user = await claude.use("user");
+    if (user) S.canWrite = user.can ? await user.can("data.write") : null;
+  } catch (e) { S.canWrite = null; }
+  try { await loadAll(); }
+  catch (e) { toast("Could not load your data — reload the page", true); }
+
+  // walk anyone past steps they can't receive, so the queue is honest on arrival
+  if (S.canWrite !== false) {
+    for (const c of S.contacts) { const r = settle(c); if (r.changed) await saveContact(c); }
+  }
+  S.ready = true;
+  renderAll();
+
+  S.db.collection("contacts").limit(1000).onSnapshot((snap) => {
+    if (!S.ready) return;
+    const open = !!$(".sheet-bg");
+    S.contacts = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+    if (!open) renderAll(); else renderNav();
+  }, () => {});
+  S.db.collection("plays").limit(50).onSnapshot((snap) => {
+    if (S.view === "playbook" || !S.ready) return;
+    S.plays = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  }, () => {});
+}
+boot();
+</script>
