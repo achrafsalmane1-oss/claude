@@ -230,6 +230,7 @@
 "thierry@lancry-international.com",
 "thierrypotok@yahoo.fr",
 "tiagofriedrich@quadfinancial.com.br",
+"tibax22@gmail.com",
 "tiladesina8@gmail.com",
 "timothy@ttucker.co.uk",
 "v.coulais@horizon-am.fr",
@@ -329,6 +330,16 @@
 "eaccount": "tgueant@hello.landquire.org",
 "wid": "6a4645cc305ead1e2243e94f",
 "subject": "Re: Ce que nous avons décidé de rendre public"
+},
+"tibax22@gmail.com": {
+"seg": "B2C",
+"agent_email": "fdepart@landquire.com",
+"contact_id": "4oh3TKkHUaybZaZk20ER",
+"first_reply_id": "6abb6b4102d07dcaa45ad043",
+"seen": [],
+"eaccount": "thibau@golandquire.info",
+"wid": "6a4645cc305ead1e2243e94f",
+"subject": "Re: Trois dossiers à ouvrir en priorité"
 }
 },
 "b2b_pending": {},
