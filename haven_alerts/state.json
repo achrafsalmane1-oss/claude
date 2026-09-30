@@ -38,7 +38,8 @@
   "6abbdc5e02d07dcaa462f3c5",
   "6abc447802d07dcaa4692254",
   "6abc2c4a02d07dcaa46891dd",
-  "6abc2c4802d07dcaa46891d4"
+  "6abc2c4802d07dcaa46891d4",
+  "6abcb40302d07dcaa46a2428"
  ],
  "threads": {
   "1790344253.481149": {
@@ -312,6 +313,13 @@
    "eaccount": "pwright@team.havenstreach.com",
    "reply_to_id": "6abc2c4802d07dcaa46891d4",
    "subject": "RE: David",
+   "sent": []
+  },
+  "1790757970.146199": {
+   "email": "kim@icebreakernordic.com",
+   "eaccount": "jennifer_rodriguez@marketing.havenstbase.com",
+   "reply_to_id": "6abcb40302d07dcaa46a2428",
+   "subject": "Sv: Kim",
    "sent": []
   }
  }
