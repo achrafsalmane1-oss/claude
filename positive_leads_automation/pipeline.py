@@ -72,6 +72,16 @@ POOLS = {"FR": FR, "PT": BR, "EN": EN, "ES": ES}
 # across runs instead of restarting at Kevin every time.
 US_POOL = [("Kevin", "7l60QOUa5c2EvVr96frH"), ("Sophie", "PIudlTQkBqQCWJ2bVL0l")]
 
+# LandQuire dispositions campaigns (selling the land / MH-RV / SFR projects to
+# buyers). Positives from these go to Christopher Garcia, who runs dispositions,
+# instead of the investor US desk.
+DISPO_CAMPAIGNS = {
+    "6abe25b27fa72f699cba5cbd",   # EN - LQ Dispositions - MH and RV
+    "6abe25b4a99fa7047940f1a0",   # EN - LQ Dispositions - Residential land
+    "6abe25b518f2dab78f0394ad",   # EN - LQ Dispositions - Brokers
+}
+CHRIS = ("Christopher Garcia", "S9nXLyPtOv7Zml6tj5yz")   # cgarcia@landquire.com
+
 
 def is_us(lang):
     """US desk = the English-language campaigns."""
@@ -461,6 +471,7 @@ def fetch_new_positives(cl, seen):
                 out[em] = {
                     "email": em, "seg": seg, "wid": wid,
                     "lang": cl.get(it.get("campaign_id"), "FR"),
+                    "campaign_id": it.get("campaign_id"),
                     "reply_to_id": it.get("id"), "eaccount": it.get("eaccount"),
                     "subject": it.get("subject") or "",
                     "display_name": display, "reply_text": body_txt,
@@ -506,7 +517,12 @@ def main():
             if ln: body["lastName"] = ln
             if phone: body["phone"] = phone
             us_name = us_id = ""
-            if is_us(lang):
+            if l.get("campaign_id") in DISPO_CAMPAIGNS:
+                # Dispositions: always Chris, never the round-robin.
+                us_name, us_id = CHRIS
+                body["assignedTo"] = us_id
+                body["tags"] = ["plusvibe", "dispositions"]
+            elif is_us(lang):
                 us_name, us_id = us_agent(state)
                 body["assignedTo"] = us_id
             r = ghl_upsert(body)
