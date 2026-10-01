@@ -75,7 +75,8 @@
   "6abd2ce202d07dcaa4712065",
   "6abd2cdc02d07dcaa4711fa4",
   "6abd2c7e02d07dcaa471153f",
-  "6abd877f02d07dcaa4764dad"
+  "6abd877f02d07dcaa4764dad",
+  "6abdb70102d07dcaa476b92b"
  ],
  "threads": {
   "1790344253.481149": {
@@ -608,6 +609,13 @@
    "eaccount": "donna_martinez@team.havenstbase.com",
    "reply_to_id": "6abd877f02d07dcaa4764dad",
    "subject": "RE: Theodore",
+   "sent": []
+  },
+  "1790821601.575589": {
+   "email": "nstyers@cbfunding.com",
+   "eaccount": "stevenflores@hello.havensthq.com",
+   "reply_to_id": "6abdb70102d07dcaa476b92b",
+   "subject": "RE: funding-ready leads",
    "sent": []
   }
  }
