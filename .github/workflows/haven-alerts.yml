@@ -5,9 +5,12 @@ name: Haven - pont Slack / PlusVibe
 # Dans l'autre sens, tout message ecrit dans un fil Slack part au prospect via
 # PlusVibe, avec BCC_TO en copie cachee.
 
+# DESACTIVE. Les alertes Haven passent desormais par le webhook Slack natif de
+# PlusVibe, configure dans l'interface PlusVibe (campagne HAVEN - B2B PRODUCTS
+# - WARM, evenement "All Email Replies"). Ce pont ne tourne plus : aucune
+# planification, et le declenchement manuel ci-dessous est laisse uniquement
+# pour pouvoir le relancer un jour en connaissance de cause.
 on:
-  schedule:
-    - cron: "*/5 * * * *"      # toutes les 5 minutes (cadence best-effort GitHub)
   workflow_dispatch:
     inputs:
       dry_run:

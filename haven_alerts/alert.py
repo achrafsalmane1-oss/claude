@@ -146,36 +146,72 @@ def fetch_interested():
 
 
 def post_new(state):
+    """Poste chaque message entrant jamais vu.
+
+    Premier message d'un prospect  -> nouveau message racine dans le canal.
+    Message suivant du meme prospect -> reponse DANS son fil existant, et le
+    fil pointe desormais vers ce dernier message (c'est a lui qu'on repond).
+    """
     seen = set(state["alerted"])
     new = [i for i in fetch_interested() if i.get("id") not in seen]
+    # du plus ancien au plus recent : le fil existe avant ses relances
+    new.sort(key=lambda i: i.get("timestamp_created") or "")
+    by_email = {}
+    for ts, rec in state["threads"].items():
+        by_email[(rec.get("email") or "").lower()] = (ts, rec)
     posted = 0
     for it in new:
         fa = (it.get("from_address_json") or [{}])[0]
         name = fa.get("name") or ""
         em = (it.get("from_address_email") or "").strip()
         quoted = "\n".join("> " + l for l in (clean(it) or "(message vide)").split("\n"))
-        # La mention en tete declenche la notification push sur telephone.
+        when = (it.get("timestamp_created") or "")[:16].replace("T", " ")
         ping = f"<@{WHO}> " if WHO else ""
+        prev = by_email.get(em.lower())
+
+        if prev:                                  # relance dans un fil connu
+            ts, rec = prev
+            msg = (f"{ping}↩️ *{name or em} a répondu de nouveau*\n"
+                   f"Reçue : {when} UTC\n\n{quoted}\n\n"
+                   f"💬 Réponds dans ce fil comme d'habitude.")
+            if DRY:
+                print("  [DRY] relance dans le fil ->", em); posted += 1
+                state["alerted"].append(it["id"]); continue
+            r = slack("chat.postMessage", {"channel": CHAN, "thread_ts": ts,
+                                           "text": msg, "reply_broadcast": True})
+            if r.get("ok"):
+                posted += 1
+                state["alerted"].append(it["id"])
+                rec["reply_to_id"] = it.get("id")   # repondre au dernier message
+                rec["subject"] = it.get("subject", rec.get("subject", ""))
+                rec["eaccount"] = it.get("eaccount") or rec.get("eaccount")
+                print("  relance postee ->", em)
+            time.sleep(0.4)
+            continue
+
         msg = (f"{ping}🟢 *Nouvelle réponse positive — Haven*\n\n"
                f"*{name or em}* — `{em}`\n"
                f"Objet : {it.get('subject','')}\n"
                f"Boîte : {it.get('eaccount','')}\n"
-               f"Reçue : {(it.get('timestamp_created') or '')[:16].replace('T',' ')} UTC\n\n"
+               f"Reçue : {when} UTC\n\n"
                f"{quoted}\n\n"
                f"💬 *Pour répondre :* écris directement dans ce fil. "
                f"Ton message part au prospect depuis la boîte Haven, "
                f"et tu reçois une copie cachée sur {BCC}.")
         if DRY:
             print("  [DRY] post Slack ->", em); posted += 1
-            state["alerted"].append(it["id"]); continue
+            state["alerted"].append(it["id"])
+            by_email[em.lower()] = ("dry-" + it["id"], {"email": em})
+            continue
         r = slack("chat.postMessage", {"channel": CHAN, "text": msg})
         if r.get("ok"):
             posted += 1
             state["alerted"].append(it["id"])
-            state["threads"][r["ts"]] = {
-                "email": em, "eaccount": it.get("eaccount"),
-                "reply_to_id": it.get("id"), "subject": it.get("subject", ""),
-                "sent": []}
+            rec = {"email": em, "eaccount": it.get("eaccount"),
+                   "reply_to_id": it.get("id"), "subject": it.get("subject", ""),
+                   "sent": []}
+            state["threads"][r["ts"]] = rec
+            by_email[em.lower()] = (r["ts"], rec)
             print("  poste ->", em)
         time.sleep(0.4)
     return posted
