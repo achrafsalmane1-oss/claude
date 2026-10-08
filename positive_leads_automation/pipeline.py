@@ -79,6 +79,16 @@ DISPO_CAMPAIGNS = {
     "6abe25b27fa72f699cba5cbd",   # EN - LQ Dispositions - MH and RV
     "6abe25b4a99fa7047940f1a0",   # EN - LQ Dispositions - Residential land
     "6abe25b518f2dab78f0394ad",   # EN - LQ Dispositions - Brokers
+    # Second dispositions wave (Oct 7): same job, selling the entitled land and
+    # MH/RV projects to buyers, so the positives belong to Chris as well. These
+    # were missing here at launch, which is why the first 16 positives went into
+    # the Kevin/Sophie round-robin instead.
+    "6ac6241a9ed2146f3f762227",   # EN - LQ Land - Investment firms
+    "6ac624302096e8f68b6bd4e2",   # EN - LQ Land - Land developers
+    "6ac6243dd7cb5eb6789d8674",   # EN - LQ Land - Homebuilders
+    "6ac62443c0163fe374848060",   # EN - LQ Land - Land brokers
+    "6ac6244a227bcb0bc2d4caec",   # EN - LQ Land - MH and RV operators
+    "6ac6244e80d21cf99221c214",   # EN - LQ Land - 1031 and SDIRA
 }
 CHRIS = ("Christopher Garcia", "S9nXLyPtOv7Zml6tj5yz")   # cgarcia@landquire.com
 
