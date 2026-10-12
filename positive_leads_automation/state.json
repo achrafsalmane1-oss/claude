@@ -53,6 +53,7 @@
 "clark@glennlaytonhomes.com",
 "collin@phi-rh.fr",
 "connally@sierracommercialtx.com",
+"contact@acropoletransactions.fr",
 "contact@allisonpineau.com",
 "contact@htmcagency.com",
 "contact@redacpourdemain.com",
@@ -434,6 +435,16 @@
 "eaccount": "tgueant@connect.mylandquire.org",
 "wid": "6a4645cc305ead1e2243e94f",
 "subject": "Re: Dernier mot de ma part"
+},
+"contact@acropoletransactions.fr": {
+"seg": "B2C",
+"agent_email": "prizk@landquire.com",
+"contact_id": "EfFEnt7nrneOeMOe0jZY",
+"first_reply_id": "6acd018202d07dcaa42a3fbd",
+"seen": [],
+"eaccount": "tgueant@connect.uselandquire.org",
+"wid": "6a4645cc305ead1e2243e94f",
+"subject": "RE: Tous nos projets, en temps réel"
 }
 },
 "b2b_pending": {},
