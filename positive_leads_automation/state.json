@@ -86,6 +86,7 @@
 "emouangou@yahoo.fr",
 "eramirez@selecthomelending.com",
 "eric@shibata.com.br",
+"eric@silvestre-mail.fr",
 "eugenio@adelanttocash.com",
 "eva.zajicova@engelvoelkers.com",
 "everton@wsave.com.br",
@@ -230,6 +231,7 @@
 "oyhenartb@aol.com",
 "pablo.berger@bspz.law",
 "patrick01710@gmail.com",
+"patrick@delarive.com",
 "paul.vandenberghe@orange.fr",
 "paul_nugent@outlook.com",
 "paulo.fernandes@grupoicf.com.br",
@@ -412,6 +414,26 @@
 "eaccount": "thibautg@growlandquire.info",
 "wid": "6a4645cc305ead1e2243e94f",
 "subject": "Re: Tous nos projets, en temps réel"
+},
+"eric@silvestre-mail.fr": {
+"seg": "B2C",
+"agent_email": "fdepart@landquire.com",
+"contact_id": "5SJ9FGL0Dgjs3bIfk3LI",
+"first_reply_id": "6acc988d02d07dcaa423221b",
+"seen": [],
+"eaccount": "thibaut.g@golandquire.org",
+"wid": "6a4645cc305ead1e2243e94f",
+"subject": "Re: Dernier mot de ma part"
+},
+"patrick@delarive.com": {
+"seg": "B2C",
+"agent_email": "prizk@landquire.com",
+"contact_id": "uf9tZkDp9DL1gQSuQGzv",
+"first_reply_id": "6acc839b02d07dcaa4223616",
+"seen": [],
+"eaccount": "tgueant@connect.mylandquire.org",
+"wid": "6a4645cc305ead1e2243e94f",
+"subject": "Re: Dernier mot de ma part"
 }
 },
 "b2b_pending": {},
