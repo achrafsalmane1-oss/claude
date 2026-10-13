@@ -145,6 +145,7 @@
 "jennifer@hihilulu.com",
 "jfroubache@rsbio.fr",
 "jg@financieregaia.fr",
+"jl.gantet@laposte.net",
 "jl@rvb.be",
 "jmamanillanto@gmail.com",
 "jmk@conquista.solar",
@@ -445,6 +446,16 @@
 "eaccount": "tgueant@connect.uselandquire.org",
 "wid": "6a4645cc305ead1e2243e94f",
 "subject": "RE: Tous nos projets, en temps réel"
+},
+"jl.gantet@laposte.net": {
+"seg": "B2C",
+"agent_email": "jboutillier@landquire.com",
+"contact_id": "ogjJtjgY50VqO6BPoj3M",
+"first_reply_id": "6acd3ea002d07dcaa42ea5b3",
+"seen": [],
+"eaccount": "thibaut.gueant@team.uselandquire.org",
+"wid": "6a4645cc305ead1e2243e94f",
+"subject": "RE: Ce que nous avons décidé de rendre public"
 }
 },
 "b2b_pending": {},
