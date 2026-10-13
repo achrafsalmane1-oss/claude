@@ -112,7 +112,8 @@ UID2EMAIL = {
     "7l60QOUa5c2EvVr96frH": "kevinlanson@landquire.com", "bOQhh8LhNjSOT1CvxtYW": "cdiot@landquire.com",
     "PXQVZgou0EbKB18H5Wh3": "hmoraes@landquire.com", "tvp9ana9YZWwFBUyXMf0": "lferraz@landquire.com",
     "xUvVav7DQywx2WYZnLMI": "fsantos@landquire.com", "PIudlTQkBqQCWJ2bVL0l": "splummer@landquire.com",
-    "fQjewvPSzRh3ui2ZCf2W": "carlosurdinineasejas@gmail.com"}
+    "fQjewvPSzRh3ui2ZCf2W": "carlosurdinineasejas@gmail.com",
+    "S9nXLyPtOv7Zml6tj5yz": "cgarcia@landquire.com"}
 
 # Leading "{greet}" is filled with "<word> <FirstName>" when a real name is known,
 # or just "<word>" (no name) otherwise -- never a mangled email prefix.
@@ -354,10 +355,37 @@ def forward_to_team(l, agent_email, to_agent=False):
     body = ("Reponse positive d'un prospect - a reprendre en main.<br>"
             f"Prospect : {l['email']}<br>Agent : {agent_email or '-'}<br><br>"
             "--- Message du prospect ---<br>" + (l.get("reply_text") or "")[:2000])
-    code, _ = pv_post(f"/unibox/emails/reply?workspace_id={l['wid']}", {
+    # Three paths, tried in order, because the handoff must never be lost:
+    #   1. reply in-thread, so the agent sees the original exchange
+    #   2. a fresh send, used when the inbox refuses a threaded reply (PlusVibe
+    #      returns 400 "Connection closed unexpectedly" on some LandQuire inboxes)
+    #   3. a GHL note on the contact, which always works and notifies the owner
+    # Previously only path 1 existed and its failure was swallowed by the caller,
+    # which is why positives stopped reaching the team with nothing in the logs.
+    code, resp = pv_post(f"/unibox/emails/reply?workspace_id={l['wid']}", {
         "reply_to_id": l["reply_to_id"], "from": l["eaccount"],
         "to": to, "cc": cc, "subject": subj, "body": body})
-    return code in (200, 201)
+    if code in (200, 201):
+        return True
+    print(f"  FORWARD reply failed {l['email']} via {l.get('eaccount')} "
+          f"code={code} {str(resp)[:120]}", file=sys.stderr)
+    code2, resp2 = pv_post(f"/unibox/emails/send?workspace_id={l['wid']}", {
+        "from": l["eaccount"], "to": to, "cc": cc, "subject": subj, "body": body})
+    if code2 in (200, 201):
+        print(f"  FORWARD fell back to plain send for {l['email']}", file=sys.stderr)
+        return True
+    print(f"  FORWARD send failed too {l['email']} code={code2} {str(resp2)[:120]}",
+          file=sys.stderr)
+    cid = l.get("contact_id")
+    if not cid:
+        cid, _ = ghl_lookup(l["email"])
+    if cid and ghl_note(cid, "[A REPRENDRE - le forward email a echoue]\n"
+                             f"Prospect: {l['email']}\nAgent: {agent_email or '-'}\n\n"
+                             + strip_html(body)):
+        print(f"  FORWARD saved as GHL note for {l['email']}", file=sys.stderr)
+        return True
+    print(f"  FORWARD LOST for {l['email']} - no path worked", file=sys.stderr)
+    return False
 
 
 def forward_pending_b2b(state, users):
@@ -371,7 +399,7 @@ def forward_pending_b2b(state, users):
         rec = pending[em]
         rec["tries"] = rec.get("tries", 0) + 1
         _, owner = ghl_lookup(em)
-        owner_email = users.get(owner) or ""
+        owner_email = users.get(owner) or UID2EMAIL.get(owner, "")
         if owner_email:
             if forward_to_team(rec, owner_email, to_agent=True):
                 sent += 1
@@ -542,18 +570,25 @@ def main():
                 # keep the reply content on the contact, then defer the forward until
                 # Paul's GHL automation has assigned an owner -- so the forward ALWAYS
                 # goes to exactly the agent tagged on the lead, never a different one.
+                # Attribute the note to the owner we just tagged, so GHL notifies
+                # them. PlusVibe refuses manual sends on this workspace (every
+                # inbox returns "Connection closed unexpectedly", healthy ones
+                # included), so this note is the handoff the team actually sees.
                 ghl_note(c_id, f"[Reponse positive - cold outreach]\nProspect: {l['email']}\n\n"
-                               f"{(l.get('reply_text') or '')[:1500]}")
+                               f"{(l.get('reply_text') or '')[:1500]}", us_id or None)
                 if us_id:
                     # we own the assignment here, so there is nothing to wait for:
                     # forward straight to the US-desk agent we just tagged.
-                    forward_to_team(l, users.get(us_id, ""), to_agent=True)
+                    l["contact_id"] = c_id
+                    forward_to_team(l, users.get(us_id) or UID2EMAIL.get(us_id, ""),
+                                    to_agent=True)
                     b2b_created.append((l["email"], lang, bool(phone), us_name))
                 else:
                     state["b2b_pending"][l["email"]] = {
                         "reply_to_id": l["reply_to_id"], "eaccount": l["eaccount"], "wid": l["wid"],
                         "subject": l.get("subject", ""), "email": l["email"],
-                        "reply_text": (l.get("reply_text") or "")[:2000], "tries": 0}
+                        "reply_text": (l.get("reply_text") or "")[:2000],
+                        "contact_id": c_id, "tries": 0}
                     b2b_created.append((l["email"], lang, bool(phone), ""))
             else:
                 print("  B2B GHL FAIL", l["email"], str(r)[:120], file=sys.stderr)
