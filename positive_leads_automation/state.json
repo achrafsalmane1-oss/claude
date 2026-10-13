@@ -210,6 +210,7 @@
 "miriam.bellarbi@corpiya.com",
 "mjfguidi@yahoo.fr",
 "mmarum@terra.com.br",
+"mmazuer@free.fr",
 "mmenard433@gmail.com",
 "mohammed@responsumltd.com",
 "moriya@smilinghouse.ch",
@@ -456,6 +457,16 @@
 "eaccount": "thibaut.gueant@team.uselandquire.org",
 "wid": "6a4645cc305ead1e2243e94f",
 "subject": "RE: Ce que nous avons décidé de rendre public"
+},
+"mmazuer@free.fr": {
+"seg": "B2C",
+"agent_email": "mverloove@landquire.com",
+"contact_id": "PIbRv9IP1UmXV1pXeePs",
+"first_reply_id": "6ace599202d07dcaa43e323d",
+"seen": [],
+"eaccount": "t.g@joinlandquire.org",
+"wid": "6a4645cc305ead1e2243e94f",
+"subject": "Re: Dernier mot de ma part"
 }
 },
 "b2b_pending": {},
