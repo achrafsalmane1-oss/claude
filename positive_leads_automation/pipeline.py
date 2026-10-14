@@ -124,6 +124,23 @@ BODY = {
 'ES': "{greet},<br><br>Gracias por su respuesta.<br><br>Podria indicarme el numero de telefono en el que es mas facil localizarle, asi como uno o dos horarios de disponibilidad (hora de Francia) para hablar manana?<br><br>Una vez acordado el horario, le enviare una invitacion por correo para que nuestra llamada, por telefono o videoconferencia, quede integrada en ambas agendas.<br><br>Un cordial saludo,<br>Thibaut Gueant",
 'PT': "{greet},<br><br>Obrigado pela sua resposta.<br><br>Poderia indicar-me o numero de telefone onde e mais facilmente contactavel, bem como um ou dois horarios de disponibilidade (hora de Franca) para uma conversa amanha?<br><br>Assim que combinarmos o horario, enviar-lhe-ei um convite por e-mail para que a nossa conversa, por telefone ou videochamada, fique integrada nas nossas agendas.<br><br>Com os melhores cumprimentos,<br>Thibaut Gueant"}
 
+# Handoff to dispositions: the prospect answered a dispositions campaign, so we
+# thank them and introduce Chris Garcia in the same email, with Chris in CC so he
+# can take the thread over directly.  Sent through GoHighLevel, because PlusVibe
+# refuses every manual send on the LandQuire workspace (healthy inboxes included)
+# and the handoff must not depend on a channel that is down.
+CHRIS_EMAIL = "cgarcia@landquire.com"
+HANDOFF_SUBJ = {
+    "FR": "Votre demande - mise en relation avec Chris Garcia",
+    "EN": "Your enquiry - introduction to Chris Garcia",
+    "ES": "Su consulta - presentacion de Chris Garcia",
+    "PT": "Sua solicitacao - apresentacao de Chris Garcia"}
+HANDOFF = {
+'FR': "{greet},<br><br>Merci pour votre interet et pour votre reponse.<br><br>Je vous mets en relation avec <b>Chris Garcia</b>, VP of Dispositions chez LandQuire, que je mets en copie de cet email. Il suit personnellement les projets concernes et va vous transmettre toutes les informations et les documents necessaires.<br><br>Chris reviendra vers vous directement. Vous pouvez aussi repondre a cet email, il le recevra.<br><br>Bien a vous,<br>Thibaut Gueant<br>Co-fondateur &amp; CIO, LandQuire",
+'EN': "{greet},<br><br>Thank you for your interest and for getting back to me.<br><br>I am connecting you with <b>Chris Garcia</b>, VP of Dispositions at LandQuire, who is copied on this email. He personally handles the projects in question and will send you all the information and documents you need.<br><br>Chris will reach out to you directly. You can also simply reply to this email and he will receive it.<br><br>Best regards,<br>Thibaut Gueant<br>Co-Founder &amp; CIO, LandQuire",
+'ES': "{greet},<br><br>Gracias por su interes y por su respuesta.<br><br>Le pongo en contacto con <b>Chris Garcia</b>, VP of Dispositions en LandQuire, a quien copio en este correo. El lleva personalmente los proyectos en cuestion y le enviara toda la informacion y los documentos necesarios.<br><br>Chris se pondra en contacto con usted directamente. Tambien puede responder a este correo y lo recibira.<br><br>Un cordial saludo,<br>Thibaut Gueant<br>Cofundador y CIO, LandQuire",
+'PT': "{greet},<br><br>Obrigado pelo seu interesse e pela sua resposta.<br><br>Apresento a voce o <b>Chris Garcia</b>, VP of Dispositions da LandQuire, que coloco em copia neste email. Ele acompanha pessoalmente os projetos em questao e vai enviar todas as informacoes e documentos necessarios.<br><br>O Chris entrara em contato diretamente. Voce tambem pode responder a este email, que ele recebera.<br><br>Um abraco,<br>Thibaut Gueant<br>Cofundador e CIO, LandQuire"}
+
 STATE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "state.json")
 
 
@@ -336,6 +353,44 @@ def ghl_note(contact_id, body, user_id=None):
         return False
 
 
+def ghl_email(contact_id, subject, html, cc=None):
+    """Send an email to a contact through GoHighLevel, CCing whoever we name.
+    PlusVibe returns 400 "Connection closed unexpectedly" on every LandQuire
+    inbox for a manual send, so GHL is the channel that actually works, and it
+    logs the thread on the contact as a side benefit."""
+    if DRY or not contact_id:
+        return False
+    body = {"type": "Email", "contactId": contact_id, "subject": subject, "html": html}
+    if cc:
+        body["emailCc"] = cc if isinstance(cc, list) else [cc]
+    cmd = ["curl", "-s", "-A", "curl/8.5.0", "-X", "POST", GHLBASE + "/conversations/messages",
+           "-H", "Authorization: Bearer " + PIT, "-H", "Version: 2021-07-28",
+           "-H", "Content-Type: application/json", "-d", json.dumps(body)]
+    out = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
+    try:
+        r = json.loads(out.stdout or "{}")
+    except Exception:
+        print("  HANDOFF unreadable response " + out.stdout[:160], file=sys.stderr)
+        return False
+    if r.get("messageId") or r.get("emailMessageId"):
+        return True
+    print("  HANDOFF send failed " + str(r)[:200], file=sys.stderr)
+    return False
+
+
+def handoff_to_chris(l, contact_id, fn, lang):
+    """Thank the prospect and introduce Chris, with Chris in CC. Always leaves a
+    trace on the contact, so a failure is visible instead of silent."""
+    greet = GREETWORD.get(lang, "Hello") + ((" " + fn) if fn else "")
+    html = HANDOFF.get(lang, HANDOFF["EN"]).format(greet=greet)
+    ok = ghl_email(contact_id, HANDOFF_SUBJ.get(lang, HANDOFF_SUBJ["EN"]), html, [CHRIS_EMAIL])
+    ghl_note(contact_id,
+             "[Passation dispositions envoyee a %s, Chris en copie]" % l["email"] if ok
+             else "[ECHEC passation dispositions vers %s - a faire a la main]" % l["email"],
+             CHRIS[1])
+    return ok
+
+
 def forward_to_team(l, agent_email, to_agent=False):
     """Forward the prospect's positive reply to Thibaut + the assigned agent.
     Recipients are ONLY the addresses we set in to/cc (Thibaut, agent) -- the
@@ -538,7 +593,7 @@ def main():
     new = fetch_new_positives(cl, seen)
     print(f"New positives to process: {len(new)}  (DRY_RUN={DRY})")
     users = ghl_users()          # id -> agent email, for looping the B2C owner in
-    b2b_created = []; b2c_forwarded = []
+    b2b_created = []; b2c_forwarded = []; handed = []
     for l in new:
         lang = l["lang"] if l["lang"] in LMAP else "FR"
         fn = clean_first(l.get("display_name"))
@@ -576,6 +631,10 @@ def main():
                 # included), so this note is the handoff the team actually sees.
                 ghl_note(c_id, f"[Reponse positive - cold outreach]\nProspect: {l['email']}\n\n"
                                f"{(l.get('reply_text') or '')[:1500]}", us_id or None)
+                if l.get("campaign_id") in DISPO_CAMPAIGNS:
+                    # dispositions: hand the prospect over to Chris in the same breath
+                    if handoff_to_chris(l, c_id, fn, lang):
+                        handed.append(l["email"])
                 if us_id:
                     # we own the assignment here, so there is nothing to wait for:
                     # forward straight to the US-desk agent we just tagged.
@@ -625,6 +684,7 @@ def main():
     us_named = [x for x in b2b_created if len(x) > 3 and x[3]]
     print("B2B created in GHL (plusvibe / cold emailing / language):", len(b2b_created),
           "| of which routed to the US desk:", len(us_named))
+    print("Dispositions handoffs emailed to the prospect with Chris in CC:", len(handed))
     print("B2C forwarded to agent + Thibaut (no GHL create):", len(b2c_forwarded))
     print("B2B by lang:", dict(Counter(x[1] for x in b2b_created)))
     if us_named:
