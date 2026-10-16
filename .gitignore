@@ -3,3 +3,5 @@ __pycache__/
 *.pyc
 output/
 *.csv
+meetings/notes/
+meetings/state.json
