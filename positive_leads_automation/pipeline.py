@@ -55,6 +55,11 @@ LMAP = {"FR": "French", "EN": "English", "ES": "Spanish", "PT": "Portuguese"}
 
 WS = {"B2B": "6a3179f64517eb5ecd7c1642", "B2C": "6a4645cc305ead1e2243e94f"}
 
+# PlusVibe labels that count as a positive worth routing. INTERESTED is a cold
+# prospect saying yes; INVESTOR_LQ is an existing investor replying on the Tour
+# de Controle campaigns. Both need a human, so both are fetched.
+POSITIVE_LABELS = ("INTERESTED", "INVESTOR_LQ")
+
 # Round-robin agent pools by language: (name, GHL user id)
 FR = [("Fabienne", "aBXFUOaJTNd3S6xuoe2p"), ("Mathieu", "NSXvGpjwu2kq3I6bhCO5"),
       ("PaulG", "Qw0kNzYf8z7wB8ACQEWZ"), ("PierreR", "fSr7OAL4VXxZIngOL7Ey"),
@@ -544,16 +549,24 @@ def campaign_langs():
 
 
 def fetch_new_positives(cl, seen):
-    """Return list of new INTERESTED replies not yet in `seen`."""
+    """Return new replies not yet in `seen`, for every label we treat as positive.
+
+    INVESTOR_LQ was missing here until 19 Oct. PlusVibe applies it to replies from
+    people who are *already* LandQuire investors (the Tour de Controle campaigns),
+    which is why none of them ever reached an agent: 28 of them, going back to
+    22 July, asking for a status on their money or a callback. They are the highest
+    intent mail the client gets, so they go down the same path as INTERESTED.
+    """
     out = {}
     for seg, wid in WS.items():
+      for lab in POSITIVE_LABELS:
         trail = None
         while True:
-            path = f"/unibox/emails?workspace_id={wid}&label=INTERESTED" + (f"&page_trail={trail}" if trail else "")
+            path = f"/unibox/emails?workspace_id={wid}&label={lab}" + (f"&page_trail={trail}" if trail else "")
             d = pv_get(path)
             data = d.get("data", [])
             for it in data:
-                if it.get("direction") != "IN" or it.get("label") != "INTERESTED":
+                if it.get("direction") != "IN" or it.get("label") not in POSITIVE_LABELS:
                     continue
                 em = (it.get("from_address_email") or "").strip().lower()
                 if not em or "landquire" in em or em in seen or em in out:
@@ -568,6 +581,7 @@ def fetch_new_positives(cl, seen):
                     "reply_to_id": it.get("id"), "eaccount": it.get("eaccount"),
                     "subject": it.get("subject") or "",
                     "display_name": display, "reply_text": body_txt,
+                    "label": it.get("label"),
                 }
             trail = d.get("page_trail")
             if not trail or not data:
@@ -660,7 +674,10 @@ def main():
                 agent_email = users.get(us_id, "") or agent_email
                 if contact_id and not owner:      # never steal an existing owner
                     ghl_upsert({"locationId": LOC, "email": l["email"], "assignedTo": us_id})
-            note = (f"[Réponse positive B2C — à reprendre en main]\n"
+            head = ("[Investisseur LandQuire — réponse à reprendre en main]"
+                    if l.get("label") == "INVESTOR_LQ"
+                    else "[Réponse positive B2C — à reprendre en main]")
+            note = (f"{head}\n"
                     f"Prospect: {l['email']}\nAgent assigné: {agent_email or 'non assigné'}\n\n"
                     f"{(l.get('reply_text') or '')[:1500]}")
             ghl_note(contact_id, note)               # note on the existing contact
