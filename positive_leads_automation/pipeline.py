@@ -97,6 +97,33 @@ DISPO_CAMPAIGNS = {
 }
 CHRIS = ("Christopher Garcia", "S9nXLyPtOv7Zml6tj5yz")   # cgarcia@landquire.com
 
+# Campaign ids classified as dispositions from their NAME at run time, refreshed
+# on every run by campaign_langs(). The hardcoded set above has to be edited for
+# every new wave, and twice now it was not: the first LQ Land wave sent 16
+# positives into the Kevin/Sophie rotation, and LQ Wave4 Land did it again
+# (john@therosseaugroup.com, greggwolfer@kennedyfunding.com). Deriving it from
+# the name means a new dispositions campaign routes to Chris the moment it exists.
+DISPO_DYNAMIC = set()
+
+# Investor-side wording wins, because several investor campaigns also say "Land"
+# ("EN - Investors - US Land (short)", "EN - US Land - Cold") and the FR/PT
+# dispositions-shaped waves are actually investor ones ("Foncier", "Terreno").
+_INVESTOR_WORDS = ("investisseur", "investidor", "investors", "diversific",
+                   "foncier", "terreno", "tour de controle", "tour de contr")
+
+
+def is_dispo_name(name):
+    """True when a campaign name is a dispositions campaign (selling to buyers)."""
+    n = (name or "").lower()
+    if any(k in n for k in _INVESTOR_WORDS):
+        return False
+    return "disposition" in n or "lq land" in n or ("lq wave" in n and "land" in n)
+
+
+def is_dispo(campaign_id):
+    """Dispositions = explicit id override, or classified from the campaign name."""
+    return campaign_id in DISPO_CAMPAIGNS or campaign_id in DISPO_DYNAMIC
+
 
 def is_us(lang):
     """US desk = the English-language campaigns."""
@@ -537,10 +564,13 @@ def save_state(s):
 def campaign_langs():
     """map campaign_id -> language, from campaign names on both workspaces."""
     cl = {}
+    DISPO_DYNAMIC.clear()
     for wid in WS.values():
         try:
             for c in pv_get(f"/campaign/list?workspace_id={wid}&limit=100"):
                 cl[c["id"]] = lang_of(c.get("name", ""))
+                if is_dispo_name(c.get("name", "")):
+                    DISPO_DYNAMIC.add(c["id"])
         except PlusVibeDown:
             raise
         except Exception as e:
@@ -624,7 +654,7 @@ def main():
             if ln: body["lastName"] = ln
             if phone: body["phone"] = phone
             us_name = us_id = ""
-            if l.get("campaign_id") in DISPO_CAMPAIGNS:
+            if is_dispo(l.get("campaign_id")):
                 # Dispositions: always Chris, never the round-robin.
                 us_name, us_id = CHRIS
                 body["assignedTo"] = us_id
@@ -645,7 +675,7 @@ def main():
                 # included), so this note is the handoff the team actually sees.
                 ghl_note(c_id, f"[Reponse positive - cold outreach]\nProspect: {l['email']}\n\n"
                                f"{(l.get('reply_text') or '')[:1500]}", us_id or None)
-                if l.get("campaign_id") in DISPO_CAMPAIGNS:
+                if is_dispo(l.get("campaign_id")):
                     # dispositions: hand the prospect over to Chris in the same breath
                     if handoff_to_chris(l, c_id, fn, lang):
                         handed.append(l["email"])
