@@ -55,6 +55,11 @@ LMAP = {"FR": "French", "EN": "English", "ES": "Spanish", "PT": "Portuguese"}
 
 WS = {"B2B": "6a3179f64517eb5ecd7c1642", "B2C": "6a4645cc305ead1e2243e94f"}
 
+# PlusVibe labels that count as a positive worth routing. INTERESTED is a cold
+# prospect saying yes; INVESTOR_LQ is an existing investor replying on the Tour
+# de Controle campaigns. Both need a human, so both are fetched.
+POSITIVE_LABELS = ("INTERESTED", "INVESTOR_LQ")
+
 # Round-robin agent pools by language: (name, GHL user id)
 FR = [("Fabienne", "aBXFUOaJTNd3S6xuoe2p"), ("Mathieu", "NSXvGpjwu2kq3I6bhCO5"),
       ("PaulG", "Qw0kNzYf8z7wB8ACQEWZ"), ("PierreR", "fSr7OAL4VXxZIngOL7Ey"),
@@ -91,6 +96,33 @@ DISPO_CAMPAIGNS = {
     "6ac6244e80d21cf99221c214",   # EN - LQ Land - 1031 and SDIRA
 }
 CHRIS = ("Christopher Garcia", "S9nXLyPtOv7Zml6tj5yz")   # cgarcia@landquire.com
+
+# Campaign ids classified as dispositions from their NAME at run time, refreshed
+# on every run by campaign_langs(). The hardcoded set above has to be edited for
+# every new wave, and twice now it was not: the first LQ Land wave sent 16
+# positives into the Kevin/Sophie rotation, and LQ Wave4 Land did it again
+# (john@therosseaugroup.com, greggwolfer@kennedyfunding.com). Deriving it from
+# the name means a new dispositions campaign routes to Chris the moment it exists.
+DISPO_DYNAMIC = set()
+
+# Investor-side wording wins, because several investor campaigns also say "Land"
+# ("EN - Investors - US Land (short)", "EN - US Land - Cold") and the FR/PT
+# dispositions-shaped waves are actually investor ones ("Foncier", "Terreno").
+_INVESTOR_WORDS = ("investisseur", "investidor", "investors", "diversific",
+                   "foncier", "terreno", "tour de controle", "tour de contr")
+
+
+def is_dispo_name(name):
+    """True when a campaign name is a dispositions campaign (selling to buyers)."""
+    n = (name or "").lower()
+    if any(k in n for k in _INVESTOR_WORDS):
+        return False
+    return "disposition" in n or "lq land" in n or ("lq wave" in n and "land" in n)
+
+
+def is_dispo(campaign_id):
+    """Dispositions = explicit id override, or classified from the campaign name."""
+    return campaign_id in DISPO_CAMPAIGNS or campaign_id in DISPO_DYNAMIC
 
 
 def is_us(lang):
@@ -532,10 +564,13 @@ def save_state(s):
 def campaign_langs():
     """map campaign_id -> language, from campaign names on both workspaces."""
     cl = {}
+    DISPO_DYNAMIC.clear()
     for wid in WS.values():
         try:
             for c in pv_get(f"/campaign/list?workspace_id={wid}&limit=100"):
                 cl[c["id"]] = lang_of(c.get("name", ""))
+                if is_dispo_name(c.get("name", "")):
+                    DISPO_DYNAMIC.add(c["id"])
         except PlusVibeDown:
             raise
         except Exception as e:
@@ -544,16 +579,24 @@ def campaign_langs():
 
 
 def fetch_new_positives(cl, seen):
-    """Return list of new INTERESTED replies not yet in `seen`."""
+    """Return new replies not yet in `seen`, for every label we treat as positive.
+
+    INVESTOR_LQ was missing here until 19 Oct. PlusVibe applies it to replies from
+    people who are *already* LandQuire investors (the Tour de Controle campaigns),
+    which is why none of them ever reached an agent: 28 of them, going back to
+    22 July, asking for a status on their money or a callback. They are the highest
+    intent mail the client gets, so they go down the same path as INTERESTED.
+    """
     out = {}
     for seg, wid in WS.items():
+      for lab in POSITIVE_LABELS:
         trail = None
         while True:
-            path = f"/unibox/emails?workspace_id={wid}&label=INTERESTED" + (f"&page_trail={trail}" if trail else "")
+            path = f"/unibox/emails?workspace_id={wid}&label={lab}" + (f"&page_trail={trail}" if trail else "")
             d = pv_get(path)
             data = d.get("data", [])
             for it in data:
-                if it.get("direction") != "IN" or it.get("label") != "INTERESTED":
+                if it.get("direction") != "IN" or it.get("label") not in POSITIVE_LABELS:
                     continue
                 em = (it.get("from_address_email") or "").strip().lower()
                 if not em or "landquire" in em or em in seen or em in out:
@@ -568,6 +611,7 @@ def fetch_new_positives(cl, seen):
                     "reply_to_id": it.get("id"), "eaccount": it.get("eaccount"),
                     "subject": it.get("subject") or "",
                     "display_name": display, "reply_text": body_txt,
+                    "label": it.get("label"),
                 }
             trail = d.get("page_trail")
             if not trail or not data:
@@ -610,7 +654,7 @@ def main():
             if ln: body["lastName"] = ln
             if phone: body["phone"] = phone
             us_name = us_id = ""
-            if l.get("campaign_id") in DISPO_CAMPAIGNS:
+            if is_dispo(l.get("campaign_id")):
                 # Dispositions: always Chris, never the round-robin.
                 us_name, us_id = CHRIS
                 body["assignedTo"] = us_id
@@ -631,7 +675,7 @@ def main():
                 # included), so this note is the handoff the team actually sees.
                 ghl_note(c_id, f"[Reponse positive - cold outreach]\nProspect: {l['email']}\n\n"
                                f"{(l.get('reply_text') or '')[:1500]}", us_id or None)
-                if l.get("campaign_id") in DISPO_CAMPAIGNS:
+                if is_dispo(l.get("campaign_id")):
                     # dispositions: hand the prospect over to Chris in the same breath
                     if handoff_to_chris(l, c_id, fn, lang):
                         handed.append(l["email"])
@@ -660,7 +704,10 @@ def main():
                 agent_email = users.get(us_id, "") or agent_email
                 if contact_id and not owner:      # never steal an existing owner
                     ghl_upsert({"locationId": LOC, "email": l["email"], "assignedTo": us_id})
-            note = (f"[Réponse positive B2C — à reprendre en main]\n"
+            head = ("[Investisseur LandQuire — réponse à reprendre en main]"
+                    if l.get("label") == "INVESTOR_LQ"
+                    else "[Réponse positive B2C — à reprendre en main]")
+            note = (f"{head}\n"
                     f"Prospect: {l['email']}\nAgent assigné: {agent_email or 'non assigné'}\n\n"
                     f"{(l.get('reply_text') or '')[:1500]}")
             ghl_note(contact_id, note)               # note on the existing contact
