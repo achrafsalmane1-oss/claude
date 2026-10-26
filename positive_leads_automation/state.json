@@ -314,6 +314,7 @@
 "r.khalfouni@icloud.com",
 "r.spiegl@cryonic-medical.com",
 "r27042022j@gmail.com",
+"ralph.jaeger@principalis.com",
 "ramraj@innovyatech.com",
 "ramtin@rshomes.ca",
 "raphael.digiambattista@rothschildandco.com",
@@ -668,6 +669,17 @@
 "subject": "RE: Dernier mot de ma part"
 }
 },
-"b2b_pending": {},
+"b2b_pending": {
+"ralph.jaeger@principalis.com": {
+"reply_to_id": "6adea27202d07dcaa4231fee",
+"eaccount": "jessica_allen@team.havenstreetreach.com",
+"wid": "6a3179f64517eb5ecd7c1642",
+"subject": "Re: [External]foncier US, 100 000 USD",
+"email": "ralph.jaeger@principalis.com",
+"reply_text": "Bonsoir Jessica\nEnvoyez-moi les détails svp.\nBien à vous,\nRalph\n\n________________________________\nFrom: Jessica Allen <jessica_allen@team.havenstreetreach.com>\nSent: Sunday, 25 October 2026 11:32:11\nTo: Ralph Jaeger <Ralph.Jaeger@principalis.com>\nSubject: [External]foncier US, 100 000 USD\n\nBonjour Ralph,\n\nJe reviens brievement vers vous. Si le sujet vous interesse mais que le moment n'est pas le bon, dites-le moi simplement et je reviendrai plus tard.\n\nBien a vous,\nJessica\nLandQuire\n\nOn Tue, Oct 20, 2026 at 2:28 PM Jessica Allen <jessica_allen@team.havenstreetreach.com> wrote:\n\nBonjour Ralph,\n\nNous ouvrons nos projets fonciers americains a partir de 100 000 USD.\n\nZones a forte croissance, terrains acquis sous les comparables, documentation complete accessible en ligne.\n\nVous voulez que je vous envoie le detail ?\n\nBien a vous,\nJessica\nLandQuire\n",
+"contact_id": "h3HHW2r56O6x5BjmHNuv",
+"tries": 1
+}
+},
 "us_rr": 1
 }
