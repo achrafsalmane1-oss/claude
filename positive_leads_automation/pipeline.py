@@ -132,9 +132,9 @@ def is_dispo(campaign_id):
 FINANCE_DYNAMIC = set()
 FINANCE_EMAIL = "financing@landquire.com"
 PARVEZ = ("Mohammad Parvez", "dWQMRj2hBqsFeOiv3iwc")   # mhasan@landquire.com
-# Miguel is to be copied on these, per Paul. He is not a GHL user and his
-# address was never supplied, so nothing is sent to him yet: add it here.
-FINANCE_CC = []
+# Miguel is copied on every financing reply, per Paul (address given 28 Oct).
+# He is not a GHL user, so he receives the forward by email only.
+FINANCE_CC = ["miguel@ecomquire.com"]
 
 
 def is_finance_name(name):
@@ -144,6 +144,31 @@ def is_finance_name(name):
 
 def is_finance(campaign_id):
     return campaign_id in FINANCE_DYNAMIC
+
+
+def finance_forward(l):
+    """Send a lender's positive reply to financing@, Parvez and Miguel in copy.
+
+    Goes through GHL email rather than the PlusVibe forward: PlusVibe refuses
+    manual sends on the LandQuire inboxes, which would leave only a GHL note
+    and Miguel, who is not a GHL user, would never see it. The message is
+    addressed to an internal contact for financing@landquire.com, so the
+    prospect is never a recipient.
+    """
+    if DRY:
+        return True
+    r = ghl_upsert({"locationId": LOC, "email": FINANCE_EMAIL,
+                    "firstName": "Financing", "lastName": "LandQuire",
+                    "tags": ["internal", "financement-desk"]})
+    desk = (r.get("contact") or {}).get("id")
+    if not desk:
+        return False
+    subj = "Lender interested: " + (l.get("display_name") or l["email"])
+    html = ("Positive reply from the construction-lender outreach.<br>"
+            f"Lender : {l['email']}<br>Campaign : FINANCEMENT - Construction lenders<br><br>"
+            "--- Their message ---<br>" + (l.get("reply_text") or "")[:2000].replace("\n", "<br>"))
+    cc = list(FINANCE_CC) + [UID2EMAIL.get(PARVEZ[1], "")]
+    return ghl_email(desk, subj, html, [c for c in cc if c])
 
 
 def is_us(lang):
@@ -725,12 +750,14 @@ def main():
                     # we own the assignment here, so there is nothing to wait for:
                     # forward straight to the agent we just tagged.
                     l["contact_id"] = c_id
-                    to = users.get(us_id) or UID2EMAIL.get(us_id, "")
                     if is_finance(l.get("campaign_id")):
-                        # the finance desk address is the destination Paul gave;
-                        # Parvez owns the contact and is copied through UID2EMAIL.
-                        to = FINANCE_EMAIL
-                    forward_to_team(l, to, to_agent=True)
+                        # financing@ with Miguel and Parvez in copy, over GHL email
+                        if not finance_forward(l):
+                            ghl_note(c_id, "[ECHEC envoi financing@ - a reprendre]\n"
+                                           f"Preteur: {l['email']}", us_id)
+                    else:
+                        forward_to_team(l, users.get(us_id) or UID2EMAIL.get(us_id, ""),
+                                        to_agent=True)
                     b2b_created.append((l["email"], lang, bool(phone), us_name))
                 else:
                     state["b2b_pending"][l["email"]] = {
