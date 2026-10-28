@@ -237,9 +237,21 @@ def ghl_upsert(body):
 
 
 def lang_of(name):
+    """Language token from a campaign name, wherever it sits in the string.
+
+    This used to require the name to START with the token. On 27 Oct the
+    campaigns were renamed with a DISPOSITIONS- / INVESTISSEURS- prefix, so
+    nothing matched any more and every lead fell through to the "FR" default:
+    dispositions leads correctly assigned to Chris still fired the French-team
+    notification. Match the token anywhere, as its own word, and keep the
+    prefixes themselves out of the search.
+    """
     n = (name or "").upper()
+    for pfx in ("DISPOSITIONS", "INVESTISSEURS"):
+        if n.startswith(pfx):
+            n = n[len(pfx):].lstrip(" -")
     for lg in ("FR", "EN", "ES", "PT"):
-        if n.startswith(lg + " ") or n.startswith(lg + "-"):
+        if re.search(r"(?<![A-Z])" + lg + r"(?![A-Z])", n):
             return lg
     return "FR"
 
