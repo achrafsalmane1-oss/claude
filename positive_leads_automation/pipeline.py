@@ -131,12 +131,11 @@ def is_dispo(campaign_id):
 # outreach Romain asked for.
 FINANCE_DYNAMIC = set()
 PARVEZ = ("Mohammad Parvez", "dWQMRj2hBqsFeOiv3iwc")   # mhasan@landquire.com
-# Replies go to Parvez, who connects them to the finance department. Paul asked
-# for financing@landquire.com with Miguel copied, but on 28 Oct both failed
-# verification: financing@landquire.com has no mailbox, and miguel@ecomquire.com
-# does not resolve (ecomquire.com has no DNS). GHL refuses to send to either.
-# Put working addresses here and they are copied on every lender reply.
-FINANCE_CC = []
+# Replies go to Parvez, with Romain and Thibaut copied (Paul, 28 Oct). Paul also
+# asked for Miguel, at miguel@ecomquire.com, but ecomquire.com does not exist
+# (DNS NXDOMAIN), so anything sent there bounces. Add his address here once the
+# domain resolves and he is copied too.
+FINANCE_CC = ["rdaniellou@landquire.com", "tgueant@landquire.com"]
 
 
 def is_finance_name(name):
