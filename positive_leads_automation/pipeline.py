@@ -125,6 +125,27 @@ def is_dispo(campaign_id):
     return campaign_id in DISPO_CAMPAIGNS or campaign_id in DISPO_DYNAMIC
 
 
+# Financing: we are the ones asking for money here, not selling land and not
+# raising from investors. Replies go to the finance desk, never to the
+# dispositions or investor rotations. Added 28 Oct for the construction-lender
+# outreach Romain asked for.
+FINANCE_DYNAMIC = set()
+FINANCE_EMAIL = "financing@landquire.com"
+PARVEZ = ("Mohammad Parvez", "dWQMRj2hBqsFeOiv3iwc")   # mhasan@landquire.com
+# Miguel is to be copied on these, per Paul. He is not a GHL user and his
+# address was never supplied, so nothing is sent to him yet: add it here.
+FINANCE_CC = []
+
+
+def is_finance_name(name):
+    n = (name or "").upper()
+    return n.startswith("FINANCEMENT") or "CONSTRUCTION LENDER" in n
+
+
+def is_finance(campaign_id):
+    return campaign_id in FINANCE_DYNAMIC
+
+
 def is_us(lang):
     """US desk = the English-language campaigns."""
     return lang == "EN"
@@ -145,7 +166,8 @@ UID2EMAIL = {
     "PXQVZgou0EbKB18H5Wh3": "hmoraes@landquire.com", "tvp9ana9YZWwFBUyXMf0": "lferraz@landquire.com",
     "xUvVav7DQywx2WYZnLMI": "fsantos@landquire.com", "PIudlTQkBqQCWJ2bVL0l": "splummer@landquire.com",
     "fQjewvPSzRh3ui2ZCf2W": "carlosurdinineasejas@gmail.com",
-    "S9nXLyPtOv7Zml6tj5yz": "cgarcia@landquire.com"}
+    "S9nXLyPtOv7Zml6tj5yz": "cgarcia@landquire.com",
+    "dWQMRj2hBqsFeOiv3iwc": "mhasan@landquire.com"}
 
 # Leading "{greet}" is filled with "<word> <FirstName>" when a real name is known,
 # or just "<word>" (no name) otherwise -- never a mangled email prefix.
@@ -577,12 +599,15 @@ def campaign_langs():
     """map campaign_id -> language, from campaign names on both workspaces."""
     cl = {}
     DISPO_DYNAMIC.clear()
+    FINANCE_DYNAMIC.clear()
     for wid in WS.values():
         try:
             for c in pv_get(f"/campaign/list?workspace_id={wid}&limit=100"):
                 cl[c["id"]] = lang_of(c.get("name", ""))
                 if is_dispo_name(c.get("name", "")):
                     DISPO_DYNAMIC.add(c["id"])
+                if is_finance_name(c.get("name", "")):
+                    FINANCE_DYNAMIC.add(c["id"])
         except PlusVibeDown:
             raise
         except Exception as e:
@@ -666,7 +691,12 @@ def main():
             if ln: body["lastName"] = ln
             if phone: body["phone"] = phone
             us_name = us_id = ""
-            if is_dispo(l.get("campaign_id")):
+            if is_finance(l.get("campaign_id")):
+                # construction lenders: finance desk, not a sales rotation
+                us_name, us_id = PARVEZ
+                body["assignedTo"] = us_id
+                body["tags"] = ["plusvibe", "financement"]
+            elif is_dispo(l.get("campaign_id")):
                 # Dispositions: always Chris, never the round-robin.
                 us_name, us_id = CHRIS
                 body["assignedTo"] = us_id
@@ -693,10 +723,14 @@ def main():
                         handed.append(l["email"])
                 if us_id:
                     # we own the assignment here, so there is nothing to wait for:
-                    # forward straight to the US-desk agent we just tagged.
+                    # forward straight to the agent we just tagged.
                     l["contact_id"] = c_id
-                    forward_to_team(l, users.get(us_id) or UID2EMAIL.get(us_id, ""),
-                                    to_agent=True)
+                    to = users.get(us_id) or UID2EMAIL.get(us_id, "")
+                    if is_finance(l.get("campaign_id")):
+                        # the finance desk address is the destination Paul gave;
+                        # Parvez owns the contact and is copied through UID2EMAIL.
+                        to = FINANCE_EMAIL
+                    forward_to_team(l, to, to_agent=True)
                     b2b_created.append((l["email"], lang, bool(phone), us_name))
                 else:
                     state["b2b_pending"][l["email"]] = {
