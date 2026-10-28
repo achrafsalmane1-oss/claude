@@ -130,11 +130,13 @@ def is_dispo(campaign_id):
 # dispositions or investor rotations. Added 28 Oct for the construction-lender
 # outreach Romain asked for.
 FINANCE_DYNAMIC = set()
-FINANCE_EMAIL = "financing@landquire.com"
 PARVEZ = ("Mohammad Parvez", "dWQMRj2hBqsFeOiv3iwc")   # mhasan@landquire.com
-# Miguel is copied on every financing reply, per Paul (address given 28 Oct).
-# He is not a GHL user, so he receives the forward by email only.
-FINANCE_CC = ["miguel@ecomquire.com"]
+# Replies go to Parvez, who connects them to the finance department. Paul asked
+# for financing@landquire.com with Miguel copied, but on 28 Oct both failed
+# verification: financing@landquire.com has no mailbox, and miguel@ecomquire.com
+# does not resolve (ecomquire.com has no DNS). GHL refuses to send to either.
+# Put working addresses here and they are copied on every lender reply.
+FINANCE_CC = []
 
 
 def is_finance_name(name):
@@ -147,7 +149,7 @@ def is_finance(campaign_id):
 
 
 def finance_forward(l):
-    """Send a lender's positive reply to financing@, Parvez and Miguel in copy.
+    """Send a lender's positive reply to Parvez, anyone in FINANCE_CC copied.
 
     Goes through GHL email rather than the PlusVibe forward: PlusVibe refuses
     manual sends on the LandQuire inboxes, which would leave only a GHL note
@@ -157,8 +159,8 @@ def finance_forward(l):
     """
     if DRY:
         return True
-    r = ghl_upsert({"locationId": LOC, "email": FINANCE_EMAIL,
-                    "firstName": "Financing", "lastName": "LandQuire",
+    r = ghl_upsert({"locationId": LOC, "email": UID2EMAIL[PARVEZ[1]],
+                    "firstName": "Mohammad", "lastName": "Parvez",
                     "tags": ["internal", "financement-desk"]})
     desk = (r.get("contact") or {}).get("id")
     if not desk:
@@ -167,8 +169,7 @@ def finance_forward(l):
     html = ("Positive reply from the construction-lender outreach.<br>"
             f"Lender : {l['email']}<br>Campaign : FINANCEMENT - Construction lenders<br><br>"
             "--- Their message ---<br>" + (l.get("reply_text") or "")[:2000].replace("\n", "<br>"))
-    cc = list(FINANCE_CC) + [UID2EMAIL.get(PARVEZ[1], "")]
-    return ghl_email(desk, subj, html, [c for c in cc if c])
+    return ghl_email(desk, subj, html, list(FINANCE_CC) or None)
 
 
 def is_us(lang):
@@ -751,7 +752,7 @@ def main():
                     # forward straight to the agent we just tagged.
                     l["contact_id"] = c_id
                     if is_finance(l.get("campaign_id")):
-                        # financing@ with Miguel and Parvez in copy, over GHL email
+                        # to Parvez over GHL email, FINANCE_CC copied
                         if not finance_forward(l):
                             ghl_note(c_id, "[ECHEC envoi financing@ - a reprendre]\n"
                                            f"Preteur: {l['email']}", us_id)
