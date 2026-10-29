@@ -64,18 +64,20 @@ POSITIVE_LABELS = ("INTERESTED", "INVESTOR_LQ")
 FR = [("Fabienne", "aBXFUOaJTNd3S6xuoe2p"), ("Mathieu", "NSXvGpjwu2kq3I6bhCO5"),
       ("PaulG", "Qw0kNzYf8z7wB8ACQEWZ"), ("PierreR", "fSr7OAL4VXxZIngOL7Ey"),
       ("Timothee", "aCKmPd1GI1IikvbT3ERB"), ("PierreLoup", "lOSuNBiTo8BlFi5gAHdF"),
-      ("Kevin", "7l60QOUa5c2EvVr96frH"), ("Clement", "bOQhh8LhNjSOT1CvxtYW")]
+      ("Willem", "fGA4vlwSX1pxzFtRznjB"), ("Clement", "bOQhh8LhNjSOT1CvxtYW")]
 BR = [("Herminia", "PXQVZgou0EbKB18H5Wh3"), ("Luci", "tvp9ana9YZWwFBUyXMf0"),
       ("Fabiano", "xUvVav7DQywx2WYZnLMI")]
 EN = [("Mathieu", "NSXvGpjwu2kq3I6bhCO5"), ("PierreR", "fSr7OAL4VXxZIngOL7Ey"),
-      ("Kevin", "7l60QOUa5c2EvVr96frH"), ("Sophie", "PIudlTQkBqQCWJ2bVL0l")]
+      ("Willem", "fGA4vlwSX1pxzFtRznjB"), ("Sophie", "PIudlTQkBqQCWJ2bVL0l")]
 ES = [("Carlos", "fQjewvPSzRh3ui2ZCf2W")]
 POOLS = {"FR": FR, "PT": BR, "EN": EN, "ES": ES}
 
 # US desk: every positive coming from an EN campaign is handled by Kevin and
 # Sophie, alternating. The index lives in state.json so the rotation survives
 # across runs instead of restarting at Kevin every time.
-US_POOL = [("Kevin", "7l60QOUa5c2EvVr96frH"), ("Sophie", "PIudlTQkBqQCWJ2bVL0l")]
+# Willem Van Biezen replaced Kevin Lanson on 29 Oct (Achraf). Leads already
+# assigned to Kevin stay with him; everything new goes to Willem.
+US_POOL = [("Willem", "fGA4vlwSX1pxzFtRznjB"), ("Sophie", "PIudlTQkBqQCWJ2bVL0l")]
 
 # LandQuire dispositions campaigns (selling the land / MH-RV / SFR projects to
 # buyers). Positives from these go to Christopher Garcia, who runs dispositions,
@@ -147,30 +149,6 @@ def is_finance(campaign_id):
     return campaign_id in FINANCE_DYNAMIC
 
 
-def finance_forward(l):
-    """Send a lender's positive reply to Parvez, anyone in FINANCE_CC copied.
-
-    Goes through GHL email rather than the PlusVibe forward: PlusVibe refuses
-    manual sends on the LandQuire inboxes, which would leave only a GHL note
-    and Miguel, who is not a GHL user, would never see it. The message is
-    addressed to an internal contact for financing@landquire.com, so the
-    prospect is never a recipient.
-    """
-    if DRY:
-        return True
-    r = ghl_upsert({"locationId": LOC, "email": UID2EMAIL[PARVEZ[1]],
-                    "firstName": "Mohammad", "lastName": "Parvez",
-                    "tags": ["internal", "financement-desk"]})
-    desk = (r.get("contact") or {}).get("id")
-    if not desk:
-        return False
-    subj = "Lender interested: " + (l.get("display_name") or l["email"])
-    html = ("Positive reply from the construction-lender outreach.<br>"
-            f"Lender : {l['email']}<br>Campaign : FINANCEMENT - Construction lenders<br><br>"
-            "--- Their message ---<br>" + (l.get("reply_text") or "")[:2000].replace("\n", "<br>"))
-    return ghl_email(desk, subj, html, list(FINANCE_CC) or None)
-
-
 def is_us(lang):
     """US desk = the English-language campaigns."""
     return lang == "EN"
@@ -192,6 +170,7 @@ UID2EMAIL = {
     "xUvVav7DQywx2WYZnLMI": "fsantos@landquire.com", "PIudlTQkBqQCWJ2bVL0l": "splummer@landquire.com",
     "fQjewvPSzRh3ui2ZCf2W": "carlosurdinineasejas@gmail.com",
     "S9nXLyPtOv7Zml6tj5yz": "cgarcia@landquire.com",
+    "fGA4vlwSX1pxzFtRznjB": "wvanbiezen@landquire.com",
     "dWQMRj2hBqsFeOiv3iwc": "mhasan@landquire.com"}
 
 # Leading "{greet}" is filled with "<word> <FirstName>" when a real name is known,
@@ -215,10 +194,10 @@ HANDOFF_SUBJ = {
     "ES": "Su consulta - presentacion de Chris Garcia",
     "PT": "Sua solicitacao - apresentacao de Chris Garcia"}
 HANDOFF = {
-'FR': "{greet},<br><br>Merci pour votre interet et pour votre reponse.<br><br>Je vous mets en relation avec <b>Chris Garcia</b>, VP of Dispositions chez LandQuire, que je mets en copie de cet email. Il suit personnellement les projets concernes et va vous transmettre toutes les informations et les documents necessaires.<br><br>Chris reviendra vers vous directement. Vous pouvez aussi repondre a cet email, il le recevra.<br><br>Bien a vous,<br>Romain Daniellou<br>LandQuire",
-'EN': "{greet},<br><br>Thank you for your interest and for getting back to me.<br><br>I am connecting you with <b>Chris Garcia</b>, VP of Dispositions at LandQuire, who is copied on this email. He personally handles the projects in question and will send you all the information and documents you need.<br><br>Chris will reach out to you directly. You can also simply reply to this email and he will receive it.<br><br>Best regards,<br>Romain Daniellou<br>LandQuire",
-'ES': "{greet},<br><br>Gracias por su interes y por su respuesta.<br><br>Le pongo en contacto con <b>Chris Garcia</b>, VP of Dispositions en LandQuire, a quien copio en este correo. El lleva personalmente los proyectos en cuestion y le enviara toda la informacion y los documentos necesarios.<br><br>Chris se pondra en contacto con usted directamente. Tambien puede responder a este correo y lo recibira.<br><br>Un cordial saludo,<br>Romain Daniellou<br>LandQuire",
-'PT': "{greet},<br><br>Obrigado pelo seu interesse e pela sua resposta.<br><br>Apresento a voce o <b>Chris Garcia</b>, VP of Dispositions da LandQuire, que coloco em copia neste email. Ele acompanha pessoalmente os projetos em questao e vai enviar todas as informacoes e documentos necessarios.<br><br>O Chris entrara em contato diretamente. Voce tambem pode responder a este email, que ele recebera.<br><br>Um abraco,<br>Romain Daniellou<br>LandQuire"}
+'FR': "{greet},<br><br>Merci pour votre interet et pour votre reponse.<br><br>Je vous mets en relation avec <b>Chris Garcia</b>, VP of Dispositions chez LandQuire, que je mets en copie de cet email. Il suit personnellement les projets concernes et va vous transmettre toutes les informations et les documents necessaires.<br><br>Chris reviendra vers vous directement. Vous pouvez aussi repondre a cet email, il le recevra.<br><br>Bien a vous,<br>{sender}<br>LandQuire",
+'EN': "{greet},<br><br>Thank you for your interest and for getting back to me.<br><br>I am connecting you with <b>Chris Garcia</b>, VP of Dispositions at LandQuire, who is copied on this email. He personally handles the projects in question and will send you all the information and documents you need.<br><br>Chris will reach out to you directly. You can also simply reply to this email and he will receive it.<br><br>Best regards,<br>{sender}<br>LandQuire",
+'ES': "{greet},<br><br>Gracias por su interes y por su respuesta.<br><br>Le pongo en contacto con <b>Chris Garcia</b>, VP of Dispositions en LandQuire, a quien copio en este correo. El lleva personalmente los proyectos en cuestion y le enviara toda la informacion y los documentos necesarios.<br><br>Chris se pondra en contacto con usted directamente. Tambien puede responder a este correo y lo recibira.<br><br>Un cordial saludo,<br>{sender}<br>LandQuire",
+'PT': "{greet},<br><br>Obrigado pelo seu interesse e pela sua resposta.<br><br>Apresento a voce o <b>Chris Garcia</b>, VP of Dispositions da LandQuire, que coloco em copia neste email. Ele acompanha pessoalmente os projetos em questao e vai enviar todas as informacoes e documentos necessarios.<br><br>O Chris entrara em contato diretamente. Voce tambem pode responder a este email, que ele recebera.<br><br>Um abraco,<br>{sender}<br>LandQuire"}
 
 STATE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "state.json")
 
@@ -479,20 +458,55 @@ def ghl_email(contact_id, subject, html, cc=None, sender=SENDER):
     return False
 
 
+SENDER_NAME = {}   # inbox address -> first name, filled once per run
+
+
+def sender_first_name(eaccount):
+    """First name PlusVibe signs the campaign with for this inbox, so the handoff
+    is signed by the same person the prospect has been writing to."""
+    if not SENDER_NAME:
+        for wid in WS.values():
+            try:
+                d = pv_get(f"/account/list?workspace_id={wid}")
+                for a in (d.get("accounts") if isinstance(d, dict) else d) or []:
+                    n = ((a.get("payload") or {}).get("name") or {}).get("first_name") or ""
+                    SENDER_NAME[(a.get("email") or "").lower()] = n
+            except Exception:
+                pass
+    return SENDER_NAME.get((eaccount or "").lower()) or "Thibaut"
+
+
 def handoff_to_chris(l, contact_id, fn, lang):
-    """Thank the prospect and introduce Chris, with Chris in CC. Always leaves a
-    trace on the contact, so a failure is visible instead of silent."""
+    """Thank the prospect and introduce Chris, with Chris in CC, as a reply in the
+    prospect's own PlusVibe thread from the inbox that wrote to them.
+
+    Replies go out through PlusVibe, not GHL: GHL can only send from Romain's
+    mailbox, so prospects got mail from an address they had never seen, under
+    someone else's signature. PlusVibe keeps the thread and the sender intact.
+    A refusal (the shared mail server rate-limits when saturated) is not lost:
+    the caller queues it and it is retried on the next run."""
+    if DRY:
+        return True
     greet = GREETWORD.get(lang, "Hello") + ((" " + fn) if fn else "")
-    html = HANDOFF.get(lang, HANDOFF["EN"]).format(greet=greet)
-    ok = ghl_email(contact_id, HANDOFF_SUBJ.get(lang, HANDOFF_SUBJ["EN"]), html, [CHRIS_EMAIL])
+    html = HANDOFF.get(lang, HANDOFF["EN"]).format(greet=greet,
+                                                   sender=sender_first_name(l.get("eaccount")))
+    subj = l.get("subject") or HANDOFF_SUBJ.get(lang, HANDOFF_SUBJ["EN"])
+    if not subj.lower().startswith("re"):
+        subj = "Re: " + subj
+    code, resp = pv_post(f"/unibox/emails/reply?workspace_id={l['wid']}", {
+        "reply_to_id": l["reply_to_id"], "from": l["eaccount"],
+        "to": l["email"], "cc": CHRIS_EMAIL, "subject": subj, "body": html})
+    ok = code in (200, 201)
+    if not ok:
+        print(f"  HANDOFF deferred {l['email']} code={code} {str(resp)[:100]}", file=sys.stderr)
     ghl_note(contact_id,
-             "[Passation dispositions envoyee a %s, Chris en copie]" % l["email"] if ok
-             else "[ECHEC passation dispositions vers %s - a faire a la main]" % l["email"],
+             "[Passation dispositions envoyee depuis PlusVibe a %s, Chris en copie]" % l["email"] if ok
+             else "[Passation en attente pour %s - relancee automatiquement]" % l["email"],
              CHRIS[1])
     return ok
 
 
-def forward_to_team(l, agent_email, to_agent=False):
+def forward_to_team(l, agent_email, to_agent=False, extra_cc=None):
     """Forward the prospect's positive reply to Thibaut + the assigned agent.
     Recipients are ONLY the addresses we set in to/cc (Thibaut, agent) -- the
     prospect is never a recipient, so this can never reach the prospect.
@@ -505,6 +519,8 @@ def forward_to_team(l, agent_email, to_agent=False):
     else:
         to = THIB
         cc = agent_email if agent_email and agent_email != THIB else ""
+    if extra_cc:
+        cc = ",".join([c for c in [cc] + list(extra_cc) if c and c != to])
     subj = l.get("subject") or "Reponse positive"
     if not subj.lower().startswith(("fwd", "tr", "fw")):
         subj = "Fwd: " + subj
@@ -704,6 +720,16 @@ def main():
         print("Missing PLUSVIBE_API_KEY or GHL_TOKEN in environment.", file=sys.stderr)
         sys.exit(1)
     state = load_state()
+    retry = state.setdefault("handoff_retry", {})
+    for em, h in list(retry.items()):
+        if handoff_to_chris(h["l"], h["contact_id"], h["fn"], h["lang"]):
+            retry.pop(em)
+            print("  HANDOFF retried and sent", em)
+        else:
+            h["tries"] = h.get("tries", 0) + 1
+            if h["tries"] >= 12:   # about three hours of runs: give it to a human
+                ghl_note(h["contact_id"], "[ECHEC passation apres 12 essais - a faire a la main]", CHRIS[1])
+                retry.pop(em)
     seen = set(state["processed"])
     cl = campaign_langs()
     new = fetch_new_positives(cl, seen)
@@ -756,15 +782,19 @@ def main():
                     # dispositions: hand the prospect over to Chris in the same breath
                     if handoff_to_chris(l, c_id, fn, lang):
                         handed.append(l["email"])
+                    else:
+                        state.setdefault("handoff_retry", {})[l["email"]] = {
+                            "l": {k: l.get(k) for k in ("email", "wid", "reply_to_id", "eaccount",
+                                                       "subject", "campaign_id")},
+                            "contact_id": c_id, "fn": fn, "lang": lang, "tries": 0}
                 if us_id:
                     # we own the assignment here, so there is nothing to wait for:
                     # forward straight to the agent we just tagged.
                     l["contact_id"] = c_id
                     if is_finance(l.get("campaign_id")):
-                        # to Parvez over GHL email, FINANCE_CC copied
-                        if not finance_forward(l):
-                            ghl_note(c_id, "[ECHEC envoi financing@ - a reprendre]\n"
-                                           f"Preteur: {l['email']}", us_id)
+                        # to Parvez through PlusVibe, Romain and Thibaut copied
+                        forward_to_team(l, UID2EMAIL[PARVEZ[1]], to_agent=True,
+                                        extra_cc=FINANCE_CC)
                     else:
                         forward_to_team(l, users.get(us_id) or UID2EMAIL.get(us_id, ""),
                                         to_agent=True)
