@@ -215,10 +215,10 @@ HANDOFF_SUBJ = {
     "ES": "Su consulta - presentacion de Chris Garcia",
     "PT": "Sua solicitacao - apresentacao de Chris Garcia"}
 HANDOFF = {
-'FR': "{greet},<br><br>Merci pour votre interet et pour votre reponse.<br><br>Je vous mets en relation avec <b>Chris Garcia</b>, VP of Dispositions chez LandQuire, que je mets en copie de cet email. Il suit personnellement les projets concernes et va vous transmettre toutes les informations et les documents necessaires.<br><br>Chris reviendra vers vous directement. Vous pouvez aussi repondre a cet email, il le recevra.<br><br>Bien a vous,<br>Thibaut Gueant<br>Co-fondateur &amp; CIO, LandQuire",
-'EN': "{greet},<br><br>Thank you for your interest and for getting back to me.<br><br>I am connecting you with <b>Chris Garcia</b>, VP of Dispositions at LandQuire, who is copied on this email. He personally handles the projects in question and will send you all the information and documents you need.<br><br>Chris will reach out to you directly. You can also simply reply to this email and he will receive it.<br><br>Best regards,<br>Thibaut Gueant<br>Co-Founder &amp; CIO, LandQuire",
-'ES': "{greet},<br><br>Gracias por su interes y por su respuesta.<br><br>Le pongo en contacto con <b>Chris Garcia</b>, VP of Dispositions en LandQuire, a quien copio en este correo. El lleva personalmente los proyectos en cuestion y le enviara toda la informacion y los documentos necesarios.<br><br>Chris se pondra en contacto con usted directamente. Tambien puede responder a este correo y lo recibira.<br><br>Un cordial saludo,<br>Thibaut Gueant<br>Cofundador y CIO, LandQuire",
-'PT': "{greet},<br><br>Obrigado pelo seu interesse e pela sua resposta.<br><br>Apresento a voce o <b>Chris Garcia</b>, VP of Dispositions da LandQuire, que coloco em copia neste email. Ele acompanha pessoalmente os projetos em questao e vai enviar todas as informacoes e documentos necessarios.<br><br>O Chris entrara em contato diretamente. Voce tambem pode responder a este email, que ele recebera.<br><br>Um abraco,<br>Thibaut Gueant<br>Cofundador e CIO, LandQuire"}
+'FR': "{greet},<br><br>Merci pour votre interet et pour votre reponse.<br><br>Je vous mets en relation avec <b>Chris Garcia</b>, VP of Dispositions chez LandQuire, que je mets en copie de cet email. Il suit personnellement les projets concernes et va vous transmettre toutes les informations et les documents necessaires.<br><br>Chris reviendra vers vous directement. Vous pouvez aussi repondre a cet email, il le recevra.<br><br>Bien a vous,<br>Romain Daniellou<br>LandQuire",
+'EN': "{greet},<br><br>Thank you for your interest and for getting back to me.<br><br>I am connecting you with <b>Chris Garcia</b>, VP of Dispositions at LandQuire, who is copied on this email. He personally handles the projects in question and will send you all the information and documents you need.<br><br>Chris will reach out to you directly. You can also simply reply to this email and he will receive it.<br><br>Best regards,<br>Romain Daniellou<br>LandQuire",
+'ES': "{greet},<br><br>Gracias por su interes y por su respuesta.<br><br>Le pongo en contacto con <b>Chris Garcia</b>, VP of Dispositions en LandQuire, a quien copio en este correo. El lleva personalmente los proyectos en cuestion y le enviara toda la informacion y los documentos necesarios.<br><br>Chris se pondra en contacto con usted directamente. Tambien puede responder a este correo y lo recibira.<br><br>Un cordial saludo,<br>Romain Daniellou<br>LandQuire",
+'PT': "{greet},<br><br>Obrigado pelo seu interesse e pela sua resposta.<br><br>Apresento a voce o <b>Chris Garcia</b>, VP of Dispositions da LandQuire, que coloco em copia neste email. Ele acompanha pessoalmente os projetos em questao e vai enviar todas as informacoes e documentos necessarios.<br><br>O Chris entrara em contato diretamente. Voce tambem pode responder a este email, que ele recebera.<br><br>Um abraco,<br>Romain Daniellou<br>LandQuire"}
 
 STATE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "state.json")
 
@@ -444,10 +444,12 @@ def ghl_note(contact_id, body, user_id=None):
         return False
 
 
-# GHL sends from the location's default mailbox, which is Romain's, unless told
-# otherwise. The handoff is signed by Thibaut, so it has to come from Thibaut:
-# Paul saw prospects receive mail from Romain's address signed Thibaut Gueant.
-SENDER = "Thibaut Gueant <tgueant@landquire.com>"
+# GHL always sends from the location's connected mailbox, which is Romain's.
+# emailFrom and userId are both ignored (tested 29 Oct: three test sends, all
+# arrived from Romain). So the GHL handoff is signed Romain Daniellou to match
+# the address it really comes from. To send as someone else, that person has to
+# connect their own mailbox in GHL first; then set SENDER and the signatures.
+SENDER = None
 
 
 def ghl_email(contact_id, subject, html, cc=None, sender=SENDER):
