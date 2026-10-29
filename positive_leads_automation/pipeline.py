@@ -444,7 +444,13 @@ def ghl_note(contact_id, body, user_id=None):
         return False
 
 
-def ghl_email(contact_id, subject, html, cc=None):
+# GHL sends from the location's default mailbox, which is Romain's, unless told
+# otherwise. The handoff is signed by Thibaut, so it has to come from Thibaut:
+# Paul saw prospects receive mail from Romain's address signed Thibaut Gueant.
+SENDER = "Thibaut Gueant <tgueant@landquire.com>"
+
+
+def ghl_email(contact_id, subject, html, cc=None, sender=SENDER):
     """Send an email to a contact through GoHighLevel, CCing whoever we name.
     PlusVibe returns 400 "Connection closed unexpectedly" on every LandQuire
     inbox for a manual send, so GHL is the channel that actually works, and it
@@ -452,6 +458,8 @@ def ghl_email(contact_id, subject, html, cc=None):
     if DRY or not contact_id:
         return False
     body = {"type": "Email", "contactId": contact_id, "subject": subject, "html": html}
+    if sender:
+        body["emailFrom"] = sender
     if cc:
         body["emailCc"] = cc if isinstance(cc, list) else [cc]
     cmd = ["curl", "-s", "-A", "curl/8.5.0", "-X", "POST", GHLBASE + "/conversations/messages",
