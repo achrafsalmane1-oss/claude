@@ -125,6 +125,52 @@ def is_dispo(campaign_id):
     return campaign_id in DISPO_CAMPAIGNS or campaign_id in DISPO_DYNAMIC
 
 
+# Financing: we are the ones asking for money here, not selling land and not
+# raising from investors. Replies go to the finance desk, never to the
+# dispositions or investor rotations. Added 28 Oct for the construction-lender
+# outreach Romain asked for.
+FINANCE_DYNAMIC = set()
+PARVEZ = ("Mohammad Parvez", "dWQMRj2hBqsFeOiv3iwc")   # mhasan@landquire.com
+# Replies go to Parvez, with Romain and Thibaut copied (Paul, 28 Oct). Paul also
+# asked for Miguel, at miguel@ecomquire.com, but ecomquire.com does not exist
+# (DNS NXDOMAIN), so anything sent there bounces. Add his address here once the
+# domain resolves and he is copied too.
+FINANCE_CC = ["rdaniellou@landquire.com", "tgueant@landquire.com"]
+
+
+def is_finance_name(name):
+    n = (name or "").upper()
+    return n.startswith("FINANCEMENT") or "CONSTRUCTION LENDER" in n
+
+
+def is_finance(campaign_id):
+    return campaign_id in FINANCE_DYNAMIC
+
+
+def finance_forward(l):
+    """Send a lender's positive reply to Parvez, anyone in FINANCE_CC copied.
+
+    Goes through GHL email rather than the PlusVibe forward: PlusVibe refuses
+    manual sends on the LandQuire inboxes, which would leave only a GHL note
+    and Miguel, who is not a GHL user, would never see it. The message is
+    addressed to an internal contact for financing@landquire.com, so the
+    prospect is never a recipient.
+    """
+    if DRY:
+        return True
+    r = ghl_upsert({"locationId": LOC, "email": UID2EMAIL[PARVEZ[1]],
+                    "firstName": "Mohammad", "lastName": "Parvez",
+                    "tags": ["internal", "financement-desk"]})
+    desk = (r.get("contact") or {}).get("id")
+    if not desk:
+        return False
+    subj = "Lender interested: " + (l.get("display_name") or l["email"])
+    html = ("Positive reply from the construction-lender outreach.<br>"
+            f"Lender : {l['email']}<br>Campaign : FINANCEMENT - Construction lenders<br><br>"
+            "--- Their message ---<br>" + (l.get("reply_text") or "")[:2000].replace("\n", "<br>"))
+    return ghl_email(desk, subj, html, list(FINANCE_CC) or None)
+
+
 def is_us(lang):
     """US desk = the English-language campaigns."""
     return lang == "EN"
@@ -145,7 +191,8 @@ UID2EMAIL = {
     "PXQVZgou0EbKB18H5Wh3": "hmoraes@landquire.com", "tvp9ana9YZWwFBUyXMf0": "lferraz@landquire.com",
     "xUvVav7DQywx2WYZnLMI": "fsantos@landquire.com", "PIudlTQkBqQCWJ2bVL0l": "splummer@landquire.com",
     "fQjewvPSzRh3ui2ZCf2W": "carlosurdinineasejas@gmail.com",
-    "S9nXLyPtOv7Zml6tj5yz": "cgarcia@landquire.com"}
+    "S9nXLyPtOv7Zml6tj5yz": "cgarcia@landquire.com",
+    "dWQMRj2hBqsFeOiv3iwc": "mhasan@landquire.com"}
 
 # Leading "{greet}" is filled with "<word> <FirstName>" when a real name is known,
 # or just "<word>" (no name) otherwise -- never a mangled email prefix.
@@ -237,9 +284,21 @@ def ghl_upsert(body):
 
 
 def lang_of(name):
+    """Language token from a campaign name, wherever it sits in the string.
+
+    This used to require the name to START with the token. On 27 Oct the
+    campaigns were renamed with a DISPOSITIONS- / INVESTISSEURS- prefix, so
+    nothing matched any more and every lead fell through to the "FR" default:
+    dispositions leads correctly assigned to Chris still fired the French-team
+    notification. Match the token anywhere, as its own word, and keep the
+    prefixes themselves out of the search.
+    """
     n = (name or "").upper()
+    for pfx in ("DISPOSITIONS", "INVESTISSEURS"):
+        if n.startswith(pfx):
+            n = n[len(pfx):].lstrip(" -")
     for lg in ("FR", "EN", "ES", "PT"):
-        if n.startswith(lg + " ") or n.startswith(lg + "-"):
+        if re.search(r"(?<![A-Z])" + lg + r"(?![A-Z])", n):
             return lg
     return "FR"
 
@@ -385,7 +444,13 @@ def ghl_note(contact_id, body, user_id=None):
         return False
 
 
-def ghl_email(contact_id, subject, html, cc=None):
+# GHL sends from the location's default mailbox, which is Romain's, unless told
+# otherwise. The handoff is signed by Thibaut, so it has to come from Thibaut:
+# Paul saw prospects receive mail from Romain's address signed Thibaut Gueant.
+SENDER = "Thibaut Gueant <tgueant@landquire.com>"
+
+
+def ghl_email(contact_id, subject, html, cc=None, sender=SENDER):
     """Send an email to a contact through GoHighLevel, CCing whoever we name.
     PlusVibe returns 400 "Connection closed unexpectedly" on every LandQuire
     inbox for a manual send, so GHL is the channel that actually works, and it
@@ -393,6 +458,8 @@ def ghl_email(contact_id, subject, html, cc=None):
     if DRY or not contact_id:
         return False
     body = {"type": "Email", "contactId": contact_id, "subject": subject, "html": html}
+    if sender:
+        body["emailFrom"] = sender
     if cc:
         body["emailCc"] = cc if isinstance(cc, list) else [cc]
     cmd = ["curl", "-s", "-A", "curl/8.5.0", "-X", "POST", GHLBASE + "/conversations/messages",
@@ -565,12 +632,15 @@ def campaign_langs():
     """map campaign_id -> language, from campaign names on both workspaces."""
     cl = {}
     DISPO_DYNAMIC.clear()
+    FINANCE_DYNAMIC.clear()
     for wid in WS.values():
         try:
             for c in pv_get(f"/campaign/list?workspace_id={wid}&limit=100"):
                 cl[c["id"]] = lang_of(c.get("name", ""))
                 if is_dispo_name(c.get("name", "")):
                     DISPO_DYNAMIC.add(c["id"])
+                if is_finance_name(c.get("name", "")):
+                    FINANCE_DYNAMIC.add(c["id"])
         except PlusVibeDown:
             raise
         except Exception as e:
@@ -654,7 +724,12 @@ def main():
             if ln: body["lastName"] = ln
             if phone: body["phone"] = phone
             us_name = us_id = ""
-            if is_dispo(l.get("campaign_id")):
+            if is_finance(l.get("campaign_id")):
+                # construction lenders: finance desk, not a sales rotation
+                us_name, us_id = PARVEZ
+                body["assignedTo"] = us_id
+                body["tags"] = ["plusvibe", "financement"]
+            elif is_dispo(l.get("campaign_id")):
                 # Dispositions: always Chris, never the round-robin.
                 us_name, us_id = CHRIS
                 body["assignedTo"] = us_id
@@ -681,10 +756,16 @@ def main():
                         handed.append(l["email"])
                 if us_id:
                     # we own the assignment here, so there is nothing to wait for:
-                    # forward straight to the US-desk agent we just tagged.
+                    # forward straight to the agent we just tagged.
                     l["contact_id"] = c_id
-                    forward_to_team(l, users.get(us_id) or UID2EMAIL.get(us_id, ""),
-                                    to_agent=True)
+                    if is_finance(l.get("campaign_id")):
+                        # to Parvez over GHL email, FINANCE_CC copied
+                        if not finance_forward(l):
+                            ghl_note(c_id, "[ECHEC envoi financing@ - a reprendre]\n"
+                                           f"Preteur: {l['email']}", us_id)
+                    else:
+                        forward_to_team(l, users.get(us_id) or UID2EMAIL.get(us_id, ""),
+                                        to_agent=True)
                     b2b_created.append((l["email"], lang, bool(phone), us_name))
                 else:
                     state["b2b_pending"][l["email"]] = {
