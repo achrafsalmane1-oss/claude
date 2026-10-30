@@ -64,20 +64,18 @@ POSITIVE_LABELS = ("INTERESTED", "INVESTOR_LQ")
 FR = [("Fabienne", "aBXFUOaJTNd3S6xuoe2p"), ("Mathieu", "NSXvGpjwu2kq3I6bhCO5"),
       ("PaulG", "Qw0kNzYf8z7wB8ACQEWZ"), ("PierreR", "fSr7OAL4VXxZIngOL7Ey"),
       ("Timothee", "aCKmPd1GI1IikvbT3ERB"), ("PierreLoup", "lOSuNBiTo8BlFi5gAHdF"),
-      ("Willem", "fGA4vlwSX1pxzFtRznjB"), ("Clement", "bOQhh8LhNjSOT1CvxtYW")]
+      ("Kevin", "7l60QOUa5c2EvVr96frH"), ("Clement", "bOQhh8LhNjSOT1CvxtYW")]
 BR = [("Herminia", "PXQVZgou0EbKB18H5Wh3"), ("Luci", "tvp9ana9YZWwFBUyXMf0"),
       ("Fabiano", "xUvVav7DQywx2WYZnLMI")]
 EN = [("Mathieu", "NSXvGpjwu2kq3I6bhCO5"), ("PierreR", "fSr7OAL4VXxZIngOL7Ey"),
-      ("Willem", "fGA4vlwSX1pxzFtRznjB"), ("Sophie", "PIudlTQkBqQCWJ2bVL0l")]
+      ("Kevin", "7l60QOUa5c2EvVr96frH"), ("Sophie", "PIudlTQkBqQCWJ2bVL0l")]
 ES = [("Carlos", "fQjewvPSzRh3ui2ZCf2W")]
 POOLS = {"FR": FR, "PT": BR, "EN": EN, "ES": ES}
 
 # US desk: every positive coming from an EN campaign is handled by Kevin and
 # Sophie, alternating. The index lives in state.json so the rotation survives
 # across runs instead of restarting at Kevin every time.
-# Willem Van Biezen replaced Kevin Lanson on 29 Oct (Achraf). Leads already
-# assigned to Kevin stay with him; everything new goes to Willem.
-US_POOL = [("Willem", "fGA4vlwSX1pxzFtRznjB"), ("Sophie", "PIudlTQkBqQCWJ2bVL0l")]
+US_POOL = [("Kevin", "7l60QOUa5c2EvVr96frH"), ("Sophie", "PIudlTQkBqQCWJ2bVL0l")]
 
 # LandQuire dispositions campaigns (selling the land / MH-RV / SFR projects to
 # buyers). Positives from these go to Christopher Garcia, who runs dispositions,
@@ -97,7 +95,10 @@ DISPO_CAMPAIGNS = {
     "6ac6244a227bcb0bc2d4caec",   # EN - LQ Land - MH and RV operators
     "6ac6244e80d21cf99221c214",   # EN - LQ Land - 1031 and SDIRA
 }
-CHRIS = ("Christopher Garcia", "S9nXLyPtOv7Zml6tj5yz")   # cgarcia@landquire.com
+# Dispositions owner. Willem Van Biezen replaced Christopher Garcia on 30 Oct
+# (Paul). Contacts already assigned to Chris stay with him; every new
+# dispositions lead goes to Willem. The name CHRIS is kept for the call sites.
+CHRIS = ("Willem Van Biezen", "fGA4vlwSX1pxzFtRznjB")   # wvanbiezen@landquire.com
 
 # Campaign ids classified as dispositions from their NAME at run time, refreshed
 # on every run by campaign_langs(). The hardcoded set above has to be edited for
@@ -183,21 +184,21 @@ BODY = {
 'PT': "{greet},<br><br>Obrigado pela sua resposta.<br><br>Poderia indicar-me o numero de telefone onde e mais facilmente contactavel, bem como um ou dois horarios de disponibilidade (hora de Franca) para uma conversa amanha?<br><br>Assim que combinarmos o horario, enviar-lhe-ei um convite por e-mail para que a nossa conversa, por telefone ou videochamada, fique integrada nas nossas agendas.<br><br>Com os melhores cumprimentos,<br>Thibaut Gueant"}
 
 # Handoff to dispositions: the prospect answered a dispositions campaign, so we
-# thank them and introduce Chris Garcia in the same email, with Chris in CC so he
+# thank them and introduce Willem Van Biezen in the same email, with Willem in CC so he
 # can take the thread over directly.  Sent through GoHighLevel, because PlusVibe
 # refuses every manual send on the LandQuire workspace (healthy inboxes included)
 # and the handoff must not depend on a channel that is down.
-CHRIS_EMAIL = "cgarcia@landquire.com"
+CHRIS_EMAIL = "wvanbiezen@landquire.com"
 HANDOFF_SUBJ = {
-    "FR": "Votre demande - mise en relation avec Chris Garcia",
-    "EN": "Your enquiry - introduction to Chris Garcia",
-    "ES": "Su consulta - presentacion de Chris Garcia",
-    "PT": "Sua solicitacao - apresentacao de Chris Garcia"}
+    "FR": "Votre demande - mise en relation avec Willem Van Biezen",
+    "EN": "Your enquiry - introduction to Willem Van Biezen",
+    "ES": "Su consulta - presentacion de Willem Van Biezen",
+    "PT": "Sua solicitacao - apresentacao de Willem Van Biezen"}
 HANDOFF = {
-'FR': "{greet},<br><br>Merci pour votre interet et pour votre reponse.<br><br>Je vous mets en relation avec <b>Chris Garcia</b>, VP of Dispositions chez LandQuire, que je mets en copie de cet email. Il suit personnellement les projets concernes et va vous transmettre toutes les informations et les documents necessaires.<br><br>Chris reviendra vers vous directement. Vous pouvez aussi repondre a cet email, il le recevra.<br><br>Bien a vous,<br>{sender}<br>LandQuire",
-'EN': "{greet},<br><br>Thank you for your interest and for getting back to me.<br><br>I am connecting you with <b>Chris Garcia</b>, VP of Dispositions at LandQuire, who is copied on this email. He personally handles the projects in question and will send you all the information and documents you need.<br><br>Chris will reach out to you directly. You can also simply reply to this email and he will receive it.<br><br>Best regards,<br>{sender}<br>LandQuire",
-'ES': "{greet},<br><br>Gracias por su interes y por su respuesta.<br><br>Le pongo en contacto con <b>Chris Garcia</b>, VP of Dispositions en LandQuire, a quien copio en este correo. El lleva personalmente los proyectos en cuestion y le enviara toda la informacion y los documentos necesarios.<br><br>Chris se pondra en contacto con usted directamente. Tambien puede responder a este correo y lo recibira.<br><br>Un cordial saludo,<br>{sender}<br>LandQuire",
-'PT': "{greet},<br><br>Obrigado pelo seu interesse e pela sua resposta.<br><br>Apresento a voce o <b>Chris Garcia</b>, VP of Dispositions da LandQuire, que coloco em copia neste email. Ele acompanha pessoalmente os projetos em questao e vai enviar todas as informacoes e documentos necessarios.<br><br>O Chris entrara em contato diretamente. Voce tambem pode responder a este email, que ele recebera.<br><br>Um abraco,<br>{sender}<br>LandQuire"}
+'FR': "{greet},<br><br>Merci pour votre interet et pour votre reponse.<br><br>Je vous mets en relation avec <b>Willem Van Biezen</b>, en charge des dispositions chez LandQuire, que je mets en copie de cet email. Il suit personnellement les projets concernes et va vous transmettre toutes les informations et les documents necessaires.<br><br>Willem reviendra vers vous directement. Vous pouvez aussi repondre a cet email, il le recevra.<br><br>Bien a vous,<br>{sender}<br>LandQuire",
+'EN': "{greet},<br><br>Thank you for your interest and for getting back to me.<br><br>I am connecting you with <b>Willem Van Biezen</b>, who leads dispositions at LandQuire and is copied on this email. He personally handles the projects in question and will send you all the information and documents you need.<br><br>Willem will reach out to you directly. You can also simply reply to this email and he will receive it.<br><br>Best regards,<br>{sender}<br>LandQuire",
+'ES': "{greet},<br><br>Gracias por su interes y por su respuesta.<br><br>Le pongo en contacto con <b>Willem Van Biezen</b>, responsable de dispositions en LandQuire, a quien copio en este correo. El lleva personalmente los proyectos en cuestion y le enviara toda la informacion y los documentos necesarios.<br><br>Willem se pondra en contacto con usted directamente. Tambien puede responder a este correo y lo recibira.<br><br>Un cordial saludo,<br>{sender}<br>LandQuire",
+'PT': "{greet},<br><br>Obrigado pelo seu interesse e pela sua resposta.<br><br>Apresento a voce o <b>Willem Van Biezen</b>, responsavel por dispositions na LandQuire, que coloco em copia neste email. Ele acompanha pessoalmente os projetos em questao e vai enviar todas as informacoes e documentos necessarios.<br><br>O Willem entrara em contato diretamente. Voce tambem pode responder a este email, que ele recebera.<br><br>Um abraco,<br>{sender}<br>LandQuire"}
 
 STATE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "state.json")
 
@@ -477,7 +478,7 @@ def sender_first_name(eaccount):
 
 
 def handoff_to_chris(l, contact_id, fn, lang):
-    """Thank the prospect and introduce Chris, with Chris in CC, as a reply in the
+    """Thank the prospect and introduce Willem, with Willem in CC, as a reply in the
     prospect's own PlusVibe thread from the inbox that wrote to them.
 
     Replies go out through PlusVibe, not GHL: GHL can only send from Romain's
@@ -500,7 +501,7 @@ def handoff_to_chris(l, contact_id, fn, lang):
     if not ok:
         print(f"  HANDOFF deferred {l['email']} code={code} {str(resp)[:100]}", file=sys.stderr)
     ghl_note(contact_id,
-             "[Passation dispositions envoyee depuis PlusVibe a %s, Chris en copie]" % l["email"] if ok
+             "[Passation dispositions envoyee depuis PlusVibe a %s, Willem en copie]" % l["email"] if ok
              else "[Passation en attente pour %s - relancee automatiquement]" % l["email"],
              CHRIS[1])
     return ok
@@ -758,7 +759,7 @@ def main():
                 body["assignedTo"] = us_id
                 body["tags"] = ["plusvibe", "financement"]
             elif is_dispo(l.get("campaign_id")):
-                # Dispositions: always Chris, never the round-robin.
+                # Dispositions: always Willem, never the round-robin.
                 us_name, us_id = CHRIS
                 body["assignedTo"] = us_id
                 body["tags"] = ["plusvibe", "dispositions"]
@@ -779,7 +780,7 @@ def main():
                 ghl_note(c_id, f"[Reponse positive - cold outreach]\nProspect: {l['email']}\n\n"
                                f"{(l.get('reply_text') or '')[:1500]}", us_id or None)
                 if is_dispo(l.get("campaign_id")):
-                    # dispositions: hand the prospect over to Chris in the same breath
+                    # dispositions: hand the prospect over to Willem in the same breath
                     if handoff_to_chris(l, c_id, fn, lang):
                         handed.append(l["email"])
                     else:
@@ -844,7 +845,7 @@ def main():
     us_named = [x for x in b2b_created if len(x) > 3 and x[3]]
     print("B2B created in GHL (plusvibe / cold emailing / language):", len(b2b_created),
           "| of which routed to the US desk:", len(us_named))
-    print("Dispositions handoffs emailed to the prospect with Chris in CC:", len(handed))
+    print("Dispositions handoffs emailed to the prospect with Willem in CC:", len(handed))
     print("B2C forwarded to agent + Thibaut (no GHL create):", len(b2c_forwarded))
     print("B2B by lang:", dict(Counter(x[1] for x in b2b_created)))
     if us_named:
