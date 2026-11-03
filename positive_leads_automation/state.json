@@ -71,6 +71,7 @@
 "chrisbouekassa@gmail.com",
 "christopher.gilbert@rooteddev.com",
 "clark@glennlaytonhomes.com",
+"clint@rupleproperties.com",
 "cmcdermott@meridianbanker.com",
 "colin.buckley@fnf.com",
 "collin@phi-rh.fr",
@@ -729,18 +730,7 @@
 "subject": "RE: Dernier mot de ma part"
 }
 },
-"b2b_pending": {
-"lucas@passarini.com.br": {
-"reply_to_id": "6ae8ffe802d07dcaa4d7a0d3",
-"eaccount": "gueant.t@mylandquire.org",
-"wid": "6a3179f64517eb5ecd7c1642",
-"subject": "Re: terreno americano",
-"email": "lucas@passarini.com.br",
-"reply_text": "Olá, sim, me envie por favor.\n\n      Lucas Rodrigues\n🦅   MD - Passarini Group\n☎️   +1 (786) 849 6760  🇺🇸\n\n________________________________\nDe: Thibaut Gueant <gueant.t@mylandquire.org>\nEnviado: segunda-feira, novembro 2, 2026 4:09 PM\nPara: Lucas M. Rodrigues <lucas@passarini.com.br>\nAssunto: terreno americano\n\nLucas, desde 2021 acompanhamos mais de 400 investidores em mais de 300 projetos de terrenos nos Estados Unidos, com 100% de sucesso nas aprovações de urbanização.\n\nO modelo é sempre o mesmo: compramos o terreno fora do mercado, obtemos as aprovações e depois revendemos às construtoras nacionais. É a fase em que a criação de valor é maior. A maioria dos investidores chega depois, quando as rentabilidades já estão comprimidas.\n\nSPV estruturados, saídas definidas em 18 a 36 meses, ticket de entrada a partir de 100k USD.\n\nQuer que lhe envie um exemplo de projeto concreto: o terreno, as aprovações obtidas, o calendário de saída e a rentabilidade alvo?\n\nAtenciosamente,\nThibaut Guéant\nLandQuire\n",
-"contact_id": "oqGHhu8odEyJqhmg9Z0O",
-"tries": 1
-}
-},
+"b2b_pending": {},
 "us_rr": 1,
 "handoff_retry": {
 "rschrader@brightskyresidential.com": {
@@ -754,6 +744,20 @@
 },
 "contact_id": "qB77FlO5lCDQgis96x8x",
 "fn": "Rob",
+"lang": "EN",
+"tries": 1
+},
+"clint@rupleproperties.com": {
+"l": {
+"email": "clint@rupleproperties.com",
+"wid": "6a3179f64517eb5ecd7c1642",
+"reply_to_id": "6ae96a6702d07dcaa4dda8d3",
+"eaccount": "johnjohnson@connect.havensthq.com",
+"subject": "Re: lots in Seguin, Texas",
+"campaign_id": "6ad666b4d019070b15596858"
+},
+"contact_id": "UtjVqCLoHX47al40UYcH",
+"fn": "Clint",
 "lang": "EN",
 "tries": 0
 }
