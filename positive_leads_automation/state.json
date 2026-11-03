@@ -98,6 +98,7 @@
 "danilo.conti@grupocrh.com.br",
 "danilo.kramel@envolti.com.br",
 "darren@connexusrecruit.com",
+"david.araujo@pumpaddicted.pt",
 "david.baudet01@orange.fr",
 "david@greenvestus.com",
 "davy@lyon-entreprises.com",
@@ -167,6 +168,7 @@
 "gilson.santoni@brasilsalomao.com.br",
 "gjinaj@landeavor.com",
 "grandridgesenterprises@gmail.com",
+"greg.dietz@ablfunding.com",
 "greggwolfer@kennedyfunding.com",
 "gregoire@p2fadvisory.com",
 "guilhem.becvort@whitecase.com",
@@ -392,6 +394,7 @@
 "rrenaudin@atakama-technologies.com",
 "rschrader@brightskyresidential.com",
 "rsettle@commercialcarolina.net",
+"s.dardha@tcnb.com",
 "saec@clarkwilsonbuilder.com",
 "sakoniconde@gmail.com",
 "salturo@fenoco.com.co",
@@ -433,6 +436,7 @@
 "tiagofriedrich@quadfinancial.com.br",
 "tibax22@gmail.com",
 "tiladesina8@gmail.com",
+"tim@loanmountaincapital.com",
 "timothy@ttucker.co.uk",
 "tom@infiniteup.io",
 "twalton@loweprop.com",
@@ -730,7 +734,18 @@
 "subject": "RE: Dernier mot de ma part"
 }
 },
-"b2b_pending": {},
+"b2b_pending": {
+"david.araujo@pumpaddicted.pt": {
+"reply_to_id": "6ae9bdff02d07dcaa4e25063",
+"eaccount": "t.gueant@connect.uselandquire.org",
+"wid": "6a3179f64517eb5ecd7c1642",
+"subject": "RE: terreno americano",
+"email": "david.araujo@pumpaddicted.pt",
+"reply_text": "Thibaut, bom dia!\n\nAgradeço o interesse demonstrado no conceito PumpAddicted <https://youtu.be/AUOgnGJOZTU> .\n\nAo certo, qual seria a vossa proposta?\n\nDevido ao elevado volume diário de contactos que recebemos, agradeço a remoção do endereço geral@pumpaddicted.pt <mailto:geral@pumpaddicted.pt>  de futuras campanhas de email marketing. Naturalmente, sempre que tenham uma oportunidade concreta e personalizada, teremos todo o gosto em analisá-la.\n\n \n\nCom os melhores cumprimentos,\n\n\n  <https://pumpaddicted.pt/wp-content/uploads/2024/05/Logo_PumpAddicted-11.png> \n\nDavid Araújo | CEO\n914934481\n <mailto:david.araujo@pumpaddicted.pt> david.araujo@pumpaddicted.pt \n\nPumpAddicted\n <https://www.pumpaddicted.pt> www.pumpaddicted.pt \n\n\n <https://www.facebook.com/PumpAddicted/> \n\n <https://twitter.com/PumpAddictedGYM> \n\n <https://www.instagram.com/pumpaddictedgym/> \n\n <https://www.youtube.com/user/MrDestinyAble> \n\n \n\n \n\nDe: Thibaut Gueant <t.gueant@connect.uselandquire.org> \nEnviada: 3 de novembro de 2026 09:00\nPara: david.araujo@pumpaddicted.pt\nAssunto: terreno americano\n\n \n\nDavid, desde 2021 acompanhamos mais de 400 investidores em mais de 300 projetos de terrenos nos Estados Unidos, com 100% de sucesso nas aprovações de urbanização.\n\nO modelo é sempre o mesmo: compramos o terreno fora do mercado, obtemos as aprovações e depois revendemos às construtoras nacionais. É a fase em que a criação de valor é maior. A maioria dos investidores chega depois, quando as rentabilidades já estão comprimidas.\n\nSPV estruturados, saídas definidas em 18 a 36 meses, ticket de entrada a partir de 100k USD.\n\nQuer que lhe envie um exemplo de projeto concreto: o terreno, as aprovações obtidas, o calendário de saída e a rentabilidade alvo?\n\nAtenciosamente,\nThibaut Guéant\nLandQuire\n\n",
+"contact_id": "B8Es1YCHkHr7FGRgGndj",
+"tries": 1
+}
+},
 "us_rr": 1,
 "handoff_retry": {
 "rschrader@brightskyresidential.com": {
@@ -745,7 +760,7 @@
 "contact_id": "qB77FlO5lCDQgis96x8x",
 "fn": "Rob",
 "lang": "EN",
-"tries": 1
+"tries": 2
 },
 "clint@rupleproperties.com": {
 "l": {
@@ -758,6 +773,34 @@
 },
 "contact_id": "UtjVqCLoHX47al40UYcH",
 "fn": "Clint",
+"lang": "EN",
+"tries": 1
+},
+"tim@loanmountaincapital.com": {
+"l": {
+"email": "tim@loanmountaincapital.com",
+"wid": "6a3179f64517eb5ecd7c1642",
+"reply_to_id": "6ae9f4e902d07dcaa4e5e091",
+"eaccount": "anthony_brown@connect.havenstlabs.com",
+"subject": "Re: land allocation",
+"campaign_id": "6ac6241a9ed2146f3f762227"
+},
+"contact_id": "ghDA6jbTfL020dg5VfRh",
+"fn": "Tim",
+"lang": "EN",
+"tries": 0
+},
+"greg.dietz@ablfunding.com": {
+"l": {
+"email": "greg.dietz@ablfunding.com",
+"wid": "6a3179f64517eb5ecd7c1642",
+"reply_to_id": "6ae9cd6902d07dcaa4e2cc5d",
+"eaccount": "barbaragarcia@team.havenstreetteam.com",
+"subject": "Re: land allocation",
+"campaign_id": "6ac6241a9ed2146f3f762227"
+},
+"contact_id": "gFTIybiHooShrV8vSHcE",
+"fn": "Greg",
 "lang": "EN",
 "tries": 0
 }
