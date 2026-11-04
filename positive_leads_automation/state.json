@@ -21,6 +21,7 @@
 "anand@jobalia.net",
 "andreea@rhemproperties.com",
 "andrew.mahoney@bachhomes.com",
+"andrewg@soundcapital.com",
 "angela.lasell@riverstonecos.com",
 "angiedubon@kennedyfunding.com",
 "anigri@maxinvest.com.br",
@@ -740,18 +741,7 @@
 "subject": "RE: Dernier mot de ma part"
 }
 },
-"b2b_pending": {
-"p.kremer@fonroche-lighting.com": {
-"reply_to_id": "6aeadf5f02d07dcaa4f4cf56",
-"eaccount": "t.g@golandquire.org",
-"wid": "6a3179f64517eb5ecd7c1642",
-"subject": "Re: foncier américain",
-"email": "p.kremer@fonroche-lighting.com",
-"reply_text": "Merci de m'envoyer un exemple.\n\n\n\nSent from my mobile\n________________________________\nFrom: Thibaut Gueant <t.g@golandquire.org>\nSent: Wednesday, 04 November 2026 08:05:53\nTo: Philippe KREMER <p.kremer@fonroche-lighting.com>\nSubject: foncier américain\n\nVous n’obtenez pas souvent d’e-mail à partir de t.g@golandquire.org. Pourquoi c’est important<https://aka.ms/LearnAboutSenderIdentification>\nPhilippe, depuis 2021 nous avons accompagné plus de 400 investisseurs sur plus de 300 projets fonciers aux États-Unis, avec 100% de succès sur les autorisations d'aménagement.\n\nLe modèle est toujours le même : nous achetons du terrain hors marché, nous obtenons les autorisations, puis nous revendons aux constructeurs nationaux. C'est la phase où la création de valeur est la plus forte. La plupart des investisseurs arrivent après, quand les rendements sont déjà compressés.\n\nSPV structurés, sorties définies en 18 à 36 mois, ticket d'entrée à partir de 100k USD.\n\nSouhaitez-vous que je vous envoie un exemple de projet concret : le terrain, les autorisations obtenues, le calendrier de sortie et le rendement visé ?\n\nBien à vous,\nThibaut Guéant\nLandQuire\n",
-"contact_id": "WKlEZ6ARpBJjZN0k7tlt",
-"tries": 1
-}
-},
+"b2b_pending": {},
 "us_rr": 1,
 "handoff_retry": {
 "rschrader@brightskyresidential.com": {
@@ -766,7 +756,7 @@
 "contact_id": "qB77FlO5lCDQgis96x8x",
 "fn": "Rob",
 "lang": "EN",
-"tries": 5
+"tries": 6
 },
 "clint@rupleproperties.com": {
 "l": {
@@ -780,7 +770,7 @@
 "contact_id": "UtjVqCLoHX47al40UYcH",
 "fn": "Clint",
 "lang": "EN",
-"tries": 4
+"tries": 5
 },
 "tim@loanmountaincapital.com": {
 "l": {
@@ -794,7 +784,7 @@
 "contact_id": "ghDA6jbTfL020dg5VfRh",
 "fn": "Tim",
 "lang": "EN",
-"tries": 3
+"tries": 4
 },
 "greg.dietz@ablfunding.com": {
 "l": {
@@ -808,7 +798,7 @@
 "contact_id": "gFTIybiHooShrV8vSHcE",
 "fn": "Greg",
 "lang": "EN",
-"tries": 3
+"tries": 4
 },
 "dmiller@crescentcommunities.com": {
 "l": {
@@ -822,7 +812,7 @@
 "contact_id": "RI3jEuRHwJVUskUJxj22",
 "fn": "David",
 "lang": "EN",
-"tries": 2
+"tries": 3
 },
 "mark@bluemeloncapital.com": {
 "l": {
@@ -836,7 +826,7 @@
 "contact_id": "UQy78oimnozcmI2FeyIo",
 "fn": "Mark",
 "lang": "EN",
-"tries": 2
+"tries": 3
 }
 }
 }
