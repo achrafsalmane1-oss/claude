@@ -419,6 +419,7 @@
 "simon.bedier@oteis.fr",
 "skessinger@hawthornbank.com",
 "smohandas@iads.org",
+"sohana.suleman@ucea.pt",
 "spencer.clark@scbodner.com",
 "speters58200@gmail.com",
 "sresnick@eyzenberg.com",
@@ -744,7 +745,7 @@
 }
 },
 "b2b_pending": {},
-"us_rr": 1,
+"us_rr": 2,
 "handoff_retry": {
 "rschrader@brightskyresidential.com": {
 "l": {
@@ -758,7 +759,7 @@
 "contact_id": "qB77FlO5lCDQgis96x8x",
 "fn": "Rob",
 "lang": "EN",
-"tries": 8
+"tries": 9
 },
 "clint@rupleproperties.com": {
 "l": {
@@ -772,7 +773,7 @@
 "contact_id": "UtjVqCLoHX47al40UYcH",
 "fn": "Clint",
 "lang": "EN",
-"tries": 7
+"tries": 8
 },
 "tim@loanmountaincapital.com": {
 "l": {
@@ -786,7 +787,7 @@
 "contact_id": "ghDA6jbTfL020dg5VfRh",
 "fn": "Tim",
 "lang": "EN",
-"tries": 6
+"tries": 7
 },
 "greg.dietz@ablfunding.com": {
 "l": {
@@ -800,7 +801,7 @@
 "contact_id": "gFTIybiHooShrV8vSHcE",
 "fn": "Greg",
 "lang": "EN",
-"tries": 6
+"tries": 7
 },
 "dmiller@crescentcommunities.com": {
 "l": {
@@ -814,7 +815,7 @@
 "contact_id": "RI3jEuRHwJVUskUJxj22",
 "fn": "David",
 "lang": "EN",
-"tries": 5
+"tries": 6
 },
 "mark@bluemeloncapital.com": {
 "l": {
@@ -828,7 +829,7 @@
 "contact_id": "UQy78oimnozcmI2FeyIo",
 "fn": "Mark",
 "lang": "EN",
-"tries": 5
+"tries": 6
 },
 "stefan@lionheartplaces.com": {
 "l": {
@@ -842,7 +843,7 @@
 "contact_id": "NjjW7JLxx3EclIGDZpnG",
 "fn": "Stefan",
 "lang": "EN",
-"tries": 1
+"tries": 2
 }
 }
 }
