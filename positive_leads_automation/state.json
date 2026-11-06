@@ -189,6 +189,7 @@
 "hamuche@hmaadv.com.br",
 "harry@ember-grp.com",
 "harsh@sarick.com",
+"hemolab2000@yahoo.com.mx",
 "henrique@armcapital.com.br",
 "howard@tlaaz.com",
 "htierney@jmyantis.com",
@@ -773,6 +774,16 @@
 "eaccount": "thibaut.g@mylandquire.org",
 "wid": "6a4645cc305ead1e2243e94f",
 "subject": "RE: Portfolio 22: rezoneamento residencial aprovado"
+},
+"hemolab2000@yahoo.com.mx": {
+"seg": "B2C",
+"agent_email": "tgueant@landquire.com",
+"contact_id": "Yd2Mg46x7szTDpyIddhw",
+"first_reply_id": "6aee3fdb02d07dcaa45a8e41",
+"seen": [],
+"eaccount": "gueant@golandquire.org",
+"wid": "6a4645cc305ead1e2243e94f",
+"subject": "Re: Portfolio 22: rezonificación residencial aprobada"
 }
 },
 "b2b_pending": {},
@@ -790,7 +801,7 @@
 "contact_id": "mJgwLwow7fb8QypNQBWV",
 "fn": "Jordan",
 "lang": "EN",
-"tries": 3
+"tries": 4
 },
 "jfelts@certerra.com": {
 "l": {
@@ -804,7 +815,7 @@
 "contact_id": "hWUWpAcr1d7QOE2LHplK",
 "fn": "Jonathan",
 "lang": "EN",
-"tries": 0
+"tries": 1
 },
 "andrew@amrrgroup.com": {
 "l": {
@@ -818,7 +829,7 @@
 "contact_id": "UIaxR6CEzpem6GJ6ccqe",
 "fn": "Andrew",
 "lang": "EN",
-"tries": 0
+"tries": 1
 }
 }
 }
