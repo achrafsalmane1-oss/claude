@@ -385,6 +385,7 @@
 "raphael.malewicz@tamarackland.com",
 "ray@gvestcapital.com",
 "rbolandian@cambridgewilkinson.com",
+"rcarrega@astrelya.com",
 "reddy@leonsmith.in",
 "regalplus@wanadoo.fr",
 "reginaldo.diniz@grupoendtoend.com.br",
@@ -772,7 +773,18 @@
 "subject": "RE: Portfolio 22: rezoneamento residencial aprovado"
 }
 },
-"b2b_pending": {},
+"b2b_pending": {
+"rcarrega@astrelya.com": {
+"reply_to_id": "6aed81f502d07dcaa449c1b1",
+"eaccount": "gueant.t@trylandquire.org",
+"wid": "6a3179f64517eb5ecd7c1642",
+"subject": "RE: foncier américain",
+"email": "rcarrega@astrelya.com",
+"reply_text": "Bonjour,\n\nJe vous remercie pour votre email.\nPourriez-vous m’envoyer vos documents, je prendrai contact avec vous si intérêt.\nMerci,\n\n\n[Une image contenant Bleu électrique, symbole, Police, ligne    Le contenu généré par l’IA peut être incorrect.]\nRomain CARREGA\nManaging Director\n\n+41 79 194 21 06\nBd Helvétique 36, 1207 Genève\n[cid:image002.png@01DD6DC8.D6ADE3F0] [cid:image003.png@01DD6DC8.D6ADE3F0]  [cid:image004.png@01DD6DC8.D6ADE3F0]\n\n\n\n\n\n\n\nDe : Thibaut Gueant <gueant.t@trylandquire.org>\nEnvoyé : vendredi, 6 novembre 2026 08:10\nÀ : Romain CARREGA <rcarrega@astrelya.com>\nObjet : foncier américain\n\nRomain, je me permets un rapide suivi.\n\nDepuis 2021, nous avons accompagné plus de 400 investisseurs sur plus de 300 projets fonciers aux États-Unis. Chaque projet suit le même modèle : acquisition hors marché, viabilisation, revente aux constructeurs.\n\nSi la diversification vers l'immobilier américain est dans vos plans, je serais ravi de vous envoyer nos documents et un exemple de projet ouvert au financement.\n\nDans tous les cas, merci pour votre temps.\n\nBien à vous,\nThibaut Guéant\nLandQuire\n\nOn Tue, Nov 3, 2026 at 9:06 AM Thibaut Gueant <gueant.t@trylandquire.org<mailto:gueant.t@trylandquire.org>> wrote:\nRomain, depuis 2021 nous avons accompagné plus de 400 investisseurs sur plus de 300 projets fonciers aux États-Unis, avec 100% de succès sur les autorisations d'aménagement.\n\nLe modèle est toujours le même : nous achetons du terrain hors marché, nous obtenons les autorisations, puis nous revendons aux constructeurs nationaux. C'est la phase où la création de valeur est la plus forte. La plupart des investisseurs arrivent après, quand les rendements sont déjà compressés.\n\nSPV structurés, sorties définies en 18 à 36 mois, ticket d'entrée à partir de 100k USD.\n\nSouhaitez-vous que je vous envoie un exemple de projet concret : le terrain, les autorisations obtenues, le calendrier de sortie et le rendement visé ?\n\nBien à vous,\nThibaut Guéant\nLandQuire\n",
+"contact_id": "TWOzdUAQ2nf724EgIIvL",
+"tries": 1
+}
+},
 "us_rr": 2,
 "handoff_retry": {
 "tim@loanmountaincapital.com": {
@@ -787,7 +799,7 @@
 "contact_id": "ghDA6jbTfL020dg5VfRh",
 "fn": "Tim",
 "lang": "EN",
-"tries": 10
+"tries": 11
 },
 "greg.dietz@ablfunding.com": {
 "l": {
@@ -801,7 +813,7 @@
 "contact_id": "gFTIybiHooShrV8vSHcE",
 "fn": "Greg",
 "lang": "EN",
-"tries": 10
+"tries": 11
 },
 "jkadry@fmm.com": {
 "l": {
@@ -815,7 +827,7 @@
 "contact_id": "mJgwLwow7fb8QypNQBWV",
 "fn": "Jordan",
 "lang": "EN",
-"tries": 1
+"tries": 2
 }
 }
 }
