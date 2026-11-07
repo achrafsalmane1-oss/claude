@@ -59,6 +59,7 @@
 "bryce@approachventure.com",
 "c.frem@lawfordinvestment.com",
 "cameron@metcalfland.com",
+"camille.acosta@southstarbank.com",
 "carl@ikoab.com",
 "carlos.gueiros@torrescx.com.br",
 "carlossantos@adaptel.pt",
@@ -801,7 +802,7 @@
 "contact_id": "mJgwLwow7fb8QypNQBWV",
 "fn": "Jordan",
 "lang": "EN",
-"tries": 8
+"tries": 9
 },
 "jfelts@certerra.com": {
 "l": {
@@ -815,7 +816,7 @@
 "contact_id": "hWUWpAcr1d7QOE2LHplK",
 "fn": "Jonathan",
 "lang": "EN",
-"tries": 5
+"tries": 6
 },
 "andrew@amrrgroup.com": {
 "l": {
@@ -829,7 +830,21 @@
 "contact_id": "UIaxR6CEzpem6GJ6ccqe",
 "fn": "Andrew",
 "lang": "EN",
-"tries": 5
+"tries": 6
+},
+"camille.acosta@southstarbank.com": {
+"l": {
+"email": "camille.acosta@southstarbank.com",
+"wid": "6a3179f64517eb5ecd7c1642",
+"reply_to_id": "6aef985b02d07dcaa46a1e9a",
+"eaccount": "johnjohnson@connect.havensthq.com",
+"subject": "Re: land allocation",
+"campaign_id": "6ac6241a9ed2146f3f762227"
+},
+"contact_id": "18VG5we5PJfhsNkA2J8X",
+"fn": "Camille",
+"lang": "EN",
+"tries": 0
 }
 }
 }
