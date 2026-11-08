@@ -92,6 +92,7 @@
 "d.kraushaar@gmx.de",
 "dagmar@worldclassrealestatebroker.com",
 "daguerrero@wanadoo.fr",
+"dakotafapadafapada@gmail.com",
 "dan.willenbring@tamarackland.com",
 "daniel.manso@apemip.pt",
 "daniel.rossi@capitaleenergia.com.br",
@@ -799,31 +800,20 @@
 "eaccount": "t.gueant@golandquire.org",
 "wid": "6a4645cc305ead1e2243e94f",
 "subject": "Re: Portfolio 22: residential rezoning approved"
+},
+"dakotafapadafapada@gmail.com": {
+"seg": "B2C",
+"agent_email": "splummer@landquire.com",
+"contact_id": "yaVs9lNTmmLmcPqqMDZN",
+"first_reply_id": "6af0ace802d07dcaa473c4b0",
+"seen": [],
+"eaccount": "t.gueant@golandquire.org",
+"wid": "6a4645cc305ead1e2243e94f",
+"subject": "Re: Portfolio 22: residential rezoning approved"
 }
 },
-"b2b_pending": {
-"modestoaraujo@vizelpas.pt": {
-"reply_to_id": "6af0887802d07dcaa4728e42",
-"eaccount": "thibaut@team.trylandquire.org",
-"wid": "6a3179f64517eb5ecd7c1642",
-"subject": "Re: última mensagem",
-"email": "modestoaraujo@vizelpas.pt",
-"reply_text": "Pode enviar um exemplo de um terreno até 15 milhões para investimento e ver rentabilidades?\nObrigado\nMA\n\nEnviado a partir do Outlook para iOS<https://aka.ms/o0ukef>\n________________________________\nDe: Thibaut Gueant <thibaut@team.trylandquire.org>\nEnviado: Sunday, 08 November 2026 14:15:04\nPara: Modesto Araujo <modestoaraujo@vizelpas.pt>\nAssunto: última mensagem\n\nModesto, não vou insistir mais.\n\nSe o mercado de terrenos nos EUA não é um assunto para si neste momento, sem problema: diga-me e encerro o seu processo.\n\nSe quiser apenas ver como é um dos nossos projetos antes de decidir, envio-lhe um exemplo concreto: o terreno, as aprovações obtidas, o calendário de saída e a rentabilidade alvo.\n\nBasta uma palavra.\n\nAtenciosamente,\nThibaut Guéant\nLandQuire\n\nCumprimentos/ Best Regards / Saludos / Salutations,\nModesto Araujo\nPresidente / Chairman\nmodestoaraujo@vizelpas.pt<mailto:modestoaraujo@vizelpas.pt>\nRede Móvel:\n\nwww.vizelpas.pt<http://www.vizelpas.pt>\ngeral@vizelpas.pt<mailto:geral@vizelpas.pt>\nRede Fixa Nacional - Tlf:  +351 253 566 600 / Fax: +351 253 561 249\n\nRUA DA FUNDIÇÃO, Nº 8\n4795-791 VILARINHO      [https://vizelpas-my.sharepoint.com/:i:/g/personal/fabiocosme_vizelpas_pt/EQuDDFvip55Mi35jQ_hcSzAB7cUohu8rRsaSEeYLh_OB8w?download=1]    [https://vizelpas-my.sharepoint.com/:i:/g/personal/fabiocosme_vizelpas_pt/IQCxp-fBIE0JRJZHwOjDt_LdAXRpEDvxrXV6XHhfWqV-3tU?download=1]\n",
-"contact_id": "Vo0TDvQQQgFXibTqosoK",
-"tries": 1
-},
-"goncalo@mondegocp.com": {
-"reply_to_id": "6af052d102d07dcaa4711048",
-"eaccount": "guant.t@trylandquire.org",
-"wid": "6a3179f64517eb5ecd7c1642",
-"subject": "Re: última mensagem",
-"email": "goncalo@mondegocp.com",
-"reply_text": "Bom dia\n\nSou developer tenho interesse em investir para desenvolver mas envie então um exemplo\n\nObr\n\n\n________________________________\nFrom: Thibaut Gueant <guant.t@trylandquire.org>\nSent: Sunday, 08 November 2026 10:38:59\nTo: Gonçalo Ahrens Teixeira <goncalo@mondegocp.com>\nSubject: última mensagem\n\nGonçalo, não vou insistir mais.\n\nSe o mercado de terrenos nos EUA não é um assunto para si neste momento, sem problema: diga-me e encerro o seu processo.\n\nSe quiser apenas ver como é um dos nossos projetos antes de decidir, envio-lhe um exemplo concreto: o terreno, as aprovações obtidas, o calendário de saída e a rentabilidade alvo.\n\nBasta uma palavra.\n\nAtenciosamente,\nThibaut Guéant\nLandQuire\n",
-"contact_id": "14l1mR8pWwNGrRaHil2l",
-"tries": 1
-}
-},
-"us_rr": 1,
+"b2b_pending": {},
+"us_rr": 2,
 "handoff_retry": {
 "jfelts@certerra.com": {
 "l": {
@@ -837,7 +827,7 @@
 "contact_id": "hWUWpAcr1d7QOE2LHplK",
 "fn": "Jonathan",
 "lang": "EN",
-"tries": 9
+"tries": 10
 },
 "andrew@amrrgroup.com": {
 "l": {
@@ -851,7 +841,7 @@
 "contact_id": "UIaxR6CEzpem6GJ6ccqe",
 "fn": "Andrew",
 "lang": "EN",
-"tries": 9
+"tries": 10
 },
 "camille.acosta@southstarbank.com": {
 "l": {
@@ -865,7 +855,7 @@
 "contact_id": "18VG5we5PJfhsNkA2J8X",
 "fn": "Camille",
 "lang": "EN",
-"tries": 3
+"tries": 4
 },
 "dhyay@fpx.world": {
 "l": {
@@ -879,7 +869,7 @@
 "contact_id": "PrJ7trY8GTdijh49sX2K",
 "fn": "Dhyay",
 "lang": "EN",
-"tries": 2
+"tries": 3
 }
 }
 }
