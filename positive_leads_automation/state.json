@@ -116,6 +116,7 @@
 "demetrius@gruponapoles.com.br",
 "denys@fionasrenalcare.com",
 "dgonzalez@apexinvestments.us",
+"dhyay@fpx.world",
 "didier.lorre@maekn.com",
 "didier.puigsarbe@comptastar.fr",
 "dlandes@landadvisors.com",
@@ -394,6 +395,7 @@
 "regalplus@wanadoo.fr",
 "reginaldo.diniz@grupoendtoend.com.br",
 "reichmann@secretariat-intl.com",
+"reid.kurtenbach@gmail.com",
 "ricardo.gimenes@huma.net.br",
 "rickhoffman@orionsolutionsllc.com",
 "rlevesque@pacificacompanies.com",
@@ -785,10 +787,20 @@
 "eaccount": "gueant@golandquire.org",
 "wid": "6a4645cc305ead1e2243e94f",
 "subject": "Re: Portfolio 22: rezonificación residencial aprobada"
+},
+"reid.kurtenbach@gmail.com": {
+"seg": "B2C",
+"agent_email": "kevinlanson@landquire.com",
+"contact_id": "Ck61mbTZAtzsxj7Ax1WX",
+"first_reply_id": "6aefd58d02d07dcaa46b2ca0",
+"seen": [],
+"eaccount": "t.gueant@golandquire.org",
+"wid": "6a4645cc305ead1e2243e94f",
+"subject": "Re: Portfolio 22: residential rezoning approved"
 }
 },
 "b2b_pending": {},
-"us_rr": 2,
+"us_rr": 1,
 "handoff_retry": {
 "jkadry@fmm.com": {
 "l": {
@@ -802,7 +814,7 @@
 "contact_id": "mJgwLwow7fb8QypNQBWV",
 "fn": "Jordan",
 "lang": "EN",
-"tries": 9
+"tries": 10
 },
 "jfelts@certerra.com": {
 "l": {
@@ -816,7 +828,7 @@
 "contact_id": "hWUWpAcr1d7QOE2LHplK",
 "fn": "Jonathan",
 "lang": "EN",
-"tries": 6
+"tries": 7
 },
 "andrew@amrrgroup.com": {
 "l": {
@@ -830,7 +842,7 @@
 "contact_id": "UIaxR6CEzpem6GJ6ccqe",
 "fn": "Andrew",
 "lang": "EN",
-"tries": 6
+"tries": 7
 },
 "camille.acosta@southstarbank.com": {
 "l": {
@@ -843,6 +855,20 @@
 },
 "contact_id": "18VG5we5PJfhsNkA2J8X",
 "fn": "Camille",
+"lang": "EN",
+"tries": 1
+},
+"dhyay@fpx.world": {
+"l": {
+"email": "dhyay@fpx.world",
+"wid": "6a3179f64517eb5ecd7c1642",
+"reply_to_id": "6aefd18102d07dcaa46b29f6",
+"eaccount": "karenmoore@hello.havenstteam.com",
+"subject": "Re: taking down lots",
+"campaign_id": "6ac624302096e8f68b6bd4e2"
+},
+"contact_id": "PrJ7trY8GTdijh49sX2K",
+"fn": "Dhyay",
 "lang": "EN",
 "tries": 0
 }
