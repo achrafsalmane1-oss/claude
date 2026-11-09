@@ -815,34 +815,6 @@
 "b2b_pending": {},
 "us_rr": 2,
 "handoff_retry": {
-"jfelts@certerra.com": {
-"l": {
-"email": "jfelts@certerra.com",
-"wid": "6a3179f64517eb5ecd7c1642",
-"reply_to_id": "6aee085802d07dcaa454f4a5",
-"eaccount": "nancy_scott@team.havenstbase.com",
-"subject": "Re: entitled lots",
-"campaign_id": "6ac624302096e8f68b6bd4e2"
-},
-"contact_id": "hWUWpAcr1d7QOE2LHplK",
-"fn": "Jonathan",
-"lang": "EN",
-"tries": 11
-},
-"andrew@amrrgroup.com": {
-"l": {
-"email": "andrew@amrrgroup.com",
-"wid": "6a3179f64517eb5ecd7c1642",
-"reply_to_id": "6aedfbc802d07dcaa4537fd2",
-"eaccount": "michael.miller@team.havensthq.com",
-"subject": "Re: taking down lots",
-"campaign_id": "6ac6243dd7cb5eb6789d8674"
-},
-"contact_id": "UIaxR6CEzpem6GJ6ccqe",
-"fn": "Andrew",
-"lang": "EN",
-"tries": 11
-},
 "camille.acosta@southstarbank.com": {
 "l": {
 "email": "camille.acosta@southstarbank.com",
@@ -855,7 +827,7 @@
 "contact_id": "18VG5we5PJfhsNkA2J8X",
 "fn": "Camille",
 "lang": "EN",
-"tries": 5
+"tries": 6
 },
 "dhyay@fpx.world": {
 "l": {
@@ -869,7 +841,7 @@
 "contact_id": "PrJ7trY8GTdijh49sX2K",
 "fn": "Dhyay",
 "lang": "EN",
-"tries": 4
+"tries": 5
 }
 }
 }
