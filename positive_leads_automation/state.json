@@ -821,18 +821,7 @@
 "subject": "Re: Portfolio 22: residential rezoning approved"
 }
 },
-"b2b_pending": {
-"pedro.amaraljorge@omip.pt": {
-"reply_to_id": "6af1dfc402d07dcaa4826ef5",
-"eaccount": "tgueant@connect.joinlandquire.org",
-"wid": "6a3179f64517eb5ecd7c1642",
-"subject": "RE: última mensagem",
-"email": "pedro.amaraljorge@omip.pt",
-"reply_text": "Caro Thibaut,\nTenho interesse no tema.\nSugiro agendarmos uma video-reunião na semana de 16 de Novembro,\nAtentamente,\nPedro\n\n\n\n[https://www.omip.pt/sites/default/files/media/2024-07/ass_omip_1.png]<https://www.omip.pt/>\nPedro Amaral Jorge\nChairman & CEO\n\np: +351 210 006 002\ne: pedro.amaraljorge@omip.pt<mailto:pedro.amaraljorge@omip.pt>\nAvenida da República, 23 - 4º\n1050-185 Lisboa\nwww.omip.pt<https://www.omip.pt/>\n  [https://www.omip.pt/sites/default/files/media/2024-07/social_media_li.png] <https://www.linkedin.com/company/omip---operador-do-mercado-ib-rico-de-energia-p-lo-portugu-s>   [https://www.omip.pt/sites/default/files/media/2024-07/social_media_site.png] <www.omip.pt>\n\n\nFrom: Thibaut Gueant <tgueant@connect.joinlandquire.org>\nSent: Monday, November 9, 2026 10:16 AM\nTo: Pedro Amaral Jorge [OMIP] <pedro.amaraljorge@omip.pt>\nSubject: última mensagem\n\n\nATENÇÃO! Esta mensagem foi enviada de um remetente EXTERNO - tenha especial cuidado antes de clicar em links ou abrir anexos. Caso suspeite, reporte imediatamente utilizando o botão de phishing.\n\nPedro, não vou insistir mais.\n\nSe o mercado de terrenos nos EUA não é um assunto para si neste momento, sem problema: diga-me e encerro o seu processo.\n\nSe quiser apenas ver como é um dos nossos projetos antes de decidir, envio-lhe um exemplo concreto: o terreno, as aprovações obtidas, o calendário de saída e a rentabilidade alvo.\n\nBasta uma palavra.\n\nAtenciosamente,\nThibaut Guéant\nLandQuire\n",
-"contact_id": "mqyIvXNhZxMm0Z9P9P4D",
-"tries": 1
-}
-},
+"b2b_pending": {},
 "us_rr": 2,
 "handoff_retry": {
 "camille.acosta@southstarbank.com": {
@@ -847,7 +836,7 @@
 "contact_id": "18VG5we5PJfhsNkA2J8X",
 "fn": "Camille",
 "lang": "EN",
-"tries": 8
+"tries": 9
 },
 "dhyay@fpx.world": {
 "l": {
@@ -861,7 +850,7 @@
 "contact_id": "PrJ7trY8GTdijh49sX2K",
 "fn": "Dhyay",
 "lang": "EN",
-"tries": 7
+"tries": 8
 },
 "trey.daniel@indusrt.com": {
 "l": {
@@ -875,7 +864,7 @@
 "contact_id": "NjzaHGtk15TlqneDo6p8",
 "fn": "Trey",
 "lang": "EN",
-"tries": 0
+"tries": 1
 },
 "matthew@linkedeng.me.uk": {
 "l": {
@@ -889,7 +878,7 @@
 "contact_id": "swu0yci2hPetdZHPNrCY",
 "fn": "Matthew",
 "lang": "EN",
-"tries": 0
+"tries": 1
 },
 "andrew.pace@northstar-pres.com": {
 "l": {
@@ -903,7 +892,7 @@
 "contact_id": "iPJqAV0aWJoaeQtKhTeA",
 "fn": "Andrew",
 "lang": "EN",
-"tries": 0
+"tries": 1
 },
 "tweiler@savoyproperties.com": {
 "l": {
@@ -917,7 +906,7 @@
 "contact_id": "JQ9Ni7cbtqKBKMsAPH3E",
 "fn": "Thomas",
 "lang": "EN",
-"tries": 0
+"tries": 1
 },
 "jmccoy@trinitas.ventures": {
 "l": {
@@ -931,7 +920,7 @@
 "contact_id": "LyZQpVmOXc79hgWg8vfF",
 "fn": "Jacob",
 "lang": "EN",
-"tries": 0
+"tries": 1
 },
 "craig@buffkinbaker.com": {
 "l": {
@@ -945,7 +934,7 @@
 "contact_id": "tT5RHsiwSF7Ok2d8Xpbp",
 "fn": "Craig",
 "lang": "EN",
-"tries": 0
+"tries": 1
 },
 "jvalenta@matkinhoover.com": {
 "l": {
@@ -959,7 +948,7 @@
 "contact_id": "Xfi2lHQKUSKzzVaRcWkX",
 "fn": "Josh",
 "lang": "EN",
-"tries": 0
+"tries": 1
 }
 }
 }
